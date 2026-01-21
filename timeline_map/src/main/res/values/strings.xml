@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">timeline_map</string>
+    <string name="speech_input_prefix">Speech Input: %1$s</string>
+    <string name="simulate_voice_query_button">Simulate Voice Query: \'辛亥革命\'</string>
+    <string name="events_found_prefix">Events found: %1$d</string>
+    <string name="map_view_placeholder">[Map View Placeholder]</string>
+</resources>

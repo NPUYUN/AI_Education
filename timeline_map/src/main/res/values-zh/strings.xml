@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">时间轴地图</string>
+    <string name="speech_input_prefix">语音输入: %1$s</string>
+    <string name="simulate_voice_query_button">模拟语音查询: \'辛亥革命\'</string>
+    <string name="events_found_prefix">找到的事件: %1$d</string>
+    <string name="map_view_placeholder">[地图视图占位符]</string>
+</resources>

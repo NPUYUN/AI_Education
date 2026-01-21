@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">ai_tutor</string>
+    <string name="chat_placeholder">Ask the AI Tutor...</string>
+    <string name="send_button">Send</string>
+    <string name="prefix_you">You: %1$s</string>
+    <string name="prefix_ai">AI: %1$s</string>
+</resources>

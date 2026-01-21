@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">AI 辅导</string>
+    <string name="chat_placeholder">向 AI 导师提问...</string>
+    <string name="send_button">发送</string>
+    <string name="prefix_you">你: %1$s</string>
+    <string name="prefix_ai">AI: %1$s</string>
+</resources>
