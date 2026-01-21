@@ -7,8 +7,10 @@ plugins {
 android {
     namespace = "com.example.education"
     compileSdk = 34
+
+
     // Temporary workaround for file lock issue
-    project.layout.buildDirectory.set(file("build_v2"))
+    project.layout.buildDirectory.set(file("build_output"))
 
     defaultConfig {
         applicationId = "com.example.education"

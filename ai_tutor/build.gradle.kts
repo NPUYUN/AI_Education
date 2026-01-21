@@ -7,8 +7,10 @@ plugins {
 android {
     namespace = "com.example.ai_tutor"
     compileSdk = 34
+
+
     // Temporary workaround for file lock issue
-    project.layout.buildDirectory.set(file("build_v2"))
+    project.layout.buildDirectory.set(file("build_output"))
 
     defaultConfig {
         minSdk = 24
@@ -43,6 +45,7 @@ android {
 // }
 
 dependencies {
+    implementation(project(":common"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -55,6 +58,25 @@ dependencies {
     // AI Tutor specific
     // Using TF Lite for on-device inference
     implementation(libs.tensorflow.lite)
+    implementation("org.tensorflow:tensorflow-lite-gpu:2.14.0")
+    implementation("org.tensorflow:tensorflow-lite-gpu-api:2.14.0") // Added API dependency
+    implementation("org.tensorflow:tensorflow-lite-support:0.4.4")
+    
+    // ML Kit for OCR
+    implementation(libs.play.services.mlkit.text.recognition)
+
+    // Markdown
+    implementation(libs.compose.markdown)
+
+    // CameraX for image input
+    implementation("androidx.camera:camera-core:1.3.2")
+    implementation("androidx.camera:camera-camera2:1.3.2")
+    implementation("androidx.camera:camera-lifecycle:1.3.2")
+    implementation("androidx.camera:camera-view:1.3.2")
+
+    // Coroutines for async tasks
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

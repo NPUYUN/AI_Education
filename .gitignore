@@ -15,5 +15,7 @@
 local.properties
 
 # Custom build directories (workaround for Windows file lock)
-build_*/
-**/build_*/
+build_output/
+**/build_output/
+build_v5/
+**/build_v5/

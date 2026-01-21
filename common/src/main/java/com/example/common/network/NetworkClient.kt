@@ -25,15 +25,15 @@ object NetworkClient {
         builder.build()
     }
 
-    val retrofit: Retrofit by lazy {
-        Retrofit.Builder()
-            .baseUrl(AppConfig.BASE_URL)
+    fun createRetrofit(baseUrl: String): Retrofit {
+        return Retrofit.Builder()
+            .baseUrl(baseUrl)
             .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
     }
 
-    fun <T> createService(serviceClass: Class<T>): T {
-        return retrofit.create(serviceClass)
+    fun <T> createService(serviceClass: Class<T>, baseUrl: String = AppConfig.BASE_URL): T {
+        return createRetrofit(baseUrl).create(serviceClass)
     }
 }

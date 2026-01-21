@@ -7,8 +7,10 @@ plugins {
 android {
     namespace = "com.example.geometry_solver"
     compileSdk = 34 // Using stable SDK
+
+
     // Temporary workaround for file lock issue
-    project.layout.buildDirectory.set(file("build_v2"))
+    project.layout.buildDirectory.set(file("build_output"))
 
     defaultConfig {
         minSdk = 24 // CameraX requires 21+, often 24 is better for modern features

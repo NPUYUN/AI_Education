@@ -8,8 +8,10 @@ plugins {
 android {
     namespace = "com.example.common"
     compileSdk = 34
+
+
     // Temporary workaround for file lock issue
-    project.layout.buildDirectory.set(file("build_v2"))
+    project.layout.buildDirectory.set(file("build_output"))
 
     defaultConfig {
         minSdk = 24
@@ -48,11 +50,11 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     
     // Common module specific
-    implementation(libs.squareup.okhttp)
-    implementation(libs.squareup.okhttp.logging)
-    implementation(libs.squareup.retrofit)
-    implementation(libs.squareup.retrofit.converter.gson)
-    implementation(libs.google.gson)
+    api(libs.squareup.okhttp)
+    api(libs.squareup.okhttp.logging)
+    api(libs.squareup.retrofit)
+    api(libs.squareup.retrofit.converter.gson)
+    api(libs.google.gson)
     api(libs.androidx.room.runtime)
     api(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
