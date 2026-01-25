@@ -2,16 +2,34 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.INTERNET" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 
     <application
         android:allowBackup="true"
         android:label="@string/app_name"
         android:supportsRtl="true">
+        
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="com.example.ai_tutor.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/ai_tutor_file_paths" />
+        </provider>
+
         <activity
             android:name=".MainActivity"
-            android:exported="false">
+            android:exported="true">
         </activity>
+
+        <activity
+            android:name=".ui.CustomCropActivity"
+            android:theme="@style/Theme.Education"
+            android:screenOrientation="portrait"/>
     </application>
 
 </manifest>

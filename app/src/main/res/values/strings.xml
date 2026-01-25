@@ -29,4 +29,6 @@
     <string name="tab_geometry">Geometry</string>
     <string name="tab_timeline">Timeline</string>
     <string name="tab_summary">Summary</string>
+    <string name="tab_profile">Profile</string>
+    <string name="profile_title">Personal Homepage</string>
 </resources>
