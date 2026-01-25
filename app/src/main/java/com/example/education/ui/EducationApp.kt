@@ -33,6 +33,7 @@ import com.example.education.MainViewModel
 import com.example.education.ui.auth.LoginScreen
 import com.example.education.ui.auth.RegisterScreen
 import com.example.education.ui.settings.SettingsScreen
+import com.example.education.ui.profile.ProfileScreen
 import com.example.geometry_solver.ui.CameraScreen
 import com.example.timeline_map.ui.TimelineScreen
 import com.example.video_summarizer.ui.SummaryScreen
@@ -51,6 +52,7 @@ sealed class Screen(val route: String, val titleResId: Int, val icon: ImageVecto
     object Geometry : Screen("geometry", R.string.tab_geometry, Icons.Filled.Home)
     object Timeline : Screen("timeline", R.string.tab_timeline, Icons.Filled.DateRange)
     object Video : Screen("video", R.string.tab_summary, Icons.Filled.PlayArrow)
+    object Profile : Screen("profile", R.string.tab_profile, Icons.Filled.Face)
 }
 
 @Composable
@@ -96,6 +98,7 @@ fun EducationApp(viewModel: MainViewModel = viewModel()) {
         }
         composable(Screen.Main.route) {
             MainScreen(
+                viewModel = viewModel,
                 onNavigateToSettings = { navController.navigate(Screen.Settings.route) }
             )
         }
@@ -104,26 +107,20 @@ fun EducationApp(viewModel: MainViewModel = viewModel()) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainScreen(onNavigateToSettings: () -> Unit) {
+fun MainScreen(
+    viewModel: MainViewModel = viewModel(),
+    onNavigateToSettings: () -> Unit
+) {
     val navController = rememberNavController()
     val items = listOf(
         Screen.AiTutor,
         Screen.Geometry,
         Screen.Timeline,
-        Screen.Video
+        Screen.Video,
+        Screen.Profile
     )
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.app_name)) },
-                actions = {
-                    IconButton(onClick = onNavigateToSettings) {
-                        Icon(Icons.Filled.Settings, contentDescription = stringResource(R.string.settings_title))
-                    }
-                }
-            )
-        },
         bottomBar = {
             NavigationBar {
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -156,6 +153,12 @@ fun MainScreen(onNavigateToSettings: () -> Unit) {
             composable(Screen.Geometry.route) { CameraScreen() }
             composable(Screen.Timeline.route) { TimelineScreen() }
             composable(Screen.Video.route) { SummaryScreen() }
+            composable(Screen.Profile.route) { 
+                ProfileScreen(
+                    userRepository = viewModel.userRepository,
+                    onNavigateToSettings = onNavigateToSettings
+                )
+            }
         }
     }
 }

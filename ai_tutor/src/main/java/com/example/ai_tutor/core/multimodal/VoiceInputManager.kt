@@ -34,6 +34,7 @@ class VoiceInputManager(private val context: Context) {
             override fun onError(error: Int) {
                 // close(Exception("Speech recognition error code: $error"))
                 // Don't close flow on error, just log or emit error state if needed
+                close() // Ensure flow terminates on error to reset UI state
             }
 
             override fun onResults(results: Bundle?) {

@@ -54,25 +54,22 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
     
     // AI Tutor specific
-    // Using TF Lite for on-device inference
-    implementation(libs.tensorflow.lite)
-    implementation("org.tensorflow:tensorflow-lite-gpu:2.14.0")
-    implementation("org.tensorflow:tensorflow-lite-gpu-api:2.14.0") // Added API dependency
-    implementation("org.tensorflow:tensorflow-lite-support:0.4.4")
-    
-    // ML Kit for OCR
-    implementation(libs.play.services.mlkit.text.recognition)
-
     // Markdown
     implementation(libs.compose.markdown)
 
-    // CameraX for image input
-    implementation("androidx.camera:camera-core:1.3.2")
-    implementation("androidx.camera:camera-camera2:1.3.2")
-    implementation("androidx.camera:camera-lifecycle:1.3.2")
-    implementation("androidx.camera:camera-view:1.3.2")
+    // Image Cropper
+    implementation(libs.vanniktech.image.cropper)
+
+    // CameraX
+    implementation(libs.androidx.camera.camera2)
+    implementation(libs.androidx.camera.lifecycle)
+    implementation(libs.androidx.camera.view)
+
+    // Icons Extended (Mic, Crop, Download, etc.)
+    implementation("androidx.compose.material:material-icons-extended")
 
     // Coroutines for async tasks
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")

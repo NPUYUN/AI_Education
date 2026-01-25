@@ -4,5 +4,5 @@
     <string name="send_button">发送</string>
     <string name="prefix_you">你: %1$s</string>
     <string name="prefix_ai">AI: %1$s</string>
-    <string name="prompt_analysis_result">我上传了一张图片。本地分析结果如下：\n视觉内容：%1$s\n提取文字：%2$s\n\n请根据上述视觉线索和提取的文字，深度解析这张图片的内容。请详细描述你看到的内容，解释其中的概念。如果图片包含题目，请一步步进行解答。</string>
+    <string name="prompt_analysis_result">我上传了一张图片。本地分析结果如下：\n视觉内容：%1$s\n提取文字：%2$s\n\n请根据上述视觉线索和提取的文字，深度解析这张图片的内容。注意：提取的文字可能包含 OCR 错误，特别是在数学公式中（例如丢失上标/下标、符号混淆）。请根据上下文推断正确的数学表达式，并一步步进行解答。</string>
 </resources>

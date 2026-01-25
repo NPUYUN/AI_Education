@@ -27,6 +27,8 @@
     <!-- Main Tabs -->
     <string name="tab_ai_tutor">AI 辅导</string>
     <string name="tab_geometry">几何解题</string>
-    <string name="tab_timeline">时间轴</string>
+    <string name="tab_timeline">时间轴地图</string>
     <string name="tab_summary">视频总结</string>
+    <string name="tab_profile">个人主页</string>
+    <string name="profile_title">个人主页</string>
 </resources>
