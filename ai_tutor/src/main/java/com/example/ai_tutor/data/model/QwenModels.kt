@@ -29,6 +29,7 @@ data class Parameters(
 
 data class ChatResponse(
     @SerializedName("output") val output: Output?,
+    @SerializedName("choices") val choices: List<Choice>?, // Added for OpenAI-compatible format
     @SerializedName("usage") val usage: Usage?,
     @SerializedName("request_id") val requestId: String?
 )

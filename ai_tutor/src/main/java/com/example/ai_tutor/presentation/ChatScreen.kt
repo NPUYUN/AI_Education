@@ -13,6 +13,7 @@ import android.speech.SpeechRecognizer
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -30,14 +31,21 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
 import com.example.ai_tutor.data.model.Message
 import com.example.ai_tutor.data.model.ContentItem
+import dev.jeziellago.compose.markdowntext.MarkdownText
 import kotlinx.coroutines.launch
+import android.graphics.ImageDecoder
+import android.os.Build
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(
     viewModel: AiTutorViewModel = viewModel(),
+    onCameraClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
@@ -105,7 +113,7 @@ fun ChatScreen(
         ActivityResultContracts.RequestPermission()
     ) { isGranted: Boolean ->
         if (isGranted) {
-            cameraLauncher.launch(null)
+            onCameraClick()
         } else {
             // Handle permission denied
         }
@@ -115,8 +123,23 @@ fun ChatScreen(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         if (uri != null) {
-            viewModel.onInputChanged("[Image Selected: $uri]")
-            viewModel.sendMessage()
+            scope.launch(Dispatchers.IO) {
+                try {
+                    val bitmap = if (Build.VERSION.SDK_INT < 28) {
+                        @Suppress("DEPRECATION")
+                        MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
+                    } else {
+                        val source = ImageDecoder.createSource(context.contentResolver, uri)
+                        ImageDecoder.decodeBitmap(source)
+                    }
+                    withContext(Dispatchers.Main) {
+                        viewModel.onImageCaptured(bitmap)
+                        viewModel.sendMessage()
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
         }
     }
 
@@ -303,7 +326,14 @@ fun InputArea(
                 value = text,
                 onValueChange = onTextChanged,
                 modifier = Modifier.weight(1f),
-                placeholder = { Text("发消息或按住说话...", color = Color.Gray) },
+                placeholder = { 
+                    Text(
+                        "发消息或按住说话...", 
+                        color = Color.Gray,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                    ) 
+                },
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = Color.Transparent,
                     unfocusedContainerColor = Color.Transparent,
@@ -336,37 +366,107 @@ fun InputArea(
 @Composable
 fun MessageItem(message: Message) {
     val isUser = message.role == "user"
-    Box(
+    
+    Column(
         modifier = Modifier.fillMaxWidth(),
-        contentAlignment = if (isUser) Alignment.CenterEnd else Alignment.CenterStart
+        horizontalAlignment = if (isUser) Alignment.End else Alignment.Start
     ) {
-        Surface(
-            color = if (isUser) Color(0xFFE3F2FD) else Color.White,
-            shape = RoundedCornerShape(
-                topStart = 16.dp,
-                topEnd = 16.dp,
-                bottomStart = if (isUser) 16.dp else 0.dp,
-                bottomEnd = if (isUser) 0.dp else 16.dp
-            ),
-            border = if (!isUser) BorderStroke(1.dp, Color.LightGray) else null,
-            modifier = Modifier.widthIn(max = 300.dp)
-        ) {
-            val displayText = when (val content = message.content) {
-                is String -> content
-                is List<*> -> {
-                    val items = content.filterIsInstance<ContentItem>()
-                    val textPart = items.find { it.type == "text" }?.text ?: ""
-                    val hasImage = items.any { it.type == "image_url" }
-                    if (hasImage) "[图片] $textPart" else textPart
+        when (val content = message.content) {
+            is String -> {
+                if (isUser) {
+                    UserTextBubble(content)
+                } else {
+                    AssistantMessage(content)
                 }
-                else -> ""
             }
-            
-            Text(
-                text = displayText,
-                modifier = Modifier.padding(12.dp),
-                color = Color.Black
-            )
+            is List<*> -> {
+                val items = content.filterIsInstance<ContentItem>()
+                // Group items by type or render sequentially?
+                // User wants image and text in separate containers.
+                // Current implementation does exactly that (iterates and calls Bubble for each).
+                items.forEach { item ->
+                    when (item.type) {
+                        "image_url" -> {
+                            item.imageUrl?.url?.let { base64Url ->
+                                UserImageBubble(base64Url)
+                                Spacer(modifier = Modifier.height(8.dp))
+                            }
+                        }
+                        "text" -> {
+                            item.text?.let { text ->
+                                if (text.isNotEmpty()) {
+                                    if (isUser) {
+                                        UserTextBubble(text)
+                                    } else {
+                                        AssistantMessage(text)
+                                    }
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
+    }
+}
+
+@Composable
+fun UserImageBubble(imageUrl: String) {
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier
+            .widthIn(max = 280.dp)
+            .padding(vertical = 4.dp),
+        color = Color.Transparent,
+        shadowElevation = 0.dp
+    ) {
+        AsyncImage(
+            model = imageUrl,
+            contentDescription = "Uploaded Image",
+            modifier = Modifier
+                .fillMaxWidth()
+                .wrapContentHeight()
+                .background(Color.LightGray, RoundedCornerShape(12.dp)),
+            contentScale = androidx.compose.ui.layout.ContentScale.FillWidth,
+            placeholder = androidx.compose.ui.graphics.painter.ColorPainter(Color.LightGray),
+            error = androidx.compose.ui.graphics.painter.ColorPainter(Color(0xFFFFCDD2))
+        )
+    }
+}
+
+@Composable
+fun UserTextBubble(text: String) {
+    Surface(
+        color = Color(0xFF95EC69), // WeChat-like green
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier
+            .widthIn(max = 300.dp)
+            .padding(vertical = 4.dp),
+        shadowElevation = 1.dp
+    ) {
+        Text(
+            text = text,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            style = MaterialTheme.typography.bodyLarge,
+            color = Color.Black
+        )
+    }
+}
+
+@Composable
+fun AssistantMessage(markdown: String) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+    ) {
+        MarkdownText(
+            markdown = markdown,
+            style = MaterialTheme.typography.bodyLarge.copy(
+                color = Color.Black,
+                lineHeight = MaterialTheme.typography.bodyLarge.lineHeight * 1.5
+            )
+        )
     }
 }

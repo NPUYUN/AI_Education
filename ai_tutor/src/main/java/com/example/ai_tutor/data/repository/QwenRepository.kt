@@ -40,9 +40,9 @@ class QwenRepository(private val apiKey: String) {
 
         try {
             val response = api.chat(request)
-            // Qwen API structure usually returns content in output.text or choices[0].message.content
-            // Based on model documentation (qwen-turbo), it returns output.text or choices
-            val reply = response.output?.choices?.firstOrNull()?.message?.content 
+            // Handle both Native (output.text/choices) and OpenAI-compatible (root choices) formats
+            val reply = response.choices?.firstOrNull()?.message?.content
+                ?: response.output?.choices?.firstOrNull()?.message?.content 
                 ?: response.output?.text 
                 ?: ""
             

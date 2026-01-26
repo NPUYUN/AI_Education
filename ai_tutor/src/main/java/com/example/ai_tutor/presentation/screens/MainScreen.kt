@@ -23,8 +23,15 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.ai_tutor.presentation.ChatScreen
 
+import com.example.ai_tutor.presentation.AiTutorViewModel
+
 @Composable
-fun MainScreen(onNavigateToSettings: () -> Unit, onLogout: () -> Unit) {
+fun MainScreen(
+    onNavigateToSettings: () -> Unit,
+    onLogout: () -> Unit,
+    onNavigateToCamera: () -> Unit,
+    viewModel: AiTutorViewModel
+) {
     val navController = rememberNavController()
 
     Scaffold(
@@ -81,8 +88,14 @@ fun MainScreen(onNavigateToSettings: () -> Unit, onLogout: () -> Unit) {
             // Actually, composable("home") { ChatScreen() } is standard.
             // But I updated ChatScreen to accept modifier.
             // If I don't pass anything, it uses Modifier.
-            // Let's pass fillMaxSize() to be explicit.
-            composable("home") { ChatScreen(modifier = Modifier.fillMaxSize()) }
+            // Let's pass fillMaxSize() {
+            composable("home") { 
+                ChatScreen(
+                    viewModel = viewModel,
+                    onCameraClick = onNavigateToCamera,
+                    modifier = Modifier.fillMaxSize()
+                ) 
+            }
             composable("geometry") { GeometryScreen() }
             composable("timeline") { TimelineScreen() }
             composable("video") { VideoSummaryScreen() }

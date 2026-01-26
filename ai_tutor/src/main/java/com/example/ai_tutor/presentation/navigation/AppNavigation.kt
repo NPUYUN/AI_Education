@@ -18,8 +18,16 @@ import com.example.ai_tutor.presentation.auth.RegisterScreen
 import com.example.ai_tutor.presentation.screens.*
 import androidx.lifecycle.viewmodel.compose.viewModel
 
+import android.net.Uri
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
+import com.example.ai_tutor.presentation.AiTutorViewModel
+
 @Composable
-fun AppNavigation(authViewModel: AuthViewModel = viewModel()) {
+fun AppNavigation(
+    authViewModel: AuthViewModel = viewModel(),
+    aiTutorViewModel: AiTutorViewModel = viewModel()
+) {
     val navController = rememberNavController()
     val isLoggedIn = authViewModel.isLoggedIn.value
 
@@ -45,11 +53,36 @@ fun AppNavigation(authViewModel: AuthViewModel = viewModel()) {
                 onLogout = { 
                     authViewModel.logout()
                     navController.navigate("login") { popUpTo("main") { inclusive = true } }
-                }
+                },
+                onNavigateToCamera = { navController.navigate("camera") },
+                viewModel = aiTutorViewModel
             )
         }
         composable("settings") {
             SettingsScreen(onBack = { navController.popBackStack() })
+        }
+        composable("camera") {
+            CameraScreen(
+                onImageCaptured = { uri ->
+                    val encodedUri = java.net.URLEncoder.encode(uri.toString(), "UTF-8")
+                    navController.navigate("preview/$encodedUri")
+                },
+                onClose = { navController.popBackStack() }
+            )
+        }
+        composable(
+            "preview/{imageUri}",
+            arguments = listOf(navArgument("imageUri") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val imageUriString = backStackEntry.arguments?.getString("imageUri") ?: ""
+            ImagePreviewScreen(
+                imageUri = imageUriString,
+                onActionSelected = { prompt ->
+                    aiTutorViewModel.sendImageWithPrompt(Uri.parse(imageUriString), prompt)
+                    navController.popBackStack("main", inclusive = false)
+                },
+                onClose = { navController.popBackStack() }
+            )
         }
     }
 }

@@ -23,6 +23,7 @@ coil = "2.5.0"
 amap = "9.8.3"
 datastore = "1.0.0"
 constraintlayoutCompose = "1.0.1"
+composeMarkdown = "0.5.0"
 # mnn = "2.7.0"
 foojay = "0.8.0"
 
@@ -30,6 +31,7 @@ foojay = "0.8.0"
 foojay-resolver = { group = "org.gradle.toolchains", name = "foojay-resolver", version.ref = "foojay" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-constraintlayout-compose = { group = "androidx.constraintlayout", name = "constraintlayout-compose", version.ref = "constraintlayoutCompose" }
+compose-markdown = { group = "com.github.jeziellago", name = "compose-markdown", version.ref = "composeMarkdown" }
 # mnn = { group = "com.taobao.android", name = "mnn", version.ref = "mnn" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }

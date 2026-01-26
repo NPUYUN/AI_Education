@@ -2,6 +2,8 @@ package com.example.ai_tutor.presentation
 
 import android.app.Application
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.net.Uri
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -210,5 +212,60 @@ class AiTutorViewModel(application: Application) : AndroidViewModel(application)
     fun onVoiceInput(text: String) {
         onInputChanged(text)
         sendMessage()
+    }
+
+    fun sendImageWithPrompt(uri: Uri, prompt: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                // 1. Load Bitmap
+                val inputStream = getApplication<Application>().contentResolver.openInputStream(uri)
+                val bitmap = BitmapFactory.decodeStream(inputStream)
+                inputStream?.close()
+
+                if (bitmap != null) {
+                    // 2. Encode
+                    val base64Image = encodeImage(bitmap)
+                    
+                    // 3. Construct Message
+                    val userContent = listOf(
+                        ContentItem(type = "image_url", imageUrl = ImageUrl(url = base64Image)),
+                        ContentItem(type = "text", text = prompt)
+                    )
+                    val userMsg = Message("user", userContent)
+                    
+                    // 4. Update UI & History
+                    withContext(Dispatchers.Main) {
+                        _messages.add(userMsg)
+                        context.history.add(userMsg)
+                        _isLoading.value = true
+                    }
+                    
+                    saveMessageToDb(userMsg)
+                    
+                    // 5. Send to Repository
+                    val historyToSend = context.history.dropLast(1)
+                    
+                    repository.sendMessage(prompt, historyToSend, imageUrl = base64Image).collect { chunk ->
+                        withContext(Dispatchers.Main) {
+                            if (chunk.startsWith("Error:")) {
+                                _messages.add(Message("system", chunk))
+                            } else {
+                                val assistantMsg = Message("assistant", chunk)
+                                _messages.add(assistantMsg)
+                                context.history.add(assistantMsg)
+                                saveMessageToDb(assistantMsg)
+                            }
+                            _isLoading.value = false
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                withContext(Dispatchers.Main) {
+                    _messages.add(Message("system", "Error processing image: ${e.message}"))
+                    _isLoading.value = false
+                }
+            }
+        }
     }
 }
