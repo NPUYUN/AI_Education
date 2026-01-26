@@ -1,20 +1,18 @@
 plugins {
     alias(libs.plugins.android.library)
-    alias(libs.plugins.jetbrains.kotlin.android)
+    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
 }
 
 android {
     namespace = "com.example.geometry_solver"
-    compileSdk = 34 // Using stable SDK
-
-
-    // Temporary workaround for file lock issue
-    project.layout.buildDirectory.set(file("build_output"))
+    compileSdk = 34 // Consistent with common
 
     defaultConfig {
-        minSdk = 24 // CameraX requires 21+, often 24 is better for modern features
+        minSdk = 24
+
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        consumerProguardFiles("consumer-rules.pro")
     }
 
     buildTypes {
@@ -30,15 +28,21 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions {
-        jvmTarget = "17"
-    }
+    // kotlinOptions {
+    //     jvmTarget = "17"
+    // }
     buildFeatures {
         compose = true
     }
 }
 
+kotlin {
+    jvmToolchain(17)
+}
+
 dependencies {
+    implementation(project(":common"))
+
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -47,14 +51,17 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
-    
-    // Geometry Solver specific
+
+    // CameraX
     implementation(libs.androidx.camera.core)
     implementation(libs.androidx.camera.camera2)
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.view)
+
+    // ML Kit
     implementation(libs.play.services.mlkit.text.recognition)
-    implementation(libs.tensorflow.lite)
+
+    // OpenGL/Graphics (Native libs would be added here or via CMake, for now basic setup)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

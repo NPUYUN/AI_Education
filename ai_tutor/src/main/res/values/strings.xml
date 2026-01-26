@@ -1,8 +1,3 @@
 <resources>
     <string name="app_name">ai_tutor</string>
-    <string name="chat_placeholder">Ask the AI Tutor...</string>
-    <string name="send_button">Send</string>
-    <string name="prefix_you">You: %1$s</string>
-    <string name="prefix_ai">AI: %1$s</string>
-    <string name="prompt_analysis_result">I have uploaded an image. Local Analysis Result:\nVisual Content: %1$s\nExtracted Text: %2$s\n\nPlease analyze this content deeply based on the visual cues and extracted text. Note: The extracted text may contain OCR errors, especially in mathematical formulas (e.g., missing superscripts/subscripts, confused symbols). Please infer the correct context and mathematical expressions, then solve the problem step-by-step.</string>
 </resources>

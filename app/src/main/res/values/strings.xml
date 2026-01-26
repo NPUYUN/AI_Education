@@ -1,34 +1,3 @@
 <resources>
-    <string name="app_name">Education</string>
-    
-    <!-- Auth -->
-    <string name="login_title">Login</string>
-    <string name="register_title">Register</string>
-    <string name="username_label">Username</string>
-    <string name="password_label">Password</string>
-    <string name="email_optional_label">Email (Optional)</string>
-    <string name="login_button">Login</string>
-    <string name="register_button">Register</string>
-    <string name="no_account_register">Don\'t have an account? Register</string>
-    <string name="have_account_login">Already have an account? Login</string>
-    <string name="login_failed_default">Login failed</string>
-    <string name="register_failed_default">Registration failed</string>
-    <string name="error_invalid_password">Invalid password</string>
-    <string name="error_user_not_found">User not found</string>
-    <string name="error_username_exists">Username already exists</string>
-    
-    <!-- Settings -->
-    <string name="settings_title">Settings</string>
-    <string name="language_label">Language</string>
-    <string name="logout_button">Logout</string>
-    <string name="language_english">English</string>
-    <string name="language_chinese">Chinese</string>
-    
-    <!-- Main Tabs -->
-    <string name="tab_ai_tutor">AI Tutor</string>
-    <string name="tab_geometry">Geometry</string>
-    <string name="tab_timeline">Timeline</string>
-    <string name="tab_summary">Summary</string>
-    <string name="tab_profile">Profile</string>
-    <string name="profile_title">Personal Homepage</string>
+    <string name="app_name">Ai_Education</string>
 </resources>

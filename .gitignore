@@ -13,9 +13,3 @@
 .externalNativeBuild
 .cxx
 local.properties
-
-# Custom build directories (workaround for Windows file lock)
-build_output/
-**/build_output/
-build_v5/
-**/build_v5/

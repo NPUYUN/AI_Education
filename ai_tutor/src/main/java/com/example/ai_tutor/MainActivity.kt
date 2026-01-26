@@ -4,22 +4,27 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import com.example.ai_tutor.ui.ChatScreen
-import com.example.ai_tutor.ui.theme.EducationTheme
+import androidx.compose.ui.tooling.preview.Preview
+import com.example.ai_tutor.presentation.ChatScreen
+import com.example.ai_tutor.ui.theme.Ai_EducationTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            EducationTheme {
+            Ai_EducationTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    ChatScreen()
+                    Box(modifier = Modifier.padding(innerPadding)) {
+                        ChatScreen()
+                    }
                 }
             }
         }
