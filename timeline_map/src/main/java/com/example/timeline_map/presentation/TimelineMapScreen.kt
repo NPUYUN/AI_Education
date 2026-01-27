@@ -1,0 +1,377 @@
+package com.example.timeline_map.presentation
+
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import android.os.Bundle
+import android.speech.RecognitionListener
+import android.speech.RecognizerIntent
+import android.speech.SpeechRecognizer
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import org.osmdroid.config.Configuration
+import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.util.GeoPoint
+import org.osmdroid.views.MapView
+import org.osmdroid.views.overlay.Marker
+import com.example.timeline_map.data.model.SpeechLanguage
+import com.example.timeline_map.data.model.HistoricalEvent
+import androidx.compose.ui.viewinterop.AndroidView
+import java.io.File
+
+@Composable
+fun TimelineMapScreen(viewModel: TimelineMapViewModel = viewModel()) {
+    val context = LocalContext.current
+    LaunchedEffect(Unit) {
+        Configuration.getInstance().load(context, context.getSharedPreferences("osmdroid", 0))
+    }
+
+    val query by viewModel.queryText
+    val apiKey by viewModel.apiKey
+    val speechLang by viewModel.speechLanguage
+    val listening by viewModel.isListening
+    val loading by viewModel.isLoading
+    val error by viewModel.errorMessage
+    val events = viewModel.events
+    val selectedId by viewModel.selectedEventId
+    val zoom by viewModel.timelineZoom
+
+    var queryField by remember { mutableStateOf(TextFieldValue(query)) }
+    var keyField by remember { mutableStateOf(TextFieldValue(apiKey)) }
+
+    LaunchedEffect(query) {
+        if (queryField.text != query) queryField = TextFieldValue(query)
+    }
+    LaunchedEffect(apiKey) {
+        if (keyField.text != apiKey) keyField = TextFieldValue(apiKey)
+    }
+
+    val speechRecognizer = remember { SpeechRecognizer.createSpeechRecognizer(context) }
+    DisposableEffect(speechRecognizer) {
+        val listener = object : RecognitionListener {
+            override fun onReadyForSpeech(params: Bundle?) {}
+            override fun onBeginningOfSpeech() {}
+            override fun onRmsChanged(rmsdB: Float) {}
+            override fun onBufferReceived(buffer: ByteArray?) {}
+            override fun onEndOfSpeech() {}
+            override fun onError(error: Int) {
+                viewModel.setListening(false)
+            }
+            override fun onResults(results: Bundle?) {
+                val texts = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                val text = texts?.firstOrNull() ?: ""
+                viewModel.updateQuery(text)
+                viewModel.setListening(false)
+            }
+            override fun onPartialResults(partialResults: Bundle?) {
+                val texts = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                val text = texts?.firstOrNull() ?: ""
+                viewModel.updateQuery(text)
+            }
+            override fun onEvent(eventType: Int, params: Bundle?) {}
+        }
+        speechRecognizer.setRecognitionListener(listener)
+        onDispose {
+            speechRecognizer.destroy()
+        }
+    }
+
+    val recordPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) startListening(context, viewModel, speechLang, speechRecognizer) else viewModel.setListening(false)
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("时间轴地图") }
+            )
+        }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            OutlinedTextField(
+                value = keyField,
+                onValueChange = {
+                    keyField = it
+                    viewModel.updateApiKey(it.text)
+                },
+                label = { Text("Qwen API Key") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                AssistChip(
+                    onClick = { viewModel.updateSpeechLanguage(SpeechLanguage.ZH) },
+                    label = { Text("中文") },
+                    colors = AssistChipDefaults.assistChipColors(
+                        containerColor = if (speechLang == SpeechLanguage.ZH) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface
+                    )
+                )
+                AssistChip(
+                    onClick = { viewModel.updateSpeechLanguage(SpeechLanguage.EN) },
+                    label = { Text("English") },
+                    colors = AssistChipDefaults.assistChipColors(
+                        containerColor = if (speechLang == SpeechLanguage.EN) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface
+                    )
+                )
+                AssistChip(
+                    onClick = { viewModel.updateSpeechLanguage(SpeechLanguage.AUTO) },
+                    label = { Text("自动") },
+                    colors = AssistChipDefaults.assistChipColors(
+                        containerColor = if (speechLang == SpeechLanguage.AUTO) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface
+                    )
+                )
+            }
+            OutlinedTextField(
+                value = queryField,
+                onValueChange = {
+                    queryField = it
+                    viewModel.updateQuery(it.text)
+                },
+                label = { Text("语音/文本提问") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Button(
+                    enabled = !listening,
+                    onClick = {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
+                            context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED
+                        ) {
+                            recordPermission.launch(Manifest.permission.RECORD_AUDIO)
+                        } else {
+                            startListening(context, viewModel, speechLang, speechRecognizer)
+                        }
+                    }
+                ) {
+                    Icon(Icons.Default.Mic, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("开始语音")
+                }
+                Button(enabled = listening, onClick = {
+                    speechRecognizer.stopListening()
+                    viewModel.setListening(false)
+                }) {
+                    Icon(Icons.Default.Stop, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("停止")
+                }
+                Button(onClick = { viewModel.generateTimeline() }) {
+                    Text("生成时间轴")
+                }
+            }
+            if (loading) {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            }
+            if (error != null) {
+                Text(error ?: "", color = MaterialTheme.colorScheme.error)
+            }
+            TimelineBar(
+                events = events,
+                selectedId = selectedId,
+                zoom = zoom,
+                onSelect = { viewModel.selectEvent(it) },
+                onZoomChange = { viewModel.updateTimelineZoom(it) }
+            )
+            MapSection(
+                events = events,
+                selectedId = selectedId,
+                onSelect = { viewModel.selectEvent(it) }
+            )
+            TimelineList(
+                events = events,
+                selectedId = selectedId,
+                zoom = zoom,
+                onSelect = { viewModel.selectEvent(it) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun TimelineBar(
+    events: List<HistoricalEvent>,
+    selectedId: String?,
+    zoom: Float,
+    onSelect: (String) -> Unit,
+    onZoomChange: (Float) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Slider(
+            value = zoom,
+            onValueChange = onZoomChange,
+            valueRange = 0.5f..3f
+        )
+        LazyRow(horizontalArrangement = Arrangement.spacedBy((zoom * 8).dp)) {
+            items(events) { e ->
+                AssistChip(
+                    onClick = { onSelect(e.id) },
+                    label = { Text("${e.time} • ${e.location}") },
+                    colors = AssistChipDefaults.assistChipColors(
+                        containerColor = if (selectedId == e.id) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface
+                    )
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MapSection(
+    events: List<HistoricalEvent>,
+    selectedId: String?,
+    onSelect: (String) -> Unit
+) {
+    val context = LocalContext.current
+    val config = Configuration.getInstance()
+    config.userAgentValue = context.packageName
+    val basePath = File(context.cacheDir, "osmdroid")
+    val tilePath = File(basePath, "tiles")
+    if (!basePath.exists()) basePath.mkdirs()
+    if (!tilePath.exists()) tilePath.mkdirs()
+    config.osmdroidBasePath = basePath
+    config.osmdroidTileCache = tilePath
+    AndroidView(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(240.dp),
+        factory = {
+            MapView(it).apply {
+                setTileSource(TileSourceFactory.MAPNIK)
+                setMultiTouchControls(true)
+                controller.setZoom(5.0)
+            }
+        },
+        update = { view ->
+            updateMarkers(view, events, onSelect)
+            val selected = events.find { it.id == selectedId } ?: events.firstOrNull()
+            if (selected != null) {
+                view.controller.setCenter(GeoPoint(selected.latitude, selected.longitude))
+            }
+        }
+    )
+}
+
+private fun updateMarkers(mapView: MapView, events: List<HistoricalEvent>, onSelect: (String) -> Unit) {
+    mapView.overlays.removeAll { it is Marker }
+    events.forEach { e ->
+        val marker = Marker(mapView)
+        marker.position = GeoPoint(e.latitude, e.longitude)
+        marker.title = "${e.time} ${e.location}"
+        marker.subDescription = e.description
+        marker.setOnMarkerClickListener { _, _ ->
+            onSelect(e.id)
+            marker.showInfoWindow()
+            true
+        }
+        mapView.overlays.add(marker)
+    }
+    mapView.invalidate()
+}
+
+private fun startListening(
+    context: android.content.Context,
+    viewModel: TimelineMapViewModel,
+    lang: SpeechLanguage,
+    recognizer: SpeechRecognizer
+) {
+    val intent = RecognizerIntent().apply {
+        action = RecognizerIntent.ACTION_RECOGNIZE_SPEECH
+        putExtra(RecognizerIntent.EXTRA_LANGUAGE, when (lang) {
+            SpeechLanguage.ZH -> "zh-CN"
+            SpeechLanguage.EN -> "en-US"
+            SpeechLanguage.AUTO -> ""
+        })
+        putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, when (lang) {
+            SpeechLanguage.ZH -> "zh-CN"
+            SpeechLanguage.EN -> "en-US"
+            SpeechLanguage.AUTO -> ""
+        })
+        putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+        putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+    }
+    viewModel.setListening(true)
+    recognizer.startListening(intent)
+}
+
+@Composable
+private fun TimelineList(
+    events: List<HistoricalEvent>,
+    selectedId: String?,
+    zoom: Float,
+    onSelect: (String) -> Unit
+) {
+    val selected = events.find { it.id == selectedId }
+    Column(modifier = Modifier.fillMaxWidth().weight(1f)) {
+        if (selected != null) {
+            EventDetail(selected, events, onSelect)
+            Spacer(Modifier.height(8.dp))
+        }
+        LazyColumn(
+            verticalArrangement = Arrangement.spacedBy((zoom * 8).dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            items(events) { e ->
+                Card(
+                    onClick = { onSelect(e.id) },
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (selectedId == e.id) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surface
+                    )
+                ) {
+                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(text = e.time, style = MaterialTheme.typography.titleMedium)
+                        Text(text = e.location, style = MaterialTheme.typography.bodyMedium)
+                        Text(text = e.description, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EventDetail(event: HistoricalEvent, events: List<HistoricalEvent>, onSelect: (String) -> Unit) {
+    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
+        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(text = "事件详情", style = MaterialTheme.typography.titleMedium)
+            Text(text = "${event.time} • ${event.location}")
+            Text(text = event.description)
+            if (event.people.isNotEmpty()) {
+                Text(text = "人物：${event.people.joinToString("、")}")
+            }
+            val related = events.filter { event.relatedIds.contains(it.id) }
+            if (related.isNotEmpty()) {
+                Text(text = "关联事件")
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(related) { r ->
+                        AssistChip(
+                            onClick = { onSelect(r.id) },
+                            label = { Text(r.time) }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}

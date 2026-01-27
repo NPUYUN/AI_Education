@@ -7,7 +7,8 @@ espressoCore = "3.5.1"
 lifecycleRuntimeKtx = "2.7.0"
 activityCompose = "1.8.2"
 composeBom = "2024.02.00"
-kotlin = "2.0.21" # User had 2.0.21, I should respect that if possible, but AGP 9.0.0 + Kotlin 2.0.21 is very new. I will try to keep user's versions where possible.
+kotlin = "2.2.21" # User had 2.0.21, I should respect that if possible, but AGP 9.0.0 + Kotlin 2.0.21 is very new. I will try to keep user's versions where possible.
+ksp = "2.3.4"
 appcompat = "1.6.1"
 material = "1.11.0"
 room = "2.6.1"
@@ -89,3 +90,4 @@ android-application = { id = "com.android.application", version.ref = "agp" }
 android-library = { id = "com.android.library", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+google-devtools-ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
