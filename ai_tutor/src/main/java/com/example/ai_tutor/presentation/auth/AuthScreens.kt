@@ -21,20 +21,20 @@ fun LoginScreen(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("AI Tutor Login", style = MaterialTheme.typography.headlineMedium)
+        Text("AI Tutor 登录", style = MaterialTheme.typography.headlineMedium)
         Spacer(Modifier.height(32.dp))
         
         OutlinedTextField(
             value = viewModel.username.value,
             onValueChange = { viewModel.username.value = it },
-            label = { Text("Username") },
+            label = { Text("用户名") },
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(Modifier.height(16.dp))
         OutlinedTextField(
             value = viewModel.password.value,
             onValueChange = { viewModel.password.value = it },
-            label = { Text("Password") },
+            label = { Text("密码") },
             visualTransformation = PasswordVisualTransformation(),
             modifier = Modifier.fillMaxWidth()
         )
@@ -48,11 +48,11 @@ fun LoginScreen(
             onClick = { viewModel.login(onLoginSuccess) },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Login")
+            Text("登录")
         }
         Spacer(Modifier.height(16.dp))
         TextButton(onClick = onNavigateToRegister) {
-            Text("Register")
+            Text("注册新账号")
         }
     }
 }
@@ -68,27 +68,27 @@ fun RegisterScreen(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("Create Account", style = MaterialTheme.typography.headlineMedium)
+        Text("创建账号", style = MaterialTheme.typography.headlineMedium)
         Spacer(Modifier.height(32.dp))
         
         OutlinedTextField(
             value = viewModel.username.value,
             onValueChange = { viewModel.username.value = it },
-            label = { Text("Username") },
+            label = { Text("用户名") },
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(Modifier.height(16.dp))
         OutlinedTextField(
             value = viewModel.nickname.value,
             onValueChange = { viewModel.nickname.value = it },
-            label = { Text("Nickname (Optional)") },
+            label = { Text("昵称 (选填)") },
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(Modifier.height(16.dp))
         OutlinedTextField(
             value = viewModel.password.value,
             onValueChange = { viewModel.password.value = it },
-            label = { Text("Password") },
+            label = { Text("密码") },
             visualTransformation = PasswordVisualTransformation(),
             modifier = Modifier.fillMaxWidth()
         )
@@ -102,11 +102,11 @@ fun RegisterScreen(
             onClick = { viewModel.register(onRegisterSuccess) },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Sign Up")
+            Text("注册")
         }
         Spacer(Modifier.height(16.dp))
         TextButton(onClick = onNavigateToLogin) {
-            Text("Already have an account? Login")
+            Text("已有账号？去登录")
         }
     }
 }
