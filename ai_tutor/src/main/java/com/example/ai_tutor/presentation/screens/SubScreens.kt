@@ -7,6 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.example.ai_tutor.presentation.navigation.SubScreenScaffold
+import com.example.timeline_map.presentation.TimelineMapScreen
 
 @Composable
 fun GeometryScreen() {
@@ -17,9 +18,7 @@ fun GeometryScreen() {
 
 @Composable
 fun TimelineScreen() {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text("Timeline Map (Coming Soon)")
-    }
+    TimelineMapScreen()
 }
 
 @Composable

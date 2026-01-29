@@ -25,26 +25,27 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.LifecycleOwner
+import com.example.timeline_map.data.model.SpeechLanguage
+import com.example.timeline_map.data.model.HistoricalEvent
+import androidx.compose.ui.viewinterop.AndroidView
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
-import com.example.timeline_map.data.model.SpeechLanguage
-import com.example.timeline_map.data.model.HistoricalEvent
-import androidx.compose.ui.viewinterop.AndroidView
 import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
 fun TimelineMapScreen(viewModel: TimelineMapViewModel = viewModel()) {
     val context = LocalContext.current
-    LaunchedEffect(Unit) {
-        Configuration.getInstance().load(context, context.getSharedPreferences("osmdroid", 0))
-    }
+    LaunchedEffect(Unit) { }
 
     val query by viewModel.queryText
-    val apiKey by viewModel.apiKey
     val speechLang by viewModel.speechLanguage
     val listening by viewModel.isListening
     val loading by viewModel.isLoading
@@ -54,13 +55,8 @@ fun TimelineMapScreen(viewModel: TimelineMapViewModel = viewModel()) {
     val zoom by viewModel.timelineZoom
 
     var queryField by remember { mutableStateOf(TextFieldValue(query)) }
-    var keyField by remember { mutableStateOf(TextFieldValue(apiKey)) }
-
     LaunchedEffect(query) {
         if (queryField.text != query) queryField = TextFieldValue(query)
-    }
-    LaunchedEffect(apiKey) {
-        if (keyField.text != apiKey) keyField = TextFieldValue(apiKey)
     }
 
     val speechRecognizer = remember { SpeechRecognizer.createSpeechRecognizer(context) }
@@ -111,15 +107,6 @@ fun TimelineMapScreen(viewModel: TimelineMapViewModel = viewModel()) {
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            OutlinedTextField(
-                value = keyField,
-                onValueChange = {
-                    keyField = it
-                    viewModel.updateApiKey(it.text)
-                },
-                label = { Text("Qwen API Key") },
-                modifier = Modifier.fillMaxWidth()
-            )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 AssistChip(
                     onClick = { viewModel.updateSpeechLanguage(SpeechLanguage.ZH) },
@@ -247,26 +234,12 @@ private fun MapSection(
     selectedId: String?,
     onSelect: (String) -> Unit
 ) {
-    val context = LocalContext.current
-    val config = Configuration.getInstance()
-    config.userAgentValue = context.packageName
-    val basePath = File(context.cacheDir, "osmdroid")
-    val tilePath = File(basePath, "tiles")
-    if (!basePath.exists()) basePath.mkdirs()
-    if (!tilePath.exists()) tilePath.mkdirs()
-    config.osmdroidBasePath = basePath
-    config.osmdroidTileCache = tilePath
+    val mapView = rememberMapViewWithLifecycle()
     AndroidView(
         modifier = Modifier
             .fillMaxWidth()
             .height(240.dp),
-        factory = {
-            MapView(it).apply {
-                setTileSource(TileSourceFactory.MAPNIK)
-                setMultiTouchControls(true)
-                controller.setZoom(5.0)
-            }
-        },
+        factory = { mapView },
         update = { view ->
             updateMarkers(view, events, onSelect)
             val selected = events.find { it.id == selectedId } ?: events.firstOrNull()
@@ -292,6 +265,49 @@ private fun updateMarkers(mapView: MapView, events: List<HistoricalEvent>, onSel
         mapView.overlays.add(marker)
     }
     mapView.invalidate()
+}
+
+@Composable
+private fun rememberMapViewWithLifecycle(): MapView {
+    val context = LocalContext.current
+    val lifecycleOwner = context as? LifecycleOwner
+    val mapView = remember {
+        val config = Configuration.getInstance()
+        config.userAgentValue = context.packageName
+        val basePath = File(context.cacheDir, "osmdroid")
+        val tilePath = File(basePath, "tiles")
+        if (!basePath.exists()) basePath.mkdirs()
+        if (!tilePath.exists()) tilePath.mkdirs()
+        config.osmdroidBasePath = basePath
+        config.osmdroidTileCache = tilePath
+        config.load(context, context.getSharedPreferences("osmdroid", 0))
+        MapView(context).apply {
+            setTileSource(TileSourceFactory.MAPNIK)
+            setMultiTouchControls(true)
+            controller.setZoom(5.0)
+        }
+    }
+
+    DisposableEffect(lifecycleOwner, mapView) {
+        if (lifecycleOwner == null) {
+            onDispose { }
+        } else {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_RESUME -> mapView.onResume()
+                Lifecycle.Event.ON_PAUSE -> mapView.onPause()
+                Lifecycle.Event.ON_DESTROY -> mapView.onDetach()
+                else -> Unit
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+        }
+    }
+
+    return mapView
 }
 
 private fun startListening(

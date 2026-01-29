@@ -10,6 +10,7 @@ import com.google.gson.JsonElement
 import com.google.gson.JsonParser
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import retrofit2.HttpException
 import java.util.UUID
 
 class TimelineRepository {
@@ -43,6 +44,10 @@ class TimelineRepository {
                 } else {
                     Result.success(parsed)
                 }
+            } catch (e: HttpException) {
+                val body = e.response()?.errorBody()?.string()
+                val message = parseErrorMessage(body) ?: "请求失败 ${e.code()}"
+                Result.failure(IllegalStateException(message))
             } catch (e: Exception) {
                 Result.failure(e)
             }
@@ -100,23 +105,25 @@ class TimelineRepository {
     }
 
     private fun extractJsonArray(text: String): String? {
-        val start = text.indexOf('[')
-        val end = text.lastIndexOf(']')
+        val cleaned = text.replace("```json", "").replace("```", "").trim()
+        val start = cleaned.indexOf('[')
+        val end = cleaned.lastIndexOf(']')
         if (start == -1 || end == -1 || end <= start) return null
-        return text.substring(start, end + 1)
+        return cleaned.substring(start, end + 1)
     }
 
     private fun parseEvents(json: String): List<HistoricalEvent> {
-        val element = JsonParser.parseString(json)
+        val element = JsonParser().parse(json)
         if (!element.isJsonArray) return emptyList()
-        return element.asJsonArray.mapNotNull { item ->
-            val obj = item.asJsonObject
-            val time = obj.get("time")?.asString ?: return@mapNotNull null
-            val location = obj.get("location")?.asString ?: return@mapNotNull null
-            val description = obj.get("description")?.asString ?: return@mapNotNull null
+        return element.getAsJsonArray().mapNotNull { item ->
+            if (!item.isJsonObject) return@mapNotNull null
+            val obj = item.getAsJsonObject()
+            val time = obj.get("time")?.getAsString() ?: return@mapNotNull null
+            val location = obj.get("location")?.getAsString() ?: return@mapNotNull null
+            val description = obj.get("description")?.getAsString() ?: return@mapNotNull null
             val people = parsePeople(obj.get("people"))
-            val latitude = obj.get("latitude")?.asDouble ?: return@mapNotNull null
-            val longitude = obj.get("longitude")?.asDouble ?: return@mapNotNull null
+            val latitude = obj.get("latitude")?.getAsDouble() ?: return@mapNotNull null
+            val longitude = obj.get("longitude")?.getAsDouble() ?: return@mapNotNull null
             HistoricalEvent(
                 id = UUID.randomUUID().toString(),
                 time = time,
@@ -132,9 +139,20 @@ class TimelineRepository {
     private fun parsePeople(element: JsonElement?): List<String> {
         if (element == null) return emptyList()
         return when {
-            element.isJsonArray -> element.asJsonArray.mapNotNull { it.asString }
-            element.isJsonPrimitive -> element.asString.split("、", "，", ",").map { it.trim() }.filter { it.isNotEmpty() }
+            element.isJsonArray -> element.getAsJsonArray().mapNotNull { it.getAsString() }
+            element.isJsonPrimitive -> element.getAsString().split("、", "，", ",").map { it.trim() }.filter { it.isNotEmpty() }
             else -> emptyList()
+        }
+    }
+
+    private fun parseErrorMessage(raw: String?): String? {
+        if (raw.isNullOrBlank()) return null
+        return try {
+            val element = JsonParser().parse(raw)
+            val error = element.getAsJsonObject().getAsJsonObject("error")
+            error?.get("message")?.getAsString()
+        } catch (_: Exception) {
+            null
         }
     }
 }

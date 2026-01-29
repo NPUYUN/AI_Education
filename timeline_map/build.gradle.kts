@@ -40,7 +40,6 @@ kotlin {
 
 dependencies {
     implementation(project(":common"))
-    implementation(project(":ai_tutor"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
