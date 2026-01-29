@@ -1,11 +1,12 @@
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
+    id("com.google.devtools.ksp") version "2.0.21-1.0.27"
 }
 
 android {
     namespace = "com.example.common"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         minSdk = 24
@@ -44,7 +45,7 @@ dependencies {
     // Room
     api(libs.androidx.room.runtime)
     api(libs.androidx.room.ktx)
-    // ksp(libs.androidx.room.compiler) // Need KSP plugin if using Room compiler, but for now just impl
+    ksp(libs.androidx.room.compiler)
     api(libs.androidx.datastore.preferences)
 
     // Networking

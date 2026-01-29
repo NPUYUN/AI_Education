@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "com.example.ai_education"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.example.ai_education"
@@ -36,6 +36,14 @@ android {
     // }
     buildFeatures {
         compose = true
+    }
+
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+            pickFirsts.add("lib/**/libc++_shared.so")
+            pickFirsts.add("lib/**/libffmpeg.so")
+        }
     }
 }
 

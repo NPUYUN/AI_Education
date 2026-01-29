@@ -5,10 +5,10 @@
 5    <uses-sdk android:minSdkVersion="24" />
 6
 7    <uses-permission android:name="android.permission.INTERNET" />
-7-->C:\Users\26506\Desktop\2026\Education\common\src\main\AndroidManifest.xml:4:5-67
-7-->C:\Users\26506\Desktop\2026\Education\common\src\main\AndroidManifest.xml:4:22-64
+7-->C:\Users\Lenovo\Desktop\APP\common\src\main\AndroidManifest.xml:4:5-67
+7-->C:\Users\Lenovo\Desktop\APP\common\src\main\AndroidManifest.xml:4:22-64
 8    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-8-->C:\Users\26506\Desktop\2026\Education\common\src\main\AndroidManifest.xml:5:5-79
-8-->C:\Users\26506\Desktop\2026\Education\common\src\main\AndroidManifest.xml:5:22-76
+8-->C:\Users\Lenovo\Desktop\APP\common\src\main\AndroidManifest.xml:5:5-79
+8-->C:\Users\Lenovo\Desktop\APP\common\src\main\AndroidManifest.xml:5:22-76
 9
 10</manifest>

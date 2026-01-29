@@ -6,7 +6,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ai_tutor.presentation.navigation.SubScreenScaffold
+import com.example.video_summarizer.presentation.VideoDownloadViewModel
+import com.example.video_summarizer.presentation.screens.VideoDownloadScreen
 
 @Composable
 fun GeometryScreen() {
@@ -24,9 +27,8 @@ fun TimelineScreen() {
 
 @Composable
 fun VideoSummaryScreen() {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text("Video Summary (Coming Soon)")
-    }
+    val viewModel: VideoDownloadViewModel = viewModel()
+    VideoDownloadScreen(viewModel = viewModel)
 }
 
 @Composable

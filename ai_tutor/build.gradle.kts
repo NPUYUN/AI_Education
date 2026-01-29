@@ -2,12 +2,12 @@ plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    id("kotlin-kapt")
+    id("com.google.devtools.ksp") version "2.0.21-1.0.27"
 }
 
 android {
     namespace = "com.example.ai_tutor"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         minSdk = 24
@@ -42,6 +42,7 @@ kotlin {
 
 dependencies {
     implementation(project(":common"))
+    implementation(project(":video_summarizer"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -62,6 +63,7 @@ dependencies {
     implementation(libs.androidx.camera.camera2)
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.view)
+    implementation(libs.guava.android)
     
     // Coil
     implementation(libs.coil.compose)
@@ -72,7 +74,7 @@ dependencies {
     // Markdown
     implementation(libs.compose.markdown)
 
-    kapt(libs.androidx.room.compiler)
+    ksp(libs.androidx.room.compiler)
     
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

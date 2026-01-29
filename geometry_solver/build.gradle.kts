@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "com.example.geometry_solver"
-    compileSdk = 34 // Consistent with common
+    compileSdk = 35 // Consistent with common
 
     defaultConfig {
         minSdk = 24
@@ -57,6 +57,7 @@ dependencies {
     implementation(libs.androidx.camera.camera2)
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.view)
+    implementation(libs.guava.android)
 
     // ML Kit
     implementation(libs.play.services.mlkit.text.recognition)
