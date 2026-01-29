@@ -19,9 +19,11 @@ import com.example.ai_tutor.data.repository.QwenRepository
 import com.example.ai_tutor.domain.AgentDecisionHub
 import com.example.ai_tutor.domain.DialogueContext
 import com.example.ai_tutor.domain.MockKnowledgeGraphManager
-import com.example.ai_tutor.domain.MultimodalProcessor
 import com.example.ai_tutor.domain.ToolsIntegrator
+import com.example.ai_tutor.domain.MultimodalProcessor
+import com.example.ai_tutor.presentation.manager.VoskVoiceManager
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -39,6 +41,10 @@ class AiTutorViewModel(application: Application) : AndroidViewModel(application)
     
     private val agentDecisionHub = AgentDecisionHub(repository, knowledgeGraph, toolsIntegrator)
     private val chatDao = AiTutorDatabase.getDatabase(application).chatDao()
+    // private val ttsManager = TextToSpeechManager(application) // TTS Disabled
+    private val voskVoiceManager = VoskVoiceManager(application)
+    private var _isVoiceMode = false
+
     // Simple user ID for now, in real app would get from AuthViewModel or Preferences
     private val userId = "current_user" 
     
@@ -65,8 +71,64 @@ class AiTutorViewModel(application: Application) : AndroidViewModel(application)
     private var context = DialogueContext(sessionId = UUID.randomUUID().toString())
 
     init {
-        // Initialize with a new session
-        createNewSession()
+        // Initialize Vosk Voice Manager
+        voskVoiceManager.init(viewModelScope)
+        
+        // Auto-load last session or create new
+        initializeSession()
+        
+        viewModelScope.launch {
+            voskVoiceManager.voiceState.collectLatest { state ->
+                when (state) {
+                    is VoskVoiceManager.VoiceState.Loading -> {
+                        // Optional: Show loading status
+                    }
+                    is VoskVoiceManager.VoiceState.Ready -> {
+                        // Ready
+                    }
+                    is VoskVoiceManager.VoiceState.Listening -> {
+                        _inputText.value = "正在听..."
+                    }
+                    is VoskVoiceManager.VoiceState.Result -> {
+                        if (state.text.isNotEmpty()) {
+                            _inputText.value = state.text
+                            _isVoiceMode = true
+                            sendMessage()
+                        }
+                    }
+                    is VoskVoiceManager.VoiceState.Error -> {
+                        _messages.add(Message("system", "Voice Error: ${state.error}"))
+                        _inputText.value = "" // Reset input
+                    }
+                }
+            }
+        }
+    }
+
+    private fun initializeSession() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val sessionsList = chatDao.getSessions(userId).firstOrNull()
+            withContext(Dispatchers.Main) {
+                if (!sessionsList.isNullOrEmpty()) {
+                    // Load the most recent session
+                    loadSession(sessionsList.first().id)
+                } else {
+                    createNewSession()
+                }
+            }
+        }
+    }
+
+    fun deleteSession(sessionId: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            chatDao.deleteSessionAndMessages(sessionId)
+            withContext(Dispatchers.Main) {
+                if (context.sessionId == sessionId) {
+                    // If current session is deleted, reload/create new
+                    initializeSession()
+                }
+            }
+        }
     }
 
     private fun createNewSession() {
@@ -93,7 +155,7 @@ class AiTutorViewModel(application: Application) : AndroidViewModel(application)
         
         viewModelScope.launch(Dispatchers.IO) {
             val entities = chatDao.getMessages(sessionId).firstOrNull() ?: emptyList()
-            val msgs = entities.map { Message(it.role, it.content) }
+            val msgs = entities.map { Message(it.role, deserializeContent(it.content)) }
             
             withContext(Dispatchers.Main) {
                 _messages.addAll(msgs)
@@ -108,22 +170,187 @@ class AiTutorViewModel(application: Application) : AndroidViewModel(application)
     
     fun onInputChanged(text: String) {
         _inputText.value = text
+        _isVoiceMode = false
     }
     
+    // Vosk Voice Input Handling
+    fun startVoiceRecording() {
+        voskVoiceManager.startListening()
+    }
+
+    fun stopVoiceRecording() {
+        voskVoiceManager.stopListening()
+    }
+
+    fun cancelVoiceRecording() {
+        voskVoiceManager.stopListening()
+    }
+
+    // Deprecated: Placeholder for Voice/Camera Input Handling
+    fun onVoiceInput(text: String) {
+        _inputText.value = text
+        _isVoiceMode = true
+        sendMessage()
+    }
+
     fun onImageCaptured(bitmap: Bitmap) {
         _inputImage.value = bitmap
         _inputText.value = "[图片已添加] 请输入您的问题..."
     }
     
-    // Old sendMessage implementation removed to avoid conflict
-    
+    // ...
+
+    private fun calculateInSampleSize(options: BitmapFactory.Options, reqWidth: Int, reqHeight: Int): Int {
+        val (height: Int, width: Int) = options.outHeight to options.outWidth
+        var inSampleSize = 1
+
+        if (height > reqHeight || width > reqWidth) {
+            val halfHeight: Int = height / 2
+            val halfWidth: Int = width / 2
+
+            while (halfHeight / inSampleSize >= reqHeight && halfWidth / inSampleSize >= reqWidth) {
+                inSampleSize *= 2
+            }
+        }
+        return inSampleSize
+    }
+
+    private fun getRotationDegrees(uri: Uri): Float {
+        try {
+            val contentResolver = getApplication<Application>().contentResolver
+            val inputStream = contentResolver.openInputStream(uri)
+            if (inputStream != null) {
+                // Use standard Android ExifInterface
+                val exif = android.media.ExifInterface(inputStream)
+                val orientation = exif.getAttributeInt(
+                    android.media.ExifInterface.TAG_ORIENTATION,
+                    android.media.ExifInterface.ORIENTATION_NORMAL
+                )
+                inputStream.close()
+                return when (orientation) {
+                    android.media.ExifInterface.ORIENTATION_ROTATE_90 -> 90f
+                    android.media.ExifInterface.ORIENTATION_ROTATE_180 -> 180f
+                    android.media.ExifInterface.ORIENTATION_ROTATE_270 -> 270f
+                    else -> 0f
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        return 0f
+    }
+
+    private suspend fun loadScaledBitmap(uri: Uri): Bitmap? = withContext(Dispatchers.IO) {
+        try {
+            val contentResolver = getApplication<Application>().contentResolver
+            val rotation = getRotationDegrees(uri)
+
+            var bitmap: Bitmap? = null
+
+            // Optimization for file URIs
+            if (uri.scheme == "file" && uri.path != null) {
+                val file = java.io.File(uri.path!!)
+                if (file.exists()) {
+                    val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                    BitmapFactory.decodeFile(file.absolutePath, options)
+                    
+                    options.inSampleSize = calculateInSampleSize(options, 1024, 1024)
+                    options.inJustDecodeBounds = false
+                    bitmap = BitmapFactory.decodeFile(file.absolutePath, options)
+                }
+            }
+            
+            if (bitmap == null) {
+                // 1. Decode bounds only
+                val options = BitmapFactory.Options().apply {
+                    inJustDecodeBounds = true
+                }
+                contentResolver.openInputStream(uri)?.use { 
+                    BitmapFactory.decodeStream(it, null, options)
+                }
+                
+                // 2. Calculate sample size
+                options.inSampleSize = calculateInSampleSize(options, 1024, 1024)
+                options.inJustDecodeBounds = false
+                
+                // 3. Decode with sample size
+                contentResolver.openInputStream(uri)?.use {
+                    // Fix: decodeStream returns Bitmap?, we should assign it
+                    bitmap = BitmapFactory.decodeStream(it, null, options)
+                }
+            }
+
+            // Apply rotation if needed
+            if (bitmap != null && rotation != 0f) {
+                val matrix = android.graphics.Matrix()
+                matrix.postRotate(rotation)
+                val rotatedBitmap = Bitmap.createBitmap(
+                    bitmap!!, 0, 0, bitmap!!.width, bitmap!!.height, matrix, true
+                )
+                if (rotatedBitmap != bitmap) {
+                    bitmap!!.recycle()
+                }
+                return@withContext rotatedBitmap
+            }
+
+            return@withContext bitmap
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
+    private fun scaleBitmap(bitmap: Bitmap): Bitmap {
+        val maxDimension = 1024
+        val originalWidth = bitmap.width
+        val originalHeight = bitmap.height
+        
+        if (originalWidth <= maxDimension && originalHeight <= maxDimension) {
+            return bitmap
+        }
+        
+        val ratio = originalWidth.toFloat() / originalHeight.toFloat()
+        val newWidth: Int
+        val newHeight: Int
+        
+        if (originalWidth > originalHeight) {
+            newWidth = maxDimension
+            newHeight = (maxDimension / ratio).toInt()
+        } else {
+            newHeight = maxDimension
+            newWidth = (maxDimension * ratio).toInt()
+        }
+        
+        return Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
+    }
+
+    private fun saveImageToInternalStorage(bitmap: Bitmap): String {
+        val filename = "img_${System.currentTimeMillis()}.jpg"
+        val file = java.io.File(getApplication<Application>().filesDir, "chat_images")
+        if (!file.exists()) {
+            file.mkdirs()
+        }
+        val imageFile = java.io.File(file, filename)
+        try {
+            val stream = java.io.FileOutputStream(imageFile)
+            bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 80, stream)
+            stream.flush()
+            stream.close()
+            return imageFile.absolutePath
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return ""
+        }
+    }
+
     private fun encodeImage(bitmap: Bitmap): String {
+        val scaledBitmap = scaleBitmap(bitmap)
         val outputStream = java.io.ByteArrayOutputStream()
-        bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 80, outputStream)
+        scaledBitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 80, outputStream)
         val bytes = outputStream.toByteArray()
         return "data:image/jpeg;base64," + android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
     }
-
+    
     fun onSuggestionClicked(suggestion: String) {
         onInputChanged(suggestion)
         sendMessage()
@@ -142,35 +369,61 @@ class AiTutorViewModel(application: Application) : AndroidViewModel(application)
 
         _isLoading.value = true
         
-        // Convert bitmap to base64 if exists
-        val base64Image = image?.let { encodeImage(it) }
+        var base64Image: String? = null
+        var displayUrl: String? = null
+        
+        if (image != null) {
+            // 1. Scale Bitmap
+            val scaledBitmap = scaleBitmap(image)
+            // 2. Save to Local File (for DB and UI)
+            val localPath = saveImageToInternalStorage(scaledBitmap)
+            if (localPath.isNotEmpty()) {
+                displayUrl = "file://$localPath" // Use file path for display
+            }
+            // 3. Encode to Base64 (for API)
+            val outputStream = java.io.ByteArrayOutputStream()
+            scaledBitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 80, outputStream)
+            val bytes = outputStream.toByteArray()
+            base64Image = "data:image/jpeg;base64," + android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+        }
+        
         _inputImage.value = null // Clear after processing
         
         // Construct User Message
-        val userContent: Any = if (base64Image != null) {
-            listOf<ContentItem>(
-                ContentItem(type = "image_url", imageUrl = ImageUrl(url = base64Image)),
+        // Use Base64 for UI (immediate display) to guarantee visibility
+        // Use File Path for DB/History (storage efficiency)
+        val uiImageUrl = base64Image ?: displayUrl
+        val dbImageUrl = displayUrl ?: base64Image
+        
+        val uiContent: Any = if (uiImageUrl != null) {
+            listOf(
+                ContentItem(type = "image_url", imageUrl = ImageUrl(url = uiImageUrl)),
                 ContentItem(type = "text", text = text)
             )
         } else {
             text
         }
-        val userMsg = Message("user", userContent)
+
+        val dbContent: Any = if (dbImageUrl != null) {
+            listOf(
+                ContentItem(type = "image_url", imageUrl = ImageUrl(url = dbImageUrl)),
+                ContentItem(type = "text", text = text)
+            )
+        } else {
+            text
+        }
+
+        val uiMsg = Message("user", uiContent)
+        val dbMsg = Message("user", dbContent)
         
-        _messages.add(userMsg)
-        context.history.add(userMsg) // Important: Add to history for context
+        _messages.add(uiMsg)
+        context.history.add(dbMsg) // Add DB-friendly message to history
         _inputText.value = ""
 
         viewModelScope.launch {
-            saveMessageToDb(userMsg) // Save user message
+            saveMessageToDb(dbMsg) // Save DB-friendly message
             
             // Note: We pass context.history which now INCLUDES the current message.
-            // QwenRepository might append it again if we are not careful.
-            // Checking QwenRepository: It appends 'content' to 'history'.
-            // So we should pass 'history' excluding the last message?
-            // Or rely on QwenRepository to construct the request.
-            // QwenRepository.sendMessage(content, history) -> messages = history + content.
-            // So we should pass history WITHOUT the current message.
             val historyToSend = context.history.dropLast(1)
             
             repository.sendMessage(text, historyToSend, imageUrl = base64Image).collect { chunk ->
@@ -187,16 +440,21 @@ class AiTutorViewModel(application: Application) : AndroidViewModel(application)
     }
     
     private suspend fun saveMessageToDb(msg: Message) {
-        val contentStr = when (val c = msg.content) {
-            is String -> c
-            is List<*> -> {
-                // For database, just save the text part or a marker
-                val items = c.filterIsInstance<ContentItem>()
-                val textPart = items.find { it.type == "text" }?.text ?: ""
-                val hasImage = items.any { it.type == "image_url" }
-                if (hasImage) "[Image] $textPart" else textPart
-            }
-            else -> ""
+        val contentStr = serializeContent(msg.content)
+
+        // Update Title if it's the first user message
+        if (msg.role == "user") {
+             val userMsgCount = context.history.count { it.role == "user" }
+             if (userMsgCount == 1) {
+                 val titleText = when (val c = msg.content) {
+                     is String -> c.take(15)
+                     is List<*> -> (c.find { (it as? ContentItem)?.type == "text" } as? ContentItem)?.text?.take(15) ?: "Image Chat"
+                     else -> "Chat"
+                 }
+                 if (titleText.isNotBlank()) {
+                     chatDao.updateSessionTitle(context.sessionId, titleText)
+                 }
+             }
         }
         
         val entity = MessageEntity(
@@ -205,44 +463,56 @@ class AiTutorViewModel(application: Application) : AndroidViewModel(application)
             content = contentStr,
             timestamp = System.currentTimeMillis()
         )
-        chatDao.addMessageAndUpdateSession(entity)
+        chatDao.insertMessage(entity)
+        chatDao.updateSessionPreview(entity.sessionId, entity.content, entity.timestamp)
     }
     
     // Placeholder for Voice/Camera Input Handling
-    fun onVoiceInput(text: String) {
-        onInputChanged(text)
-        sendMessage()
-    }
+    // Removed duplicate onVoiceInput (replaced above)
 
     fun sendImageWithPrompt(uri: Uri, prompt: String) {
+        // 1. Immediate UI Update using raw URI (Fastest)
+        val uiImageUrl = uri.toString()
+        val uiContent = listOf(
+            ContentItem(type = "image_url", imageUrl = ImageUrl(url = uiImageUrl)),
+            ContentItem(type = "text", text = prompt)
+        )
+        val uiMsg = Message("user", uiContent)
+        _messages.add(uiMsg)
+        _inputText.value = "" // Clear input immediately
+        _isLoading.value = true
+
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                // 1. Load Bitmap
-                val inputStream = getApplication<Application>().contentResolver.openInputStream(uri)
-                val bitmap = BitmapFactory.decodeStream(inputStream)
-                inputStream?.close()
+                // 2. Heavy Processing (Background)
+                val bitmap = loadScaledBitmap(uri)
 
                 if (bitmap != null) {
-                    // 2. Encode
-                    val base64Image = encodeImage(bitmap)
+                    // Save to Local (for DB)
+                    val localPath = saveImageToInternalStorage(bitmap)
+                    val displayUrl = if (localPath.isNotEmpty()) "file://$localPath" else null
                     
-                    // 3. Construct Message
-                    val userContent = listOf(
-                        ContentItem(type = "image_url", imageUrl = ImageUrl(url = base64Image)),
+                    // Encode (for API)
+                    val outputStream = java.io.ByteArrayOutputStream()
+                    bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 80, outputStream)
+                    val bytes = outputStream.toByteArray()
+                    val base64Image = "data:image/jpeg;base64," + android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+                    
+                    // 3. Construct DB/History Message
+                    val dbImageUrl: String = displayUrl ?: base64Image
+                    
+                    val dbContent = listOf(
+                        ContentItem(type = "image_url", imageUrl = ImageUrl(url = dbImageUrl)),
                         ContentItem(type = "text", text = prompt)
                     )
-                    val userMsg = Message("user", userContent)
+
+                    val dbMsg = Message("user", dbContent)
                     
-                    // 4. Update UI & History
-                    withContext(Dispatchers.Main) {
-                        _messages.add(userMsg)
-                        context.history.add(userMsg)
-                        _isLoading.value = true
-                    }
+                    // Update History & DB
+                    context.history.add(dbMsg)
+                    saveMessageToDb(dbMsg)
                     
-                    saveMessageToDb(userMsg)
-                    
-                    // 5. Send to Repository
+                    // 4. Send to Repository
                     val historyToSend = context.history.dropLast(1)
                     
                     repository.sendMessage(prompt, historyToSend, imageUrl = base64Image).collect { chunk ->
@@ -254,9 +524,18 @@ class AiTutorViewModel(application: Application) : AndroidViewModel(application)
                                 _messages.add(assistantMsg)
                                 context.history.add(assistantMsg)
                                 saveMessageToDb(assistantMsg)
+                                // if (_isVoiceMode) {
+                                //     ttsManager.speak(chunk)
+                                // }
                             }
                             _isLoading.value = false
                         }
+                    }
+                } else {
+                    // Bitmap load failed
+                    withContext(Dispatchers.Main) {
+                         _messages.add(Message("system", "Error: Failed to load image."))
+                         _isLoading.value = false
                     }
                 }
             } catch (e: Exception) {
@@ -267,5 +546,53 @@ class AiTutorViewModel(application: Application) : AndroidViewModel(application)
                 }
             }
         }
+    }
+
+    private fun serializeContent(content: Any): String {
+        return when (content) {
+            is String -> content
+            is List<*> -> {
+                val items = content.filterIsInstance<ContentItem>()
+                val jsonArray = org.json.JSONArray()
+                items.forEach { item ->
+                    val jsonObj = org.json.JSONObject()
+                    jsonObj.put("type", item.type)
+                    item.text?.let { jsonObj.put("text", it) }
+                    item.imageUrl?.let { 
+                        val urlObj = org.json.JSONObject()
+                        urlObj.put("url", it.url)
+                        jsonObj.put("imageUrl", urlObj)
+                    }
+                    jsonArray.put(jsonObj)
+                }
+                "JSON_CONTENT:${jsonArray.toString()}"
+            }
+            else -> content.toString()
+        }
+    }
+
+    private fun deserializeContent(contentStr: String): Any {
+        if (contentStr.startsWith("JSON_CONTENT:")) {
+            try {
+                val jsonStr = contentStr.substring("JSON_CONTENT:".length)
+                val jsonArray = org.json.JSONArray(jsonStr)
+                val items = mutableListOf<ContentItem>()
+                for (i in 0 until jsonArray.length()) {
+                    val obj = jsonArray.getJSONObject(i)
+                    val type = obj.optString("type")
+                    val text = if (obj.has("text")) obj.getString("text") else null
+                    val imageUrlObj = obj.optJSONObject("imageUrl")
+                    val imageUrl = if (imageUrlObj != null) {
+                         ImageUrl(url = imageUrlObj.optString("url"))
+                    } else null
+                    items.add(ContentItem(type = type, text = text, imageUrl = imageUrl))
+                }
+                return items
+            } catch (e: Exception) {
+                e.printStackTrace()
+                return contentStr
+            }
+        }
+        return contentStr
     }
 }

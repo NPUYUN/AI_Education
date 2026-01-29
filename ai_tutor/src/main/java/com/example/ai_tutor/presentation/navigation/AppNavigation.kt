@@ -78,7 +78,8 @@ fun AppNavigation(
             ImagePreviewScreen(
                 imageUri = imageUriString,
                 onActionSelected = { prompt ->
-                    aiTutorViewModel.sendImageWithPrompt(Uri.parse(imageUriString), prompt)
+                    val decodedUriString = java.net.URLDecoder.decode(imageUriString, "UTF-8")
+                    aiTutorViewModel.sendImageWithPrompt(Uri.parse(decodedUriString), prompt)
                     navController.popBackStack("main", inclusive = false)
                 },
                 onClose = { navController.popBackStack() }

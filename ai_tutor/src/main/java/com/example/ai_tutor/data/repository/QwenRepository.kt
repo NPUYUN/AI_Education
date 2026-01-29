@@ -7,6 +7,12 @@ import com.example.common.network.RetrofitClient
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
+import java.io.File
+
 class QwenRepository(private val apiKey: String) {
     
     private val api: QwenService by lazy {
@@ -14,10 +20,9 @@ class QwenRepository(private val apiKey: String) {
     }
 
     suspend fun sendMessage(
-        content: String, 
-        history: List<Message> = emptyList(),
-        model: String = "qwen-turbo", // or qwen-vl-max for vision
-        imageUrl: String? = null // Base64 data:image/jpeg;base64,...
+        prompt: String, 
+        history: List<Message>, 
+        imageUrl: String? = null
     ): Flow<String> = flow {
         // Construct messages: history + current user message
         val messages = history.toMutableList()
@@ -25,16 +30,16 @@ class QwenRepository(private val apiKey: String) {
         val userContent: Any = if (imageUrl != null) {
             listOf(
                 com.example.ai_tutor.data.model.ContentItem(type = "image_url", imageUrl = com.example.ai_tutor.data.model.ImageUrl(url = imageUrl)),
-                com.example.ai_tutor.data.model.ContentItem(type = "text", text = content)
+                com.example.ai_tutor.data.model.ContentItem(type = "text", text = prompt)
             )
         } else {
-            content
+            prompt
         }
         
         messages.add(Message("user", userContent))
         
         val request = ChatRequest(
-            model = if (imageUrl != null) "qwen-vl-max" else model,
+            model = if (imageUrl != null) "qwen-vl-max" else "qwen-turbo",
             messages = messages
         )
 

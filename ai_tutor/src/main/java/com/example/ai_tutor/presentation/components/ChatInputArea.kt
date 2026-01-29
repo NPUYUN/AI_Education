@@ -25,6 +25,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
+import androidx.compose.ui.draw.clip
+
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun ChatInputArea(
@@ -41,16 +43,17 @@ fun ChatInputArea(
     var isRecording by remember { mutableStateOf(false) }
     
     // Permission for voice
+    val context = LocalContext.current
     val voicePermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted: Boolean ->
         if (isGranted) {
-            // Permission granted
+            android.widget.Toast.makeText(context, "权限已获取，请长按说话", android.widget.Toast.LENGTH_SHORT).show()
+        } else {
+            android.widget.Toast.makeText(context, "需要麦克风权限才能使用语音功能", android.widget.Toast.LENGTH_SHORT).show()
         }
     }
     
-    val context = LocalContext.current
-
     Surface(
         modifier = modifier
             .fillMaxWidth()
@@ -62,36 +65,54 @@ fun ChatInputArea(
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Voice Button with Hold-to-Talk
-            IconButton(
-                onClick = { /* Handle click if needed, but mainly using pointerInput */ },
-                modifier = Modifier.pointerInput(Unit) {
-                    detectTapGestures(
-                        onPress = {
-                            // Check permission logic
-                            val hasPermission = androidx.core.content.ContextCompat.checkSelfPermission(
-                                context, 
-                                Manifest.permission.RECORD_AUDIO
-                            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+            // Voice Button with Hold-to-Talk (Custom implementation replacing IconButton)
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(24.dp))
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onTap = {
+                                android.widget.Toast.makeText(context, "请按住说话", android.widget.Toast.LENGTH_SHORT).show()
+                            },
+                            onPress = {
+                                // Check permission logic
+                                val hasPermission = androidx.core.content.ContextCompat.checkSelfPermission(
+                                    context, 
+                                    Manifest.permission.RECORD_AUDIO
+                                ) == android.content.pm.PackageManager.PERMISSION_GRANTED
 
-                            if (!hasPermission) {
-                                voicePermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-                                return@detectTapGestures
+                                if (!hasPermission) {
+                                    voicePermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                    return@detectTapGestures
+                                }
+
+                                try {
+                                    isRecording = true
+                                    onVoiceStart()
+                                    // Minimum hold time to prevent instant start/stop errors
+                                    val startTime = System.currentTimeMillis()
+                                    awaitRelease()
+                                    val duration = System.currentTimeMillis() - startTime
+                                    if (duration < 500) {
+                                        // If too short, maybe just a long tap, but we should delay stop a bit?
+                                        // Or rely on user holding it longer.
+                                        // Let's just ensure we don't stop TOO fast if the engine needs time.
+                                    }
+                                } finally {
+                                    isRecording = false
+                                    onVoiceEnd()
+                                }
                             }
-
-                            isRecording = true
-                            onVoiceStart()
-                            tryAwaitRelease()
-                            isRecording = false
-                            onVoiceEnd()
-                        }
-                    )
-                }
+                        )
+                    },
+                contentAlignment = Alignment.Center
             ) {
                 Icon(
                     Icons.Default.Mic, 
                     contentDescription = "Voice", 
-                    tint = if (isRecording) Color.Red else Color.Gray
+                    tint = if (isRecording) Color.Red else Color.Gray,
+                    modifier = Modifier.size(24.dp)
                 )
             }
             

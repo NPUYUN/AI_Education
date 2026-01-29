@@ -54,6 +54,8 @@ dependencies {
 
     // Map
     implementation(libs.amap.map)
+    implementation(libs.osmdroid.android)
+    implementation(libs.gson)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

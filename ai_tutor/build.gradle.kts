@@ -72,6 +72,9 @@ dependencies {
     // Markdown
     implementation(libs.compose.markdown)
 
+    // Vosk for Offline Speech Recognition
+    implementation("com.alphacephei:vosk-android:0.3.47")
+
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)

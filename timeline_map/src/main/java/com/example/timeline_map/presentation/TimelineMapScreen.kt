@@ -1,6 +1,7 @@
 package com.example.timeline_map.presentation
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -10,6 +11,7 @@ import android.speech.SpeechRecognizer
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -33,6 +35,7 @@ import com.example.timeline_map.data.model.HistoricalEvent
 import androidx.compose.ui.viewinterop.AndroidView
 import java.io.File
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TimelineMapScreen(viewModel: TimelineMapViewModel = viewModel()) {
     val context = LocalContext.current
@@ -203,7 +206,8 @@ fun TimelineMapScreen(viewModel: TimelineMapViewModel = viewModel()) {
                 events = events,
                 selectedId = selectedId,
                 zoom = zoom,
-                onSelect = { viewModel.selectEvent(it) }
+                onSelect = { viewModel.selectEvent(it) },
+                modifier = Modifier.weight(1f)
             )
         }
     }
@@ -296,8 +300,7 @@ private fun startListening(
     lang: SpeechLanguage,
     recognizer: SpeechRecognizer
 ) {
-    val intent = RecognizerIntent().apply {
-        action = RecognizerIntent.ACTION_RECOGNIZE_SPEECH
+    val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
         putExtra(RecognizerIntent.EXTRA_LANGUAGE, when (lang) {
             SpeechLanguage.ZH -> "zh-CN"
             SpeechLanguage.EN -> "en-US"
@@ -320,10 +323,11 @@ private fun TimelineList(
     events: List<HistoricalEvent>,
     selectedId: String?,
     zoom: Float,
-    onSelect: (String) -> Unit
+    onSelect: (String) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val selected = events.find { it.id == selectedId }
-    Column(modifier = Modifier.fillMaxWidth().weight(1f)) {
+    Column(modifier = modifier.fillMaxWidth()) {
         if (selected != null) {
             EventDetail(selected, events, onSelect)
             Spacer(Modifier.height(8.dp))

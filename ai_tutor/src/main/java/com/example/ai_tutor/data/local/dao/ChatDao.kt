@@ -10,28 +10,34 @@ import com.example.ai_tutor.data.local.entity.MessageEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao
-interface ChatDao {
+abstract class ChatDao {
     @Query("SELECT * FROM chat_sessions WHERE userId = :userId ORDER BY timestamp DESC")
-    fun getSessions(userId: String): Flow<List<ChatSessionEntity>>
+    abstract fun getSessions(userId: String): Flow<List<ChatSessionEntity>>
 
     @Query("SELECT * FROM messages WHERE sessionId = :sessionId ORDER BY timestamp ASC")
-    fun getMessages(sessionId: String): Flow<List<MessageEntity>>
+    abstract fun getMessages(sessionId: String): Flow<List<MessageEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertSession(session: ChatSessionEntity)
+    abstract suspend fun insertSession(session: ChatSessionEntity)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertMessage(message: MessageEntity)
+    abstract suspend fun insertMessage(message: MessageEntity)
 
     @Query("UPDATE chat_sessions SET lastMessage = :lastMessage, timestamp = :timestamp WHERE id = :sessionId")
-    suspend fun updateSessionPreview(sessionId: String, lastMessage: String, timestamp: Long)
+    abstract suspend fun updateSessionPreview(sessionId: String, lastMessage: String, timestamp: Long)
 
     @Query("UPDATE chat_sessions SET title = :title WHERE id = :sessionId")
-    suspend fun updateSessionTitle(sessionId: String, title: String)
+    abstract suspend fun updateSessionTitle(sessionId: String, title: String)
+
+    @Query("DELETE FROM chat_sessions WHERE id = :sessionId")
+    abstract suspend fun deleteSession(sessionId: String)
+
+    @Query("DELETE FROM messages WHERE sessionId = :sessionId")
+    abstract suspend fun deleteMessages(sessionId: String)
 
     @Transaction
-    suspend fun addMessageAndUpdateSession(message: MessageEntity) {
-        insertMessage(message)
-        updateSessionPreview(message.sessionId, message.content, message.timestamp)
+    open suspend fun deleteSessionAndMessages(sessionId: String) {
+        deleteMessages(sessionId)
+        deleteSession(sessionId)
     }
 }

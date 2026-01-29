@@ -74,7 +74,13 @@ fun MainScreen(
             startDestination = "home",
             modifier = Modifier.padding(innerPadding)
         ) {
-            composable("home") { ChatScreen(modifier = Modifier.fillMaxSize()) } // Padding already handled by NavHost? No, wait.
+            composable("home") { 
+                ChatScreen(
+                    viewModel = viewModel,
+                    onCameraClick = onNavigateToCamera,
+                    modifier = Modifier.fillMaxSize()
+                ) 
+            }
             // If innerPadding is applied to NavHost, ChatScreen is inside the padded area.
             // So ChatScreen should not need extra padding, BUT if ChatScreen Scaffold expands, it fits inside.
             // Let's verify. NavHost(modifier = Modifier.padding(innerPadding))

@@ -12,7 +12,7 @@ object RoomDatabaseBuilder {
             T::class.java,
             databaseName
         )
-        .fallbackToDestructiveMigration() // For development simplicity
+        .fallbackToDestructiveMigration(true) // For development simplicity
         .build()
     }
 }

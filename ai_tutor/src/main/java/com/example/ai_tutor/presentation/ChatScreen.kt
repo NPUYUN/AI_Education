@@ -7,9 +7,6 @@ import android.net.Uri
 import android.provider.MediaStore
 import android.Manifest
 import android.os.Bundle
-import android.speech.RecognitionListener
-import android.speech.RecognizerIntent
-import android.speech.SpeechRecognizer
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
@@ -30,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.ai_tutor.data.model.Message
@@ -55,51 +53,7 @@ fun ChatScreen(
     val context = LocalContext.current
     val sessions by viewModel.sessions.collectAsState(initial = emptyList())
 
-    // Voice Input Manager
-    val speechRecognizer = remember { SpeechRecognizer.createSpeechRecognizer(context) }
-    val speechIntent = remember {
-        Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE, "zh-CN") // Force Chinese
-        }
-    }
-    
-    // Voice Permission Launcher
-    val voicePermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted: Boolean ->
-        if (isGranted) {
-            // Handled by ChatInputArea
-        }
-    }
-
-    DisposableEffect(Unit) {
-        val listener = object : RecognitionListener {
-            override fun onReadyForSpeech(params: Bundle?) {}
-            override fun onBeginningOfSpeech() {}
-            override fun onRmsChanged(rmsdB: Float) {}
-            override fun onBufferReceived(buffer: ByteArray?) {}
-            override fun onEndOfSpeech() {}
-            override fun onError(error: Int) {
-                // Handle error
-            }
-            override fun onResults(results: Bundle?) {
-                val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                if (!matches.isNullOrEmpty()) {
-                    // Append or replace? Usually append or set
-                    viewModel.onInputChanged(matches[0])
-                    // Auto-send if needed, but for "Hold to Speak" usually we wait for release.
-                    // But onResults comes after end of speech.
-                    // If we want auto-send:
-                    viewModel.sendMessage()
-                }
-            }
-            override fun onPartialResults(partialResults: Bundle?) {}
-            override fun onEvent(eventType: Int, params: Bundle?) {}
-        }
-        speechRecognizer.setRecognitionListener(listener)
-        onDispose { speechRecognizer.destroy() }
-    }
+    // Removed VoiceInputManager (using Native Recorder in ViewModel)
 
     // Launchers for Image
     val cameraLauncher = rememberLauncherForActivityResult(
@@ -126,23 +80,8 @@ fun ChatScreen(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         if (uri != null) {
-            scope.launch(Dispatchers.IO) {
-                try {
-                    val bitmap = if (Build.VERSION.SDK_INT < 28) {
-                        @Suppress("DEPRECATION")
-                        MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
-                    } else {
-                        val source = ImageDecoder.createSource(context.contentResolver, uri)
-                        ImageDecoder.decodeBitmap(source)
-                    }
-                    withContext(Dispatchers.Main) {
-                        viewModel.onImageCaptured(bitmap)
-                        viewModel.sendMessage()
-                    }
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
-            }
+            // Use sendImageWithPrompt to handle loading, rotation (EXIF), and sending
+            viewModel.sendImageWithPrompt(uri, viewModel.inputText.value)
         }
     }
 
@@ -163,23 +102,26 @@ fun ChatScreen(
                     modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                 )
                 HorizontalDivider()
-                Text("我的空间", modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.titleMedium)
-                NavigationDrawerItem(
-                    label = { Text("智能体") },
-                    selected = false,
-                    onClick = { /* TODO */ },
-                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                )
-                HorizontalDivider()
                 Text("最近一周", modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.titleMedium)
                 LazyColumn {
                     items(sessions) { session ->
                         NavigationDrawerItem(
-                            label = { Text(if (session.title.isEmpty()) "New Chat" else session.title) },
+                            label = { 
+                                Text(
+                                    text = if (session.title.isEmpty()) "New Chat" else session.title,
+                                    maxLines = 1,
+                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                ) 
+                            },
                             selected = false,
                             onClick = { 
                                 viewModel.loadSession(session.id)
                                 scope.launch { drawerState.close() }
+                            },
+                            badge = {
+                                IconButton(onClick = { viewModel.deleteSession(session.id) }) {
+                                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Gray)
+                                }
                             },
                             modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                         )
@@ -244,14 +186,10 @@ fun ChatScreen(
                     onSend = { viewModel.sendMessage() },
                     isLoading = viewModel.isLoading.value,
                     onVoiceStart = {
-                        try {
-                            speechRecognizer.startListening(speechIntent)
-                        } catch (e: Exception) {
-                            e.printStackTrace()
-                        }
+                        viewModel.startVoiceRecording()
                     },
                     onVoiceEnd = {
-                        speechRecognizer.stopListening()
+                        viewModel.stopVoiceRecording()
                     },
                     onCameraClick = { 
                         permissionLauncher.launch(android.Manifest.permission.CAMERA)
@@ -357,29 +295,87 @@ fun MessageItem(message: Message) {
 
 @Composable
 fun UserImageBubble(imageUrl: String) {
-    Surface(
-        shape = RoundedCornerShape(12.dp),
-        modifier = Modifier
-            .widthIn(max = 280.dp)
-            .padding(vertical = 4.dp),
-        color = Color.Transparent,
-        shadowElevation = 0.dp
-    ) {
-        AsyncImage(
-            model = coil.request.ImageRequest.Builder(LocalContext.current)
-                .data(imageUrl)
-                .crossfade(true)
-                .build(),
-            contentDescription = "Uploaded Image",
+    var error by remember { mutableStateOf<String?>(null) }
+    
+    Column {
+        Surface(
+            shape = RoundedCornerShape(12.dp),
             modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 150.dp) // Ensure minimum height to be visible
-                .wrapContentHeight()
-                .background(Color.Transparent),
-            contentScale = androidx.compose.ui.layout.ContentScale.FillWidth,
-            placeholder = androidx.compose.ui.graphics.painter.ColorPainter(Color.LightGray),
-            error = androidx.compose.ui.graphics.painter.ColorPainter(Color.Red) // More visible error
-        )
+                .widthIn(max = 280.dp)
+                .padding(vertical = 4.dp),
+            color = Color(0xFFF0F0F0),
+            shadowElevation = 1.dp
+        ) {
+            val context = LocalContext.current
+            val imageRequest = remember(imageUrl) {
+                try {
+                    if (imageUrl.startsWith("data:image")) {
+                        val base64Str = imageUrl.substringAfter(",")
+                        val imageBytes = android.util.Base64.decode(base64Str, android.util.Base64.DEFAULT)
+                        coil.request.ImageRequest.Builder(context)
+                            .data(imageBytes)
+                            .crossfade(true)
+                            .listener(
+                                onError = { _, result -> 
+                                    error = result.throwable.message ?: "Base64 Load Error"
+                                }
+                            )
+                            .build()
+                    } else if (imageUrl.startsWith("file://")) {
+                        val path = imageUrl.substringAfter("file://")
+                        val file = java.io.File(path)
+                        if (!file.exists()) {
+                            error = "File not found: $path"
+                            null
+                        } else {
+                            coil.request.ImageRequest.Builder(context)
+                                .data(file)
+                                .crossfade(true)
+                                .listener(
+                                    onError = { _, result -> 
+                                        error = result.throwable.message ?: "File Load Error"
+                                    }
+                                )
+                                .build()
+                        }
+                    } else {
+                        coil.request.ImageRequest.Builder(context)
+                            .data(imageUrl)
+                            .crossfade(true)
+                            .listener(
+                                onError = { _, result -> 
+                                    error = result.throwable.message ?: "Url Load Error"
+                                }
+                            )
+                            .build()
+                    }
+                } catch (e: Exception) {
+                    error = "Init Error: ${e.message}"
+                    null
+                }
+            }
+
+            if (imageRequest != null) {
+                AsyncImage(
+                    model = imageRequest,
+                    contentDescription = "Uploaded Image",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 200.dp)
+                        .wrapContentHeight(),
+                    contentScale = androidx.compose.ui.layout.ContentScale.FillWidth,
+                    placeholder = androidx.compose.ui.graphics.painter.ColorPainter(Color.LightGray),
+                    error = androidx.compose.ui.graphics.painter.ColorPainter(Color(0xFFFFEBEE)) // Light Red for error
+                )
+            }
+            
+            if (error != null) {
+                Column(modifier = Modifier.padding(8.dp)) {
+                    Text(text = "❌ Image Error", color = Color.Red, fontSize = 12.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                    Text(text = error ?: "Unknown", color = Color.Red, fontSize = 10.sp)
+                }
+            }
+        }
     }
 }
 
