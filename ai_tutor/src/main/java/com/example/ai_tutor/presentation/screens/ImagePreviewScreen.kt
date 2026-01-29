@@ -11,7 +11,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -19,6 +19,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.example.ai_tutor.presentation.components.ChatInputArea
 
 @Composable
 fun ImagePreviewScreen(
@@ -26,6 +27,8 @@ fun ImagePreviewScreen(
     onActionSelected: (String) -> Unit,
     onClose: () -> Unit
 ) {
+    var inputText by remember { mutableStateOf("") }
+    
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
         AsyncImage(
             model = imageUri,
@@ -44,31 +47,54 @@ fun ImagePreviewScreen(
             Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
         }
 
-        // Bottom Actions
-        Row(
+        // Bottom Layout: Chips + Input Area
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 40.dp, start = 16.dp, end = 16.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            val actions = listOf("解答一下", "这是什么", "翻译一下")
-            
-            actions.forEach { action ->
-                Box(
-                    modifier = Modifier
-                        .border(1.dp, Color.White, RoundedCornerShape(20.dp))
-                        .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(20.dp))
-                        .clickable { onActionSelected(action) }
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                ) {
-                    Text(
-                        text = action,
-                        color = Color.White,
-                        fontSize = 14.sp
-                    )
+            // Suggestion Chips
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                val actions = listOf("解答一下", "这是什么", "翻译一下")
+                
+                actions.forEach { action ->
+                    Box(
+                        modifier = Modifier
+                            .border(1.dp, Color.White, RoundedCornerShape(20.dp))
+                            .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(20.dp))
+                            .clickable { onActionSelected(action) }
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                    ) {
+                        Text(
+                            text = action,
+                            color = Color.White,
+                            fontSize = 14.sp
+                        )
+                    }
                 }
             }
+            
+            // Chat Input Area
+            ChatInputArea(
+                text = inputText,
+                onTextChanged = { inputText = it },
+                onSend = { 
+                    if (inputText.isNotBlank()) {
+                        onActionSelected(inputText)
+                    }
+                },
+                isLoading = false,
+                onVoiceStart = { /* TODO: Implement voice for preview if needed */ },
+                onVoiceEnd = { /* TODO */ },
+                onCameraClick = { /* Already in preview, maybe retake? */ },
+                onGalleryClick = { /* Already in preview */ },
+                modifier = Modifier.background(Color.Transparent) // Make input area background transparent to blend with overlay
+            )
         }
     }
 }

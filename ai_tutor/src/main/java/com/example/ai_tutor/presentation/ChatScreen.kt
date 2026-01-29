@@ -41,6 +41,8 @@ import android.os.Build
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+import com.example.ai_tutor.presentation.components.ChatInputArea
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(
@@ -62,6 +64,15 @@ fun ChatScreen(
         }
     }
     
+    // Voice Permission Launcher
+    val voicePermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            // Handled by ChatInputArea
+        }
+    }
+
     DisposableEffect(Unit) {
         val listener = object : RecognitionListener {
             override fun onReadyForSpeech(params: Bundle?) {}
@@ -70,12 +81,17 @@ fun ChatScreen(
             override fun onBufferReceived(buffer: ByteArray?) {}
             override fun onEndOfSpeech() {}
             override fun onError(error: Int) {
-                // Handle error (e.g. 7 = No match)
+                // Handle error
             }
             override fun onResults(results: Bundle?) {
                 val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                 if (!matches.isNullOrEmpty()) {
+                    // Append or replace? Usually append or set
                     viewModel.onInputChanged(matches[0])
+                    // Auto-send if needed, but for "Hold to Speak" usually we wait for release.
+                    // But onResults comes after end of speech.
+                    // If we want auto-send:
+                    viewModel.sendMessage()
                 }
             }
             override fun onPartialResults(partialResults: Bundle?) {}
@@ -83,19 +99,6 @@ fun ChatScreen(
         }
         speechRecognizer.setRecognitionListener(listener)
         onDispose { speechRecognizer.destroy() }
-    }
-    
-    // Permission Launcher for Voice
-    val voicePermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted: Boolean ->
-        if (isGranted) {
-            try {
-                speechRecognizer.startListening(speechIntent)
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
     }
 
     // Launchers for Image
@@ -224,9 +227,9 @@ fun ChatScreen(
                     LazyColumn(
                         modifier = Modifier
                             .weight(1f)
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp),
-                        reverseLayout = false
+                            .fillMaxWidth(),
+                        reverseLayout = false,
+                        contentPadding = PaddingValues(bottom = 16.dp)
                     ) {
                         items(viewModel.messages) { message ->
                             MessageItem(message)
@@ -235,13 +238,20 @@ fun ChatScreen(
                     }
                 }
 
-                InputArea(
+                ChatInputArea(
                     text = viewModel.inputText.value,
                     onTextChanged = { viewModel.onInputChanged(it) },
                     onSend = { viewModel.sendMessage() },
                     isLoading = viewModel.isLoading.value,
-                    onVoiceClick = {
-                        voicePermissionLauncher.launch(android.Manifest.permission.RECORD_AUDIO)
+                    onVoiceStart = {
+                        try {
+                            speechRecognizer.startListening(speechIntent)
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
+                    },
+                    onVoiceEnd = {
+                        speechRecognizer.stopListening()
                     },
                     onCameraClick = { 
                         permissionLauncher.launch(android.Manifest.permission.CAMERA)
@@ -297,78 +307,15 @@ fun SuggestionChip(text: String, onClick: () -> Unit) {
     }
 }
 
-@Composable
-fun InputArea(
-    text: String,
-    onTextChanged: (String) -> Unit,
-    onSend: () -> Unit,
-    isLoading: Boolean,
-    onVoiceClick: () -> Unit,
-    onCameraClick: () -> Unit,
-    onGalleryClick: () -> Unit
-) {
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        shape = RoundedCornerShape(32.dp),
-        color = Color(0xFFF0F0F0)
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = onVoiceClick) {
-                Icon(Icons.Default.Mic, contentDescription = "Voice", tint = Color.Gray)
-            }
-            
-            TextField(
-                value = text,
-                onValueChange = onTextChanged,
-                modifier = Modifier.weight(1f),
-                placeholder = { 
-                    Text(
-                        "发消息或按住说话...", 
-                        color = Color.Gray,
-                        maxLines = 1,
-                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                    ) 
-                },
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color.Transparent,
-                    unfocusedContainerColor = Color.Transparent,
-                    disabledContainerColor = Color.Transparent,
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent
-                ),
-                singleLine = true
-            )
-            
-            if (text.isNotEmpty()) {
-                IconButton(onClick = onSend, enabled = !isLoading) {
-                    Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send", tint = Color.Black)
-                }
-            } else {
-                IconButton(onClick = onCameraClick) {
-                    Icon(Icons.Default.CameraAlt, contentDescription = "Camera", tint = Color.Black)
-                }
-                IconButton(onClick = onGalleryClick) {
-                    Icon(Icons.Default.Add, contentDescription = "Add", tint = Color.Black)
-                }
-            }
-        }
-    }
-    if (isLoading) {
-        LinearProgressIndicator(modifier = Modifier.fillMaxWidth().height(2.dp))
-    }
-}
 
 @Composable
 fun MessageItem(message: Message) {
     val isUser = message.role == "user"
     
     Column(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
         horizontalAlignment = if (isUser) Alignment.End else Alignment.Start
     ) {
         when (val content = message.content) {
@@ -381,9 +328,6 @@ fun MessageItem(message: Message) {
             }
             is List<*> -> {
                 val items = content.filterIsInstance<ContentItem>()
-                // Group items by type or render sequentially?
-                // User wants image and text in separate containers.
-                // Current implementation does exactly that (iterates and calls Bubble for each).
                 items.forEach { item ->
                     when (item.type) {
                         "image_url" -> {
@@ -422,15 +366,19 @@ fun UserImageBubble(imageUrl: String) {
         shadowElevation = 0.dp
     ) {
         AsyncImage(
-            model = imageUrl,
+            model = coil.request.ImageRequest.Builder(LocalContext.current)
+                .data(imageUrl)
+                .crossfade(true)
+                .build(),
             contentDescription = "Uploaded Image",
             modifier = Modifier
                 .fillMaxWidth()
+                .heightIn(min = 150.dp) // Ensure minimum height to be visible
                 .wrapContentHeight()
-                .background(Color.LightGray, RoundedCornerShape(12.dp)),
+                .background(Color.Transparent),
             contentScale = androidx.compose.ui.layout.ContentScale.FillWidth,
             placeholder = androidx.compose.ui.graphics.painter.ColorPainter(Color.LightGray),
-            error = androidx.compose.ui.graphics.painter.ColorPainter(Color(0xFFFFCDD2))
+            error = androidx.compose.ui.graphics.painter.ColorPainter(Color.Red) // More visible error
         )
     }
 }
@@ -438,12 +386,13 @@ fun UserImageBubble(imageUrl: String) {
 @Composable
 fun UserTextBubble(text: String) {
     Surface(
-        color = Color(0xFF95EC69), // WeChat-like green
+        color = Color.White,
         shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(1.dp, Color(0xFFE0E0E0)),
         modifier = Modifier
             .widthIn(max = 300.dp)
             .padding(vertical = 4.dp),
-        shadowElevation = 1.dp
+        shadowElevation = 0.dp
     ) {
         Text(
             text = text,
@@ -456,17 +405,19 @@ fun UserTextBubble(text: String) {
 
 @Composable
 fun AssistantMessage(markdown: String) {
-    Box(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp)
+            .background(Color.Transparent)
     ) {
         MarkdownText(
             markdown = markdown,
             style = MaterialTheme.typography.bodyLarge.copy(
                 color = Color.Black,
                 lineHeight = MaterialTheme.typography.bodyLarge.lineHeight * 1.5
-            )
+            ),
+            modifier = Modifier.fillMaxWidth()
         )
     }
 }
