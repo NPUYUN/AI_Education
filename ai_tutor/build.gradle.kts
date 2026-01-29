@@ -42,6 +42,7 @@ kotlin {
 
 dependencies {
     implementation(project(":common"))
+    implementation(project(":timeline_map"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

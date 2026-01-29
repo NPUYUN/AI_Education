@@ -40,7 +40,6 @@ kotlin {
 
 dependencies {
     implementation(project(":common"))
-    implementation(project(":ai_tutor"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
@@ -53,7 +52,7 @@ dependencies {
     implementation(libs.androidx.compose.material.icons.extended)
 
     // Map
-    implementation(libs.amap.map)
+    implementation("org.osmdroid:osmdroid-android:6.1.18")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

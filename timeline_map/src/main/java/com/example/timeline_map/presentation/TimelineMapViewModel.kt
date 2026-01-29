@@ -17,12 +17,10 @@ import java.time.format.DateTimeParseException
 class TimelineMapViewModel : ViewModel() {
     private val repository = TimelineRepository()
     private val knowledgeGraphManager = KnowledgeGraphManager()
+    private val apiKey = "sk-e6a46e1940de419caf8e5b010954a7e3"
 
     private val _queryText = mutableStateOf("")
     val queryText: State<String> = _queryText
-
-    private val _apiKey = mutableStateOf("")
-    val apiKey: State<String> = _apiKey
 
     private val _speechLanguage = mutableStateOf(SpeechLanguage.AUTO)
     val speechLanguage: State<SpeechLanguage> = _speechLanguage
@@ -35,6 +33,9 @@ class TimelineMapViewModel : ViewModel() {
 
     private val _errorMessage = mutableStateOf<String?>(null)
     val errorMessage: State<String?> = _errorMessage
+    
+    private val _mapTileWarning = mutableStateOf<String?>(null)
+    val mapTileWarning: State<String?> = _mapTileWarning
 
     private val _events = mutableStateListOf<HistoricalEvent>()
     val events: List<HistoricalEvent> get() = _events
@@ -53,10 +54,6 @@ class TimelineMapViewModel : ViewModel() {
 
     fun updateQuery(text: String) {
         _queryText.value = text
-    }
-
-    fun updateApiKey(text: String) {
-        _apiKey.value = text
     }
 
     fun updateSpeechLanguage(language: SpeechLanguage) {
@@ -78,6 +75,10 @@ class TimelineMapViewModel : ViewModel() {
     fun clearError() {
         _errorMessage.value = null
     }
+    
+    fun setMapTileWarning(msg: String?) {
+        _mapTileWarning.value = msg
+    }
 
     fun generateTimeline() {
         val query = _queryText.value.trim()
@@ -88,25 +89,15 @@ class TimelineMapViewModel : ViewModel() {
         viewModelScope.launch {
             _isLoading.value = true
             _errorMessage.value = null
-            val key = _apiKey.value.trim()
-            val result = if (key.isNotEmpty()) {
-                repository.generateEvents(query, key)
-            } else {
-                Result.failure(IllegalStateException("缺少API Key"))
-            }
-            val events = result.getOrElse {
-                if (query.contains("辛亥革命")) {
-                    repository.sampleEvents()
-                } else {
-                    repository.sampleEvents()
-                }
-            }
+            val result = repository.generateEvents(query, apiKey)
+            val events = result.getOrElse { repository.sampleEvents() }
             val linked = knowledgeGraphManager.linkEvents(events)
             _events.clear()
             _events.addAll(sortEvents(linked))
             _selectedEventId.value = _events.firstOrNull()?.id
             if (result.isFailure) {
-                _errorMessage.value = "已使用内置示例数据"
+                val reason = result.exceptionOrNull()?.message?.takeIf { it.isNotBlank() } ?: "请求失败"
+                _errorMessage.value = "已使用内置示例数据（原因：$reason）"
             }
             _isLoading.value = false
         }
@@ -134,4 +125,5 @@ class TimelineMapViewModel : ViewModel() {
         }
         return Long.MAX_VALUE
     }
+
 }
