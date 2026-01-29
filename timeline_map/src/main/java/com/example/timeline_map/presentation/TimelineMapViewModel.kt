@@ -1,23 +1,28 @@
 package com.example.timeline_map.presentation
 
+import android.app.Application
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.common.manager.VoskVoiceManager
 import com.example.timeline_map.data.model.HistoricalEvent
 import com.example.timeline_map.data.model.SpeechLanguage
 import com.example.timeline_map.data.repository.TimelineRepository
 import com.example.timeline_map.domain.KnowledgeGraphManager
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
 
-class TimelineMapViewModel : ViewModel() {
+class TimelineMapViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = TimelineRepository()
     private val knowledgeGraphManager = KnowledgeGraphManager()
     private val apiKey = "sk-e6a46e1940de419caf8e5b010954a7e3"
+    
+    private val voskVoiceManager = VoskVoiceManager(application)
 
     private val _queryText = mutableStateOf("")
     val queryText: State<String> = _queryText
@@ -47,6 +52,27 @@ class TimelineMapViewModel : ViewModel() {
     val timelineZoom: State<Float> = _timelineZoom
 
     init {
+        voskVoiceManager.init(viewModelScope)
+        
+        viewModelScope.launch {
+            voskVoiceManager.voiceState.collectLatest { state ->
+                when (state) {
+                    is VoskVoiceManager.VoiceState.Listening -> _isListening.value = true
+                    is VoskVoiceManager.VoiceState.Result -> {
+                         if (state.text.isNotEmpty()) {
+                             _queryText.value = state.text
+                         }
+                         _isListening.value = false
+                    }
+                    is VoskVoiceManager.VoiceState.Error -> {
+                        _errorMessage.value = state.error
+                        _isListening.value = false
+                    }
+                    else -> {}
+                }
+            }
+        }
+
         val sample = knowledgeGraphManager.linkEvents(repository.sampleEvents())
         _events.addAll(sortEvents(sample))
         _selectedEventId.value = _events.firstOrNull()?.id
@@ -58,6 +84,14 @@ class TimelineMapViewModel : ViewModel() {
 
     fun updateSpeechLanguage(language: SpeechLanguage) {
         _speechLanguage.value = language
+    }
+
+    fun startVoiceRecording() {
+        voskVoiceManager.startListening()
+    }
+
+    fun stopVoiceRecording() {
+        voskVoiceManager.stopListening()
     }
 
     fun setListening(listening: Boolean) {

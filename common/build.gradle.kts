@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.compose)
 }
 
 android {
@@ -52,8 +53,27 @@ dependencies {
     api(libs.okhttp)
     api(libs.okhttp.logging)
 
+    // Vosk for Offline Speech Recognition
+    api("com.alphacephei:vosk-android:0.3.47")
+
     // UI
     api(libs.androidx.constraintlayout.compose)
+    api(platform(libs.androidx.compose.bom))
+    api(libs.androidx.compose.ui)
+    api(libs.androidx.compose.ui.graphics)
+    api(libs.androidx.compose.ui.tooling.preview)
+    api(libs.androidx.compose.material3)
+    api(libs.androidx.compose.material.icons.extended)
+    api(libs.androidx.activity.compose)
+
+    // CameraX
+    api(libs.androidx.camera.core)
+    api(libs.androidx.camera.camera2)
+    api(libs.androidx.camera.lifecycle)
+    api(libs.androidx.camera.view)
+
+    // Coil
+    api(libs.coil.compose)
 
     // AI/ML
     // api(libs.mnn) // TODO: MNN dependency com.taobao.android:mnn:2.7.0 is not resolvable. Please check the correct coordinate or add the AAR manually.

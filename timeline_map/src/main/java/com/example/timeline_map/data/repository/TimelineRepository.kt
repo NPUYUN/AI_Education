@@ -113,7 +113,7 @@ class TimelineRepository {
     }
 
     private fun parseEvents(json: String): List<HistoricalEvent> {
-        val element = JsonParser().parse(json)
+        val element = JsonParser.parseString(json)
         if (!element.isJsonArray) return emptyList()
         return element.getAsJsonArray().mapNotNull { item ->
             if (!item.isJsonObject) return@mapNotNull null
@@ -148,7 +148,7 @@ class TimelineRepository {
     private fun parseErrorMessage(raw: String?): String? {
         if (raw.isNullOrBlank()) return null
         return try {
-            val element = JsonParser().parse(raw)
+            val element = JsonParser.parseString(raw)
             val error = element.getAsJsonObject().getAsJsonObject("error")
             error?.get("message")?.getAsString()
         } catch (_: Exception) {

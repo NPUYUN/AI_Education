@@ -16,6 +16,8 @@ import com.example.ai_tutor.presentation.auth.AuthViewModel
 import com.example.ai_tutor.presentation.auth.LoginScreen
 import com.example.ai_tutor.presentation.auth.RegisterScreen
 import com.example.ai_tutor.presentation.screens.*
+import com.example.common.presentation.camera.CameraScreen
+import com.example.common.presentation.camera.ImagePreviewScreen
 import androidx.lifecycle.viewmodel.compose.viewModel
 
 import android.net.Uri

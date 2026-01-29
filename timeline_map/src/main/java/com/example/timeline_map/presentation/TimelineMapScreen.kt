@@ -5,9 +5,6 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import android.speech.RecognitionListener
-import android.speech.RecognizerIntent
-import android.speech.SpeechRecognizer
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
@@ -40,7 +37,6 @@ import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-@OptIn(ExperimentalMaterial3Api::class)
 fun TimelineMapScreen(viewModel: TimelineMapViewModel = viewModel()) {
     val context = LocalContext.current
     LaunchedEffect(Unit) { }
@@ -59,38 +55,8 @@ fun TimelineMapScreen(viewModel: TimelineMapViewModel = viewModel()) {
         if (queryField.text != query) queryField = TextFieldValue(query)
     }
 
-    val speechRecognizer = remember { SpeechRecognizer.createSpeechRecognizer(context) }
-    DisposableEffect(speechRecognizer) {
-        val listener = object : RecognitionListener {
-            override fun onReadyForSpeech(params: Bundle?) {}
-            override fun onBeginningOfSpeech() {}
-            override fun onRmsChanged(rmsdB: Float) {}
-            override fun onBufferReceived(buffer: ByteArray?) {}
-            override fun onEndOfSpeech() {}
-            override fun onError(error: Int) {
-                viewModel.setListening(false)
-            }
-            override fun onResults(results: Bundle?) {
-                val texts = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                val text = texts?.firstOrNull() ?: ""
-                viewModel.updateQuery(text)
-                viewModel.setListening(false)
-            }
-            override fun onPartialResults(partialResults: Bundle?) {
-                val texts = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                val text = texts?.firstOrNull() ?: ""
-                viewModel.updateQuery(text)
-            }
-            override fun onEvent(eventType: Int, params: Bundle?) {}
-        }
-        speechRecognizer.setRecognitionListener(listener)
-        onDispose {
-            speechRecognizer.destroy()
-        }
-    }
-
     val recordPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) startListening(context, viewModel, speechLang, speechRecognizer) else viewModel.setListening(false)
+        if (granted) viewModel.startVoiceRecording() else viewModel.setListening(false)
     }
 
     Scaffold(
@@ -151,7 +117,7 @@ fun TimelineMapScreen(viewModel: TimelineMapViewModel = viewModel()) {
                         ) {
                             recordPermission.launch(Manifest.permission.RECORD_AUDIO)
                         } else {
-                            startListening(context, viewModel, speechLang, speechRecognizer)
+                            viewModel.startVoiceRecording()
                         }
                     }
                 ) {
@@ -160,7 +126,7 @@ fun TimelineMapScreen(viewModel: TimelineMapViewModel = viewModel()) {
                     Text("开始语音")
                 }
                 Button(enabled = listening, onClick = {
-                    speechRecognizer.stopListening()
+                    viewModel.stopVoiceRecording()
                     viewModel.setListening(false)
                 }) {
                     Icon(Icons.Default.Stop, contentDescription = null)
@@ -310,29 +276,7 @@ private fun rememberMapViewWithLifecycle(): MapView {
     return mapView
 }
 
-private fun startListening(
-    context: android.content.Context,
-    viewModel: TimelineMapViewModel,
-    lang: SpeechLanguage,
-    recognizer: SpeechRecognizer
-) {
-    val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-        putExtra(RecognizerIntent.EXTRA_LANGUAGE, when (lang) {
-            SpeechLanguage.ZH -> "zh-CN"
-            SpeechLanguage.EN -> "en-US"
-            SpeechLanguage.AUTO -> ""
-        })
-        putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, when (lang) {
-            SpeechLanguage.ZH -> "zh-CN"
-            SpeechLanguage.EN -> "en-US"
-            SpeechLanguage.AUTO -> ""
-        })
-        putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-        putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
-    }
-    viewModel.setListening(true)
-    recognizer.startListening(intent)
-}
+
 
 @Composable
 private fun TimelineList(

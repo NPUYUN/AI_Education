@@ -7,7 +7,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import com.example.ai_tutor.presentation.manager.VoskModelManager
+import com.example.common.manager.VoskModelManager
 import kotlinx.coroutines.delay
 
 @Composable

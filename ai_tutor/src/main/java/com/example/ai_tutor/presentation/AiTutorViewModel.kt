@@ -21,7 +21,7 @@ import com.example.ai_tutor.domain.DialogueContext
 import com.example.ai_tutor.domain.MockKnowledgeGraphManager
 import com.example.ai_tutor.domain.ToolsIntegrator
 import com.example.ai_tutor.domain.MultimodalProcessor
-import com.example.ai_tutor.presentation.manager.VoskVoiceManager
+import com.example.common.manager.VoskVoiceManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.firstOrNull

@@ -39,7 +39,7 @@ import android.os.Build
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-import com.example.ai_tutor.presentation.components.ChatInputArea
+import com.example.common.presentation.components.ChatInputArea
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
