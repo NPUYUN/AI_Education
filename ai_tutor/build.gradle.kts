@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.example.ai_tutor"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         minSdk = 24
@@ -62,6 +62,7 @@ dependencies {
     implementation(libs.androidx.camera.camera2)
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.view)
+    implementation(libs.guava.android)
     
     // Coil
     implementation(libs.coil.compose)

@@ -1,0 +1,104 @@
+
+def downloadFile(String urlString, File destFile) {
+    try {
+        println "Downloading from $urlString to $destFile"
+        new URL(urlString).withInputStream { i ->
+            destFile.withOutputStream { it << i }
+        }
+        if (destFile.exists() && destFile.length() > 1024 * 1024) { // Check if > 1MB
+            return true
+        } else {
+            println "File too small or not exists: ${destFile.length()} bytes"
+            destFile.delete()
+            return false
+        }
+    } catch (Exception e) {
+        println "Failed to download from $urlString: $e"
+        destFile.delete()
+        return false
+    }
+}
+
+task downloadSherpaLibs {
+    doLast {
+        def destDir = new File(buildDir, 'downloads')
+        destDir.mkdirs()
+        def f = new File(destDir, 'sherpa-libs.tar.bz2')
+        if (!f.exists()) {
+            def urls = [
+                'https://gh-proxy.com/https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.10.30/sherpa-onnx-v1.10.30-android.tar.bz2',
+                'https://mirror.ghproxy.com/https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.10.30/sherpa-onnx-v1.10.30-android.tar.bz2',
+                'https://ghproxy.net/https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.10.30/sherpa-onnx-v1.10.30-android.tar.bz2',
+                'https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.10.30/sherpa-onnx-v1.10.30-android.tar.bz2'
+            ]
+            boolean success = false
+            for (url in urls) {
+                println "Attempting download from $url..."
+                if (downloadFile(url, f)) {
+                    success = true
+                    println "Download successful."
+                    break
+                }
+            }
+            if (!success) {
+                throw new GradleException("Failed to download sherpa-libs from all mirrors.")
+            }
+        }
+    }
+}
+
+task downloadSherpaModel {
+    doLast {
+        def destDir = new File(buildDir, 'downloads')
+        destDir.mkdirs()
+        def f = new File(destDir, 'sherpa-model.tar.bz2')
+        if (!f.exists()) {
+            def urls = [
+                'https://gh-proxy.com/https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-paraformer-zh-2023-09-14.tar.bz2',
+                'https://mirror.ghproxy.com/https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-paraformer-zh-2023-09-14.tar.bz2',
+                'https://ghproxy.net/https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-paraformer-zh-2023-09-14.tar.bz2',
+                'https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-paraformer-zh-2023-09-14.tar.bz2'
+            ]
+            boolean success = false
+            for (url in urls) {
+                println "Attempting download from $url..."
+                if (downloadFile(url, f)) {
+                    success = true
+                    println "Download successful."
+                    break
+                }
+            }
+            if (!success) {
+                throw new GradleException("Failed to download sherpa-model from all mirrors.")
+            }
+        }
+    }
+}
+
+task unzipSherpaLibs(dependsOn: downloadSherpaLibs, type: Copy) {
+    def destDir = new File(buildDir, 'downloads')
+    from tarTree(resources.bzip2(new File(destDir, 'sherpa-libs.tar.bz2')))
+    into new File(buildDir, 'sherpa-libs-extracted')
+}
+
+task installSherpaLibs(dependsOn: unzipSherpaLibs, type: Copy) {
+    // Source path depends on the structure inside the tar
+    // Based on LS output, it seems to be directly under jniLibs
+    def sourceDir = new File(buildDir, 'sherpa-libs-extracted/jniLibs')
+    if (!sourceDir.exists()) {
+        // Fallback to checking for the versioned folder just in case
+        sourceDir = new File(buildDir, 'sherpa-libs-extracted/sherpa-onnx-v1.10.30-android/jniLibs')
+    }
+    
+    from sourceDir
+    into "src/main/jniLibs"
+}
+
+task unzipSherpaModel(dependsOn: downloadSherpaModel, type: Copy) {
+    def destDir = new File(buildDir, 'downloads')
+    from tarTree(resources.bzip2(new File(destDir, 'sherpa-model.tar.bz2')))
+    into "src/main/assets"
+}
+
+// Hook into preBuild
+preBuild.dependsOn installSherpaLibs, unzipSherpaModel
