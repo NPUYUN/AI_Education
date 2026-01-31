@@ -16,11 +16,7 @@ class AudioRecorderManager(private val context: Context) {
         try {
             outputFile = File(context.cacheDir, "voice_input.m4a")
             
-            mediaRecorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                MediaRecorder(context)
-            } else {
-                MediaRecorder()
-            }
+            mediaRecorder = createMediaRecorder()
 
             mediaRecorder?.apply {
                 setAudioSource(MediaRecorder.AudioSource.MIC)
@@ -38,6 +34,15 @@ class AudioRecorderManager(private val context: Context) {
         } catch (e: Exception) {
             Log.e("AudioRecorder", "start() failed", e)
             onError("录音失败: ${e.message}")
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun createMediaRecorder(): MediaRecorder {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            MediaRecorder(context)
+        } else {
+            MediaRecorder()
         }
     }
 

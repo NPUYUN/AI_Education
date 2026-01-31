@@ -3,6 +3,7 @@ package com.example.video_summarizer.presentation
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.common.config.AppConstants
 import com.example.common.database.PreferencesManager
 import com.example.video_summarizer.data.asr.SherpaAsrManager
 import com.example.video_summarizer.data.downloader.DownloadProgress
@@ -73,7 +74,11 @@ class VideoDownloadViewModel(application: Application) : AndroidViewModel(applic
     init {
         viewModelScope.launch {
             preferences.getString(apiKeyKey).collect { key ->
-                _uiState.value = _uiState.value.copy(apiKey = key)
+                if (key.isBlank()) {
+                    _uiState.value = _uiState.value.copy(apiKey = AppConstants.DEFAULT_API_KEY)
+                } else {
+                    _uiState.value = _uiState.value.copy(apiKey = key)
+                }
             }
         }
     }

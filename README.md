@@ -1,134 +1,126 @@
-软件创新大赛项目
-sk-99858a456b8b4ddc81d926f8d6397451
+# 软件创新大赛项目
 
-完善AI互动导学应用的模块开发应遵循基础先行、功能递进、依赖明确的原则，确保开发效率与系统稳定性。以下是经过优化的模块完善顺序及详细说明：
+## 项目概览 (Project Overview)
+本项目是一个集成了智能辅导、历史可视化、几何解题和视频总结功能的多模块 Android 教育应用。项目采用现代 Android 开发技术栈，注重模块化设计与代码复用。
 
-一、核心基础模块（必须优先完成）
+## 核心技术栈 (Tech Stack)
+- **语言**: Kotlin
+- **UI 框架**: Jetpack Compose (Material3)
+- **架构模式**: MVVM, Clean Architecture (Data/Domain/Presentation)
+- **异步处理**: Coroutines, Flow
+- **网络**: Retrofit, OkHttp
+- **数据库**: Room (SQLite)
+- **多媒体**: CameraX (图像), Vosk/Sherpa-onnx (离线语音识别), FFmpegKit (音视频处理), YoutubeDL (视频下载)
+- **AI 模型**: Qwen-Turbo/VL (阿里云百炼), Vosk-Small-CN/Sherpa-onnx (本地语音)
+- **构建工具**: Gradle (Kotlin DSL), Version Catalog
 
-1. common模块 - 基础工具与资源中枢
-   - 开发优先级：最高
-   - 核心功能：
-     - 实现网络请求封装（集成Retrofit + OkHttp）
-     - 构建数据存储框架（Room数据库 + DataStore）
-     - 提供通用工具类（字符串处理、日期格式化、加密解密）
-     - 定义全局常量与配置（API地址、超时设置）
-   - 关键代码示例：
-          // 网络请求单例
-     object RetrofitClient {
-         private val retrofit = Retrofit.Builder()
-             .baseUrl(BuildConfig.API_URL)
-             .addConverterFactory(GsonConverterFactory.create())
-             .build()
-         
-         fun  create(service: Class): T = retrofit.create(service)
-     }
-     
+---
 
-2. ai_tutor模块 - AI核心能力引擎
-   - 开发优先级：高
-   - 核心功能：
-     - 集成AI模型框架
-     - 实现多模态输入处理（语音识别、图像分析）
-     - 构建知识图谱接口（学科知识点关联）
-     - 设计对话管理系统（上下文理解、意图识别）
-   - 关键配置：
-          dependencies {
-         implementation 'org.tensorflow:tensorflow-lite:2.12.0'
-         implementation 'org.tensorflow:tensorflow-lite-gpu:2.12.0'
-         implementation 'com.google.mlkit:speech-recognition:16.1.0'
-     }
-     
+## 模块详细开发进度 (Detailed Development Progress)
 
-二、业务功能模块（按功能依赖顺序）
+### 1. 智能辅导模块 (ai_tutor)
+该模块是应用的核心交互入口，提供基于 AI 的多模态辅导服务。
+- **状态**: 🟢 开发中 (主要功能已完成)
+- **已实现功能**:
+    - [x] **多模态对话**:
+        - 集成 `QwenRepository` 对接 Qwen-Turbo (文本) 和 Qwen-VL (视觉) 模型。
+        - 实现 `AgentDecisionHub` 进行意图识别，区分通用聊天与特定学科问题。
+    - [x] **本地数据持久化**:
+        - 使用 Room 数据库 (`ChatDao`, `UserDao`) 保存聊天记录 (`ChatSessionEntity`, `MessageEntity`) 和用户信息。
+    - [x] **语音交互 (离线)**:
+        - 通过 `common` 模块的 `VoskVoiceManager` 实现全离线中文语音识别，保护隐私并降低延迟。
+        - 实时语音输入状态反馈 (Listening/Processing)。
+    - [x] **图像处理**:
+        - 集成自定义相机 (`CameraScreen`)，支持拍照、裁剪、预览。
+        - 图片自动压缩与 Base64 编码上传。
+    - [x] **用户系统**:
+        - 基础的 `AuthViewModel` 和 `ProfileScreen` 框架。
+- **待开发功能**:
+    - [ ] **知识库增强 (RAG)**: 引入向量数据库，支持基于特定学科教材的检索增强生成。
+    - [ ] **高级 Agent 能力**: 扩展 Tool Calling 能力，支持计算器、搜索等工具调用。
+    - [ ] **历史记录导出**: 支持将辅导记录导出为 PDF 或 Markdown 格式。
 
-3. geometry_solver模块 - 几何解题专家
-   - 开发优先级：中高
-   - 核心功能：
-     - 实现几何图形识别（OpenCV + 手势识别）
-     - 构建解题推理引擎（基于规则的几何定理应用）
-     - 设计3D动态演示（OpenGL ES可视化解题过程）
-     - 集成错误诊断系统（识别常见解题误区）
-   - 技术亮点：
-     - 使用手势识别替代传统输入，提升交互体验
-     - 通过AR技术将几何图形投射到现实场景
+### 2. 历史时间轴模块 (timeline_map)
+该模块通过地图与时间轴的可视化结合，展示历史事件的地理空间演变。
+- **状态**: 🟡 迭代中
+- **已实现功能**:
+    - [x] **可视化界面**:
+        - `TimelineMapScreen` 实现地图背景与时间轴组件的联动展示。
+    - [x] **数据逻辑**:
+        - `TimelineRepository` 负责从 JSON/API 获取历史事件数据。
+        - 定义了 `TimelineModels` 数据结构，支持事件的地理坐标与时间属性。
+    - [x] **架构整合**:
+        - 解决了与 `common` 模块的依赖冲突，统一使用项目级依赖版本。
+- **待开发功能**:
+    - [ ] **深度地图集成**: 接入高德/Google Maps SDK，实现自定义标记、覆盖层和路径绘制。
+    - [ ] **语音交互**: 实现语音提问自动生成时间轴地图。
+    - [ ] **富媒体内容**: 支持在时间轴事件中展示图片、视频等多媒体资料。
+    - [ ] **筛选与搜索**: 实现按朝代、地区或关键词筛选历史事件的功能。
+    - [ ] **离线地图包**: 支持地图数据的离线缓存，优化无网体验。
 
-4. timeline_map模块 - 历史时间轴地图
-   - 开发优先级：中
-   - 核心功能：
-     - 集成高德/百度地图API实现地理定位
-     - 构建历史事件知识图谱（时间-空间关联）
-     - 实现语音交互导航（语音指令触发地图变化）
-     - 设计多维数据可视化（时间轴+地图热力图）
-   - 创新点：
-     - 时空邻近原则应用：将相关图文信息靠近呈现
-     - 多通道学习模型：视觉（地图）+ 听觉（语音讲解）协同
-   - 开发进度（2026-01-29）：
-     - 已完成：时间轴地图界面、事件列表与详情联动、语音输入、OSMDroid地图渲染与标注、地图双指缩放（容器高度不变）
-     - 已完成：Qwen请求与解析、失败原因提示、自动回退示例数据、API key后端逻辑对齐
-     - 当前限制：OpenStreetMap瓦片需国外VPN访问
+### 3. 公共基础模块 (common)
+作为项目的核心基础设施层，为上层业务模块提供标准化的组件与工具，确保风格统一与代码复用。
+- **状态**: 🟢 稳定
+- **已实现功能**:
+    - [x] **统一管理器 (Managers)**:
+        - `VoskVoiceManager`: 封装 Vosk 引擎，提供 `startListening`, `stopListening` 等统一接口，解耦具体实现。
+        - `VoskModelManager`: 负责离线模型的加载与状态检查。
+    - [x] **通用 UI 组件 (Components)**:
+        - `CameraScreen`: 基于 CameraX 的全屏自定义相机，支持前后摄切换与闪光灯。
+        - `ChatInputArea`: 高度复用的聊天输入栏，集成文本框、语音按钮与更多功能面板。
+        - `ImagePreviewScreen`: 图片预览与确认界面。
+    - [x] **网络与存储 (Infrastructure)**:
+        - `RetrofitClient` & `AuthInterceptor`: 统一的网络请求配置与鉴权拦截。
+        - `RoomDatabaseBuilder`: 数据库构建器封装。
+        - `PreferencesManager`: 基于 DataStore/SharedPreferences 的轻量级配置管理。
+    - [x] **工具类 (Utils)**:
+        - 加密 (`EncryptionUtils`)、日期格式化 (`DateFormatUtils`) 等通用工具。
+- **待开发功能**:
+    - [ ] **全局错误处理**: 建立统一的异常捕获与 Toast/Snackbar 提示机制。
+    - [ ] **主题切换**: 完善深色/浅色模式的全局状态管理与持久化。
+    - [ ] **统一 TTS 管理器**: 封装 TextToSpeechManager，供各模块复用。
 
-5. video_summarizer模块 - 视频智能摘要
-   - 开发优先级：中
-   - 核心功能：
-     - 实现视频关键帧提取（FFmpeg + 深度学习）
-     - 构建知识点识别系统（NLP分析视频内容）
-     - 设计结构化摘要生成（图文卡片+知识点标签）
-     - 集成个性化推荐算法（基于学习历史的摘要优化）
-   - 技术优势：
-     - 降低外在认知负荷：通过精简信息提升理解效率
-     - 提升相关认知负荷：促进学生主动构建知识图式
+### 4. 几何解题模块 (geometry_solver)
+专注于平面/立体几何题目的智能识别与求解。
+- **状态**: ⚪ 初始化 (Skeleton)
+- **已实现功能**:
+    - [x] **基础框架**: 包含基础的 `MainActivity` 与 UI 主题配置。
+- **待开发功能**:
+    - [ ] **图像采集组件**: 集成 CameraX 实现高质量图像捕获。
+    - [ ] **图形识别 (OCR)**: 集成 OpenCV 或 MLKit，识别手绘或打印的几何图形与标注。
+    - [ ] **几何求解器**: 实现或接入几何定理证明引擎，支持步骤推导。
+    - [ ] **绘图画板**: 提供 Canvas 画板，允许用户手绘图形并进行即时修正。
+    - [ ] **解题步骤展示**: 设计交互式 UI，分步展示解题思路与辅助线添加过程。
 
-三、应用层整合模块
+### 5. 视频总结模块 (video_summarizer)
+提供长视频内容的智能摘要与知识点提取。
+- **状态**: 🟢 开发中
+- **已实现功能**:
+    - [x] **视频下载**:
+        - `VideoDownloader`: 集成 `youtubedl-android` 支持视频下载与音频提取。
+        - `VideoDownloadScreen`: 提供视频链接输入与下载进度展示。
+    - [x] **语音转写 (ASR)**:
+        - `SherpaAsrManager`: 集成 Sherpa-onnx 实现高性能离线中文语音转写。
+    - [x] **AI 摘要**:
+        - `BailianSummaryRepository`: 对接阿里云百炼 API 生成视频内容摘要。
+    - [x] **业务逻辑**:
+        - `VideoDownloadViewModel`: 管理下载、转写、摘要生成的完整流程状态。
+- **待开发功能**:
+    - [ ] **视频选择与上传**: 实现系统文件选择器，支持从相册导入视频。
+    - [ ] **知识点卡片**: 将摘要转化为美观的图文卡片。
+    - [ ] **导出功能**: 支持将摘要导出为 PDF 或 Markdown 格式。
+    - [ ] **音频提取优化**: 进一步优化 FFmpeg 集成，提升音频提取速度。
 
-6. app模块 - 主应用整合层
-   - 开发优先级：最后
-   - 核心功能：
-     - 统一UI框架：整合各模块界面风格
-     - 路由系统：实现模块间无缝跳转
-     - 权限管理：集中处理敏感权限请求
-     - 数据流整合：协调各模块数据交互
-   - 关键配置：
-          dependencies {
-         implementation project(':common')
-         implementation project(':ai_tutor')
-         implementation project(':geometry_solver')
-         implementation project(':timeline_map')
-         implementation project(':video_summarizer')
-     }
-     
-
-四、开发流程优化建议
-
-1. 模块化开发策略
-   - 采用功能树分解法：将每个模块再细分为"基础功能→核心功能→扩展功能"三层
-   - 实施渐进式集成：先独立开发各模块，再通过接口整合，避免早期耦合
-
-2. 依赖管理最佳实践
-   - 使用版本目录(TOML)统一管理依赖版本，避免冲突
-   - 采用依赖倒置原则：通过接口定义模块间交互，降低耦合度
-
-3. 测试策略
-   - 单元测试：针对common模块的工具类进行全覆盖测试
-   - 集成测试：验证ai_tutor与各业务模块的交互
-   - UI测试：使用Espresso测试关键用户路径
-
-4. 性能优化重点
-   - 启动速度：延迟初始化非核心模块，确保冷启动<500ms
-   - 内存管理：对AI模型资源使用弱引用，避免OOM
-   - 响应延迟：关键交互响应<300ms，符合教育场景碎片化学习需求
-
-五、关键注意事项
-
-1. 数据安全与隐私保护
-   - 严格遵守《个人信息保护法》，不上传学生敏感数据
-   - 采用最小化信息原则，仅收集必要脱敏数据
-
-2. 教师角色定位
-   - AI作为辅助工具：教师保留最终教学决策权，避免技术替代教育本质
-   - 建立反馈机制：教师可对AI推荐内容进行人工审核与调整
-
-3. 教育公平考量
-   - 算法偏见检测：定期评估AI系统对不同学生群体的公平性
-   - 资源普惠设计：确保基础功能在低端设备也能流畅运行
-
-通过以上顺序开发，可确保基础稳固、功能递进、依赖清晰，既符合模块化开发的最佳实践，又能满足教育场景的特殊需求。每个模块完成后应进行功能验证和性能基准测试，确保达到教育应用的稳定性要求。
+### 6. 主应用 (app)
+负责应用的生命周期管理、模块路由与最终打包。
+- **状态**: 🟢 稳定
+- **已实现功能**:
+    - [x] **构建系统**:
+        - 修复了多模块间的 Gradle 依赖冲突与资源合并问题 (Resource Merging)。
+        - 解决了 Windows 环境下的文件锁 (File Lock) 问题，确保构建流程顺畅。
+    - [x] **模块路由**:
+        - 实现了各子模块 (Feature Modules) 的聚合与导航分发。
+- **待开发功能**:
+    - [ ] **性能优化**: 优化冷启动时间，实施按需加载。
+    - [ ] **Release 构建**: 配置签名文件与 ProGuard/R8 混淆规则。
+    - [ ] **Deep Link**: 实现跨模块的深度链接跳转机制。

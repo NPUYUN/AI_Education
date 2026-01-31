@@ -12,6 +12,6 @@ object AppConstants {
     const val PREFERENCES_NAME = "app_preferences"
     
     // API Keys (Note: In production, these should be in BuildConfig or secure storage)
-    // Placeholder for now
+    const val DEFAULT_API_KEY = "sk-99858a456b8b4ddc81d926f8d6397451" // Test Key
     const val API_KEY_HEADER = "Authorization"
 }
