@@ -9,6 +9,8 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ai_tutor.presentation.navigation.SubScreenScaffold
 import com.example.timeline_map.presentation.TimelineMapScreen
+import com.example.video_summarizer.presentation.VideoDownloadViewModel
+import com.example.video_summarizer.presentation.screens.VideoDownloadScreen
 
 @Composable
 fun GeometryScreen() {

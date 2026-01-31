@@ -43,6 +43,7 @@ kotlin {
 dependencies {
     implementation(project(":common"))
     implementation(project(":timeline_map"))
+    implementation(project(":video_summarizer"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
