@@ -79,9 +79,8 @@ fun AppNavigation(
             val imageUriString = backStackEntry.arguments?.getString("imageUri") ?: ""
             ImagePreviewScreen(
                 imageUri = imageUriString,
-                onActionSelected = { prompt ->
-                    val decodedUriString = java.net.URLDecoder.decode(imageUriString, "UTF-8")
-                    aiTutorViewModel.sendImageWithPrompt(Uri.parse(decodedUriString), prompt)
+                onActionSelected = { prompt, uri ->
+                    aiTutorViewModel.sendImageWithPrompt(uri, prompt)
                     navController.popBackStack("main", inclusive = false)
                 },
                 onClose = { navController.popBackStack() }
