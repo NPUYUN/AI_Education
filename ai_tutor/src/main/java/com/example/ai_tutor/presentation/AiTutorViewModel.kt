@@ -361,6 +361,36 @@ class AiTutorViewModel(application: Application) : AndroidViewModel(application)
         _inputText.value = ""
     }
 
+    private suspend fun prepareHistoryForApi(history: List<Message>): List<Message> = withContext(Dispatchers.IO) {
+        history.map { msg ->
+            if (msg.content is List<*>) {
+                val newContent = (msg.content as List<*>).map { item ->
+                    if (item is ContentItem && item.type == "image_url" && item.imageUrl?.url?.startsWith("file://") == true) {
+                        val path = item.imageUrl.url.substringAfter("file://")
+                        val file = java.io.File(path)
+                        if (file.exists()) {
+                            try {
+                                val bytes = file.readBytes()
+                                val base64 = "data:image/jpeg;base64," + android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+                                item.copy(imageUrl = ImageUrl(url = base64))
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                                item
+                            }
+                        } else {
+                            item
+                        }
+                    } else {
+                        item
+                    }
+                }
+                msg.copy(content = newContent)
+            } else {
+                msg
+            }
+        }
+    }
+
     // Re-adding the correct sendMessage (Multimodal)
     fun sendMessage() {
         val text = _inputText.value.trim()
@@ -424,7 +454,8 @@ class AiTutorViewModel(application: Application) : AndroidViewModel(application)
             saveMessageToDb(dbMsg) // Save DB-friendly message
             
             // Note: We pass context.history which now INCLUDES the current message.
-            val historyToSend = context.history.dropLast(1)
+            val rawHistory = context.history.dropLast(1)
+            val historyToSend = prepareHistoryForApi(rawHistory)
             
             repository.sendMessage(text, historyToSend, imageUrl = base64Image).collect { chunk ->
                 if (chunk.startsWith("Error:")) {
@@ -497,6 +528,19 @@ class AiTutorViewModel(application: Application) : AndroidViewModel(application)
                     bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 80, outputStream)
                     val bytes = outputStream.toByteArray()
                     val base64Image = "data:image/jpeg;base64," + android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+
+                    val stableUiImageUrl = displayUrl ?: base64Image
+                    withContext(Dispatchers.Main) {
+                        val index = _messages.indexOf(uiMsg)
+                        if (index != -1) {
+                            _messages[index] = uiMsg.copy(
+                                content = listOf(
+                                    ContentItem(type = "image_url", imageUrl = ImageUrl(url = stableUiImageUrl)),
+                                    ContentItem(type = "text", text = prompt)
+                                )
+                            )
+                        }
+                    }
                     
                     // 3. Construct DB/History Message
                     val dbImageUrl: String = displayUrl ?: base64Image
@@ -513,7 +557,8 @@ class AiTutorViewModel(application: Application) : AndroidViewModel(application)
                     saveMessageToDb(dbMsg)
                     
                     // 4. Send to Repository
-                    val historyToSend = context.history.dropLast(1)
+                    val rawHistory = context.history.dropLast(1)
+                    val historyToSend = prepareHistoryForApi(rawHistory)
                     
                     repository.sendMessage(prompt, historyToSend, imageUrl = base64Image).collect { chunk ->
                         withContext(Dispatchers.Main) {

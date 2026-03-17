@@ -55,6 +55,9 @@ class QwenRepository(private val apiKey: String) {
             val replyText = if (reply is String) reply else reply.toString()
             
             emit(replyText)
+        } catch (e: retrofit2.HttpException) {
+            val errorBody = e.response()?.errorBody()?.string()
+            emit("Error: HTTP ${e.code()} - $errorBody")
         } catch (e: Exception) {
             emit("Error: ${e.message}")
         }

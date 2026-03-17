@@ -15,6 +15,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -48,10 +49,8 @@ fun ChatScreen(
     onCameraClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-    val scope = rememberCoroutineScope()
     val context = LocalContext.current
-    val sessions by viewModel.sessions.collectAsState(initial = emptyList())
+    val listState = rememberLazyListState()
 
     // Removed VoiceInputManager (using Native Recorder in ViewModel)
 
@@ -85,97 +84,33 @@ fun ChatScreen(
         }
     }
 
-    ModalNavigationDrawer(
-        modifier = modifier,
-        drawerState = drawerState,
-        drawerContent = {
-            ModalDrawerSheet {
-                Spacer(Modifier.height(12.dp))
-                NavigationDrawerItem(
-                    icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                    label = { Text("新建对话") },
-                    selected = false,
-                    onClick = {
-                        viewModel.startNewChat()
-                        scope.launch { drawerState.close() }
-                    },
-                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                )
-                HorizontalDivider()
-                Text("最近一周", modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.titleMedium)
-                LazyColumn {
-                    items(sessions) { session ->
-                        NavigationDrawerItem(
-                            label = { 
-                                Text(
-                                    text = if (session.title.isEmpty()) "New Chat" else session.title,
-                                    maxLines = 1,
-                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                                ) 
-                            },
-                            selected = false,
-                            onClick = { 
-                                viewModel.loadSession(session.id)
-                                scope.launch { drawerState.close() }
-                            },
-                            badge = {
-                                IconButton(onClick = { viewModel.deleteSession(session.id) }) {
-                                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Gray)
-                                }
-                            },
-                            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                        )
-                    }
-                }
-            }
-        }
+    Column(
+        modifier = modifier.fillMaxSize()
     ) {
-        Scaffold(
-            topBar = {
-                CenterAlignedTopAppBar(
-                    title = { Text("教育助手", style = MaterialTheme.typography.titleLarge) },
-                    navigationIcon = {
-                        IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                            Icon(Icons.Default.Menu, contentDescription = "Menu")
-                        }
-                    },
-                    actions = {
-                        IconButton(onClick = { /* TODO: Notifications */ }) {
-                            Icon(Icons.Default.Notifications, contentDescription = "Notifications")
-                        }
-                        IconButton(onClick = { /* TODO: Share */ }) {
-                            Icon(Icons.Default.Share, contentDescription = "Share")
-                        }
-                    },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = Color.White
-                    )
-                )
-            },
-            containerColor = Color.White
-        ) { innerPadding ->
-            Column(
+        if (viewModel.messages.isEmpty()) {
+            WelcomeScreen(
+                suggestions = viewModel.suggestions,
+                onSuggestionClick = { viewModel.onSuggestionClicked(it) },
+                modifier = Modifier.weight(1f)
+            )
+        } else {
+            LazyColumn(
                 modifier = Modifier
-                    .padding(innerPadding)
-                    .fillMaxSize()
-            ) {
-                if (viewModel.messages.isEmpty()) {
-                    WelcomeScreen(
-                        suggestions = viewModel.suggestions,
-                        onSuggestionClick = { viewModel.onSuggestionClicked(it) },
-                        modifier = Modifier.weight(1f)
-                    )
-                } else {
-                    LazyColumn(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxWidth(),
+                    .weight(1f)
+                    .fillMaxWidth(),
+                state = listState,
                         reverseLayout = false,
                         contentPadding = PaddingValues(bottom = 16.dp)
                     ) {
                         items(viewModel.messages) { message ->
                             MessageItem(message)
                             Spacer(modifier = Modifier.height(16.dp))
+                        }
+                    }
+
+                    LaunchedEffect(viewModel.messages.size) {
+                        if (viewModel.messages.isNotEmpty()) {
+                            listState.animateScrollToItem(viewModel.messages.size - 1)
                         }
                     }
                 }
@@ -198,8 +133,6 @@ fun ChatScreen(
                 )
             }
         }
-    }
-}
 
 @Composable
 fun WelcomeScreen(suggestions: List<String>, onSuggestionClick: (String) -> Unit, modifier: Modifier = Modifier) {
@@ -317,40 +250,25 @@ fun UserImageBubble(imageUrl: String) {
                             .crossfade(true)
                             .listener(
                                 onError = { _, result -> 
-                                    error = result.throwable.message ?: "Base64 Load Error"
+                                    error = "Base64: ${result.throwable.message}"
                                 }
                             )
                             .build()
-                    } else if (imageUrl.startsWith("file://")) {
-                        val path = imageUrl.substringAfter("file://")
-                        val file = java.io.File(path)
-                        if (!file.exists()) {
-                            error = "File not found: $path"
-                            null
-                        } else {
-                            coil.request.ImageRequest.Builder(context)
-                                .data(file)
-                                .crossfade(true)
-                                .listener(
-                                    onError = { _, result -> 
-                                        error = result.throwable.message ?: "File Load Error"
-                                    }
-                                )
-                                .build()
-                        }
                     } else {
+                        // Let Coil handle file://, content://, https:// automatically
+                        // It handles file permissions and path parsing better than manual File()
                         coil.request.ImageRequest.Builder(context)
                             .data(imageUrl)
                             .crossfade(true)
                             .listener(
                                 onError = { _, result -> 
-                                    error = result.throwable.message ?: "Url Load Error"
+                                    error = "Load: ${result.throwable.message}"
                                 }
                             )
                             .build()
                     }
                 } catch (e: Exception) {
-                    error = "Init Error: ${e.message}"
+                    error = "Init: ${e.message}"
                     null
                 }
             }
@@ -365,7 +283,7 @@ fun UserImageBubble(imageUrl: String) {
                         .wrapContentHeight(),
                     contentScale = androidx.compose.ui.layout.ContentScale.FillWidth,
                     placeholder = androidx.compose.ui.graphics.painter.ColorPainter(Color.LightGray),
-                    error = androidx.compose.ui.graphics.painter.ColorPainter(Color(0xFFFFEBEE)) // Light Red for error
+                    error = androidx.compose.ui.graphics.painter.ColorPainter(Color(0xFFFFEBEE))
                 )
             }
             
@@ -373,6 +291,8 @@ fun UserImageBubble(imageUrl: String) {
                 Column(modifier = Modifier.padding(8.dp)) {
                     Text(text = "❌ Image Error", color = Color.Red, fontSize = 12.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                     Text(text = error ?: "Unknown", color = Color.Red, fontSize = 10.sp)
+                    // Show truncated path for debugging
+                    Text(text = imageUrl.take(100), color = Color.Gray, fontSize = 8.sp, lineHeight = 10.sp)
                 }
             }
         }

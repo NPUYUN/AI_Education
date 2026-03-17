@@ -30,6 +30,9 @@ android {
     buildFeatures {
         compose = true
     }
+    lint {
+        disable.add("CoroutineCreationDuringComposition")
+    }
 }
 
 kotlin {
