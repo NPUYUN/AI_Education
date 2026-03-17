@@ -41,11 +41,14 @@ import com.example.video_summarizer.presentation.DownloadTask
 import com.example.video_summarizer.presentation.SummaryStatus
 import com.example.video_summarizer.presentation.VideoDownloadViewModel
 
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+
 @androidx.media3.common.util.UnstableApi
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VideoDownloadScreen(
-    viewModel: VideoDownloadViewModel
+    viewModel: VideoDownloadViewModel,
+    onBack: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
@@ -76,6 +79,11 @@ fun VideoDownloadScreen(
         topBar = {
             TopAppBar(
                 title = { Text("视频下载") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer
                 ),

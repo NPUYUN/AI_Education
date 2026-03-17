@@ -16,8 +16,8 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             Ai_EducationTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) {
-                    TimelineMapScreen()
+                Scaffold(modifier = Modifier.fillMaxSize()) { padding ->
+                    TimelineMapScreen(onBack = { finish() })
                 }
             }
         }

@@ -35,9 +35,14 @@ import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
 import java.io.File
 
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TimelineMapScreen(viewModel: TimelineMapViewModel = viewModel()) {
+fun TimelineMapScreen(
+    viewModel: TimelineMapViewModel = viewModel(),
+    onBack: () -> Unit
+) {
     val context = LocalContext.current
     LaunchedEffect(Unit) { }
 
@@ -62,7 +67,12 @@ fun TimelineMapScreen(viewModel: TimelineMapViewModel = viewModel()) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("时间轴地图") }
+                title = { Text("时间轴地图") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                }
             )
         }
     ) { padding ->

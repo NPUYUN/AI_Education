@@ -3,6 +3,7 @@ package com.example.ai_tutor.presentation.screens
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -14,9 +15,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.platform.LocalContext
 import com.example.common.database.PreferencesManager
 import kotlinx.coroutines.launch
-// import com.example.timeline_map.presentation.TimelineMapScreen
-// import com.example.video_summarizer.presentation.VideoDownloadViewModel
-// import com.example.video_summarizer.presentation.screens.VideoDownloadScreen
+import com.example.timeline_map.presentation.TimelineMapScreen
+import com.example.video_summarizer.presentation.VideoDownloadViewModel
+import com.example.video_summarizer.presentation.screens.VideoDownloadScreen
 
 @Composable
 fun GeometryScreen() {
@@ -26,20 +27,15 @@ fun GeometryScreen() {
 }
 
 @Composable
-fun TimelineScreen() {
-    // TimelineMapScreen()
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text("Timeline Map (Coming Soon)")
-    }
+fun TimelineScreen(onBack: () -> Unit) {
+    TimelineMapScreen(onBack = onBack)
 }
 
+@androidx.media3.common.util.UnstableApi
 @Composable
-fun VideoSummaryScreen() {
-    // val viewModel: VideoDownloadViewModel = viewModel()
-    // VideoDownloadScreen(viewModel = viewModel)
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text("Video Summary (Coming Soon)")
-    }
+fun VideoSummaryScreen(onBack: () -> Unit) {
+    val viewModel: VideoDownloadViewModel = viewModel()
+    VideoDownloadScreen(viewModel = viewModel, onBack = onBack)
 }
 
 @Composable
@@ -109,7 +105,7 @@ fun SubScreenScaffold(title: String, onBack: () -> Unit, content: @Composable ()
                 title = { Text(title) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 }
             )

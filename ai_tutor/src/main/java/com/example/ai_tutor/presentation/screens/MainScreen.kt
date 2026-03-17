@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.*
@@ -32,6 +33,7 @@ import com.example.ai_tutor.presentation.AiTutorViewModel
 import com.example.ai_tutor.presentation.ChatScreen
 import kotlinx.coroutines.launch
 
+@androidx.media3.common.util.UnstableApi
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
@@ -236,7 +238,7 @@ fun MainScreen(
                 val currentRoute = navBackStackEntry?.destination?.route
                 
                 // Show top bar on main tabs and profile page
-                if (items.any { it.first == currentRoute } || currentRoute == "profile") {
+                if ((items.any { it.first == currentRoute } && currentRoute != "timeline" && currentRoute != "video") || currentRoute == "profile") {
                      CenterAlignedTopAppBar(
                         title = { 
                             val label = if (currentRoute == "profile") "个人主页" else items.find { it.first == currentRoute }?.third ?: "AI Tutor"
@@ -249,7 +251,7 @@ fun MainScreen(
                                 }
                             } else {
                                 IconButton(onClick = { navController.popBackStack() }) {
-                                    Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                                 }
                             }
                         },
@@ -342,7 +344,7 @@ fun MainScreen(
                 modifier = Modifier.padding(innerPadding)
             ) {
                 composable("geometry") { GeometryScreen() }
-                composable("timeline") { TimelineScreen() }
+                composable("timeline") { TimelineScreen(onBack = { navController.popBackStack() }) }
                 composable("home") {
                     ChatScreen(
                         viewModel = viewModel,
@@ -350,7 +352,7 @@ fun MainScreen(
                         modifier = Modifier.fillMaxSize()
                     ) 
                 }
-                composable("video") { VideoSummaryScreen() }
+                composable("video") { VideoSummaryScreen(onBack = { navController.popBackStack() }) }
                 composable("review") { ReviewScreen() }
                 composable("profile") { ProfileScreen() }
             }

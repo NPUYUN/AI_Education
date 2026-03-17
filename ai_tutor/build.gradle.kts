@@ -77,6 +77,10 @@ dependencies {
     // Vosk for Offline Speech Recognition
     implementation("com.alphacephei:vosk-android:0.3.47")
 
+    // Media3 for UnstableApi annotation
+    implementation(libs.androidx.media3.exoplayer)
+    implementation(libs.androidx.media3.ui)
+
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
