@@ -9,11 +9,32 @@ class KnowledgeGraphManager {
                 other.id != event.id && (
                     sharePeople(event, other) ||
                         shareLocation(event, other) ||
-                        sameYear(event, other)
+                        sameYear(event, other) ||
+                        shareKeywords(event, other)
                     )
             }.map { it.id }
             event.copy(relatedIds = related)
         }
+    }
+
+    private fun shareKeywords(a: HistoricalEvent, b: HistoricalEvent): Boolean {
+        // Extract words from title (length >= 2)
+        val wordsA = extractKeywords(a.title)
+        val wordsB = extractKeywords(b.title)
+        return wordsA.intersect(wordsB).isNotEmpty()
+    }
+
+    private fun extractKeywords(text: String): Set<String> {
+        // Very basic keyword extraction for Chinese text, splitting by punctuation
+        // and finding substrings of length >= 2
+        val cleaned = text.replace(Regex("[\\p{Punct}\\s]+"), "")
+        val keywords = mutableSetOf<String>()
+        if (cleaned.length >= 2) {
+            for (i in 0..cleaned.length - 2) {
+                keywords.add(cleaned.substring(i, i + 2))
+            }
+        }
+        return keywords
     }
 
     private fun sharePeople(a: HistoricalEvent, b: HistoricalEvent): Boolean {
@@ -31,7 +52,13 @@ class KnowledgeGraphManager {
     }
 
     private fun extractYear(time: String): Int? {
-        val match = Regex("(\\d{4})").find(time) ?: return null
-        return match.groupValues[1].toIntOrNull()
+        val isBC = time.contains("前") || time.contains("BC", ignoreCase = true)
+        val match = Regex("(\\d{1,4})\\s*(年|-|/)").find(time) ?: Regex("(\\d{1,4})").find(time)
+        val yearStr = match?.groupValues?.get(1) ?: return null
+        var year = yearStr.toIntOrNull() ?: return null
+        if (isBC) {
+            year = -year
+        }
+        return year
     }
 }

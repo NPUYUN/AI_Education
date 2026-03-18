@@ -31,15 +31,13 @@ import java.util.UUID
 
 class AiTutorViewModel(application: Application) : AndroidViewModel(application) {
     // Core Dependencies
-    // Note: Replace with a valid DashScope API Key. 
-    // The previous key might be expired or invalid if receiving 401.
-    private val apiKey = "sk-e6a46e1940de419caf8e5b010954a7e3" 
-    private val repository = QwenRepository(apiKey)
+    private val preferences = com.example.common.database.PreferencesManager(application)
+    private val apiKeyKey = "bailian_api_key"
+    private var apiKey = "" 
+    private var repository: QwenRepository? = null
     private val knowledgeGraph = MockKnowledgeGraphManager()
     private val toolsIntegrator = ToolsIntegrator()
     private val multimodalProcessor = MultimodalProcessor()
-    
-    private val agentDecisionHub = AgentDecisionHub(repository, knowledgeGraph, toolsIntegrator)
     private val chatDao = AiTutorDatabase.getDatabase(application).chatDao()
     // private val ttsManager = TextToSpeechManager(application) // TTS Disabled
     private val voskVoiceManager = VoskVoiceManager(application)
@@ -73,6 +71,17 @@ class AiTutorViewModel(application: Application) : AndroidViewModel(application)
     init {
         // Initialize Vosk Voice Manager
         voskVoiceManager.init(viewModelScope)
+        
+        viewModelScope.launch {
+            preferences.getString(apiKeyKey).collectLatest { key ->
+                apiKey = key
+                if (key.isNotBlank()) {
+                    repository = QwenRepository(key)
+                } else {
+                    repository = null
+                }
+            }
+        }
         
         // Auto-load last session or create new
         initializeSession()
@@ -451,13 +460,19 @@ class AiTutorViewModel(application: Application) : AndroidViewModel(application)
         _inputText.value = ""
 
         viewModelScope.launch {
+            if (repository == null) {
+                _messages.add(Message("system", "请先在设置或视频总结模块中填写 API Key"))
+                _isLoading.value = false
+                return@launch
+            }
+
             saveMessageToDb(dbMsg) // Save DB-friendly message
             
             // Note: We pass context.history which now INCLUDES the current message.
             val rawHistory = context.history.dropLast(1)
             val historyToSend = prepareHistoryForApi(rawHistory)
             
-            repository.sendMessage(text, historyToSend, imageUrl = base64Image).collect { chunk ->
+            repository?.sendMessage(text, historyToSend, imageUrl = base64Image)?.collect { chunk ->
                 if (chunk.startsWith("Error:")) {
                     _messages.add(Message("system", chunk))
                 } else {
@@ -530,6 +545,15 @@ class AiTutorViewModel(application: Application) : AndroidViewModel(application)
                     val base64Image = "data:image/jpeg;base64," + android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
 
                     val stableUiImageUrl = displayUrl ?: base64Image
+                    
+                    if (repository == null) {
+                        withContext(Dispatchers.Main) {
+                            _messages.add(Message("system", "请先在设置或视频总结模块中填写 API Key"))
+                            _isLoading.value = false
+                        }
+                        return@launch
+                    }
+
                     withContext(Dispatchers.Main) {
                         val index = _messages.indexOf(uiMsg)
                         if (index != -1) {
@@ -560,7 +584,7 @@ class AiTutorViewModel(application: Application) : AndroidViewModel(application)
                     val rawHistory = context.history.dropLast(1)
                     val historyToSend = prepareHistoryForApi(rawHistory)
                     
-                    repository.sendMessage(prompt, historyToSend, imageUrl = base64Image).collect { chunk ->
+                    repository?.sendMessage(prompt, historyToSend, imageUrl = base64Image)?.collect { chunk ->
                         withContext(Dispatchers.Main) {
                             if (chunk.startsWith("Error:")) {
                                 _messages.add(Message("system", chunk))

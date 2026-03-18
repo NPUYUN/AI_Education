@@ -13,6 +13,7 @@ import com.k2fsa.sherpa.onnx.OfflineStream
 import com.k2fsa.sherpa.onnx.WaveReader
 import java.io.File
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -90,12 +91,19 @@ class SherpaAsrManager(private val context: Context) {
                 try {
                     stream = r.createStream()
                     stream!!.acceptWaveform(waveData.samples, waveData.sampleRate)
+                    
+                    // Decode might take a while, check cancellation before starting
+                    kotlin.coroutines.coroutineContext.ensureActive()
                     r.decode(stream!!)
+                    kotlin.coroutines.coroutineContext.ensureActive()
                     
                     // 5. Get result
                     val result = r.getResult(stream!!)
                     Log.d(TAG, "Transcription result length: ${result.text.length}")
                     result.text
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    Log.d(TAG, "Transcription cancelled")
+                    throw e
                 } catch (e: Throwable) {
                     Log.e(TAG, "Native recognition failed", e)
                     throw IllegalStateException("语音识别引擎出错: ${e.message}")

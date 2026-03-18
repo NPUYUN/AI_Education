@@ -74,11 +74,7 @@ class VideoDownloadViewModel(application: Application) : AndroidViewModel(applic
     init {
         viewModelScope.launch {
             preferences.getString(apiKeyKey).collect { key ->
-                if (key.isBlank()) {
-                    _uiState.value = _uiState.value.copy(apiKey = AppConstants.DEFAULT_API_KEY)
-                } else {
-                    _uiState.value = _uiState.value.copy(apiKey = key)
-                }
+                _uiState.value = _uiState.value.copy(apiKey = key)
             }
         }
     }

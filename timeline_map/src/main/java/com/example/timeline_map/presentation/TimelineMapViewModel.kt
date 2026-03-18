@@ -11,6 +11,7 @@ import com.example.timeline_map.data.model.HistoricalEvent
 import com.example.timeline_map.data.model.SpeechLanguage
 import com.example.timeline_map.data.repository.TimelineRepository
 import com.example.timeline_map.domain.KnowledgeGraphManager
+import com.example.common.database.PreferencesManager
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -20,7 +21,10 @@ import java.time.format.DateTimeParseException
 class TimelineMapViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = TimelineRepository()
     private val knowledgeGraphManager = KnowledgeGraphManager()
-    private val apiKey = "sk-e6a46e1940de419caf8e5b010954a7e3"
+    
+    private val preferences = PreferencesManager(application)
+    private val apiKeyKey = "bailian_api_key"
+    private var apiKey = ""
     
     private val voskVoiceManager = VoskVoiceManager(application)
 
@@ -53,6 +57,12 @@ class TimelineMapViewModel(application: Application) : AndroidViewModel(applicat
 
     init {
         voskVoiceManager.init(viewModelScope)
+        
+        viewModelScope.launch {
+            preferences.getString(apiKeyKey).collectLatest { key ->
+                apiKey = key
+            }
+        }
         
         viewModelScope.launch {
             voskVoiceManager.voiceState.collectLatest { state ->
@@ -115,6 +125,10 @@ class TimelineMapViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     fun generateTimeline() {
+        if (apiKey.isBlank()) {
+            _errorMessage.value = "请先在设置或视频总结模块中填写 API Key"
+            return
+        }
         val query = _queryText.value.trim()
         if (query.isEmpty()) {
             _errorMessage.value = "请输入历史事件问题"
@@ -142,20 +156,26 @@ class TimelineMapViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     private fun parseDateKey(time: String): Long {
-        val yearMatch = Regex("(\\d{4})").find(time)?.groupValues?.get(1)
-        val year = yearMatch?.toIntOrNull() ?: return Long.MAX_VALUE
-        val formats = listOf("yyyy-MM-dd", "yyyy/MM/dd", "yyyy-MM", "yyyy/MM", "yyyy")
-        for (format in formats) {
-            try {
-                val formatter = DateTimeFormatter.ofPattern(format)
-                val date = when (format) {
-                    "yyyy" -> LocalDate.of(year, 1, 1)
-                    "yyyy-MM", "yyyy/MM" -> LocalDate.parse("$time-01", DateTimeFormatter.ofPattern("$format-dd"))
-                    else -> LocalDate.parse(time, formatter)
-                }
-                return date.toEpochDay()
-            } catch (_: DateTimeParseException) {
+        // Handle "BC" or "公元前"
+        val isBC = time.contains("前") || time.contains("BC", ignoreCase = true)
+        
+        // Extract year, month, day using regex
+        val yearMatch = Regex("(\\d{1,4})\\s*(年|-|/)").find(time) ?: Regex("(\\d{1,4})").find(time)
+        val monthMatch = Regex("(\\d{1,2})\\s*(月|-|/)").find(time)
+        val dayMatch = Regex("(\\d{1,2})\\s*(日|号)").find(time)
+
+        val yearStr = yearMatch?.groupValues?.get(1)
+        if (yearStr != null) {
+            var year = yearStr.toIntOrNull() ?: return Long.MAX_VALUE
+            if (isBC) {
+                year = -year
             }
+            val month = monthMatch?.groupValues?.get(1)?.toIntOrNull()?.coerceIn(1, 12) ?: 1
+            val day = dayMatch?.groupValues?.get(1)?.toIntOrNull()?.coerceIn(1, 28) ?: 1
+            
+            // To properly sort BC years, we can just use a simple calculated value or epoch day
+            // Since LocalDate doesn't support 0 or negative years easily with simple of(), we calculate an approximate sort key
+            return year.toLong() * 10000 + month * 100 + day
         }
         return Long.MAX_VALUE
     }

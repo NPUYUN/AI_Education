@@ -12,6 +12,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.net.URI
 import java.net.URL
+import java.util.concurrent.atomic.AtomicBoolean
 
 data class VideoInfo(
     val url: String,
@@ -48,7 +49,7 @@ enum class DownloadStatus {
 
 class VideoDownloader(private val context: Context) {
 
-    private var isCancelled = false
+    private val isCancelled = AtomicBoolean(false)
     private var activeProcessId: String? = null
     private var isInitialized = false
 
@@ -56,14 +57,6 @@ class VideoDownloader(private val context: Context) {
         if (isInitialized) return@withContext
         try {
             YoutubeDL.getInstance().init(context)
-            /*
-            try {
-                FFmpeg.getInstance().init(context)
-            } catch (e: Exception) {
-                // Ignore if FFmpeg init fails
-                e.printStackTrace()
-            }
-            */
             try {
                 YoutubeDL.getInstance().updateYoutubeDL(
                     context,
@@ -115,7 +108,7 @@ class VideoDownloader(private val context: Context) {
     }
 
     fun cancelDownload() {
-        isCancelled = true
+        isCancelled.set(true)
         activeProcessId?.let { processId ->
             try {
                 YoutubeDL.getInstance().destroyProcessById(processId)
@@ -257,7 +250,7 @@ class VideoDownloader(private val context: Context) {
     ): Result<String> {
         return try {
             ensureInitialized()
-            isCancelled = false
+            isCancelled.set(false)
             onProgress(DownloadProgress(status = DownloadStatus.PREPARING))
 
             val resolvedUrl = resolveRedirects(url)
@@ -289,7 +282,7 @@ class VideoDownloader(private val context: Context) {
                 request,
                 processId = processId,
                 callback = { progress: Float, etaInSeconds: Long, _: String ->
-                    if (isCancelled) {
+                    if (isCancelled.get()) {
                         throw InterruptedException("Download cancelled")
                     }
                     onProgress(
@@ -305,7 +298,7 @@ class VideoDownloader(private val context: Context) {
                 }
             )
 
-            if (isCancelled) {
+            if (isCancelled.get()) {
                 onProgress(DownloadProgress(status = DownloadStatus.CANCELLED))
                 Result.failure(Exception("Download cancelled"))
             } else {
