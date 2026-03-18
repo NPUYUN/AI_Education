@@ -52,7 +52,6 @@ dependencies {
     implementation(libs.androidx.compose.material.icons.extended)
 
     // Map
-    implementation(libs.amap.map)
     implementation(libs.osmdroid.android)
     implementation(libs.gson)
     testImplementation(libs.junit)

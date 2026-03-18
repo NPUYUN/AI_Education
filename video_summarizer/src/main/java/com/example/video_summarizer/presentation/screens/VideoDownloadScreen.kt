@@ -36,6 +36,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.ui.PlayerView
 import java.io.File
+import com.example.common.presentation.components.ApiKeyDialog
 import com.example.video_summarizer.data.downloader.DownloadProgress
 import com.example.video_summarizer.data.downloader.DownloadStatus
 import com.example.video_summarizer.presentation.DownloadTask
@@ -49,6 +50,7 @@ fun VideoDownloadScreen(
     viewModel: VideoDownloadViewModel
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val downloadTasks = viewModel.downloadTasks
     val context = LocalContext.current
 
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -131,9 +133,9 @@ fun VideoDownloadScreen(
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
-            if (uiState.downloadTasks.isNotEmpty()) {
+            if (downloadTasks.isNotEmpty()) {
                 Text(
-                    text = "下载任务 (${uiState.downloadTasks.size})",
+                    text = "下载任务 (${downloadTasks.size})",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(bottom = 8.dp)
@@ -142,7 +144,7 @@ fun VideoDownloadScreen(
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(uiState.downloadTasks) { task ->
+                    items(downloadTasks) { task ->
                         DownloadTaskCard(
                             task = task,
                             onCancel = { viewModel.cancelDownload(task.id) },
@@ -220,9 +222,12 @@ fun VideoDownloadScreen(
                 viewModel.saveApiKey()
                 showSettings = false
             },
-            onDismiss = { showSettings = false }
+            onDismiss = { showSettings = false },
+            title = "摘要设置",
+            description = "请填写阿里云百炼 API Key 以启用 AI 摘要功能。"
         )
     }
+
 }
 
 @androidx.media3.common.util.UnstableApi
@@ -714,55 +719,4 @@ fun EmptyStateCard() {
     }
 }
 
-@Composable
-fun ApiKeyDialog(
-    apiKey: String,
-    onApiKeyChange: (String) -> Unit,
-    onSave: () -> Unit,
-    onDismiss: () -> Unit
-) {
-    Dialog(onDismissRequest = onDismiss) {
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp)
-            ) {
-                Text(
-                    text = "摘要设置",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "请填写阿里云百炼 API Key 以启用 AI 摘要功能。",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                OutlinedTextField(
-                    value = apiKey,
-                    onValueChange = onApiKeyChange,
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    placeholder = { Text("请输入 API Key") },
-                    visualTransformation = if (apiKey.isNotEmpty()) PasswordVisualTransformation() else VisualTransformation.None
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    TextButton(onClick = onDismiss) {
-                        Text("取消")
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Button(onClick = onSave, enabled = apiKey.isNotBlank()) {
-                        Text("保存")
-                    }
-                }
-            }
-        }
-    }
-}
+

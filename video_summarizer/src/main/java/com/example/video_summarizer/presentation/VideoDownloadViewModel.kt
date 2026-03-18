@@ -53,7 +53,6 @@ data class SummaryState(
 
 data class VideoDownloadUiState(
     val inputUrl: String = "",
-    val downloadTasks: List<DownloadTask> = emptyList(),
     val isLoading: Boolean = false,
     val error: String? = null,
     val successMessage: String? = null,
@@ -67,6 +66,9 @@ class VideoDownloadViewModel(application: Application) : AndroidViewModel(applic
     private val summaryRepository = BailianSummaryRepository(sherpaAsrManager)
     private val preferences = PreferencesManager(application)
     private val apiKeyKey = "bailian_api_key"
+
+    private val _downloadTasks = androidx.compose.runtime.mutableStateListOf<DownloadTask>()
+    val downloadTasks: List<DownloadTask> get() = _downloadTasks
 
     private val _uiState = MutableStateFlow(VideoDownloadUiState())
     val uiState: StateFlow<VideoDownloadUiState> = _uiState.asStateFlow()
@@ -102,10 +104,9 @@ class VideoDownloadViewModel(application: Application) : AndroidViewModel(applic
             url = url,
             title = extractVideoTitle(url)
         )
-        _uiState.value = _uiState.value.copy(
-            downloadTasks = _uiState.value.downloadTasks + newTask
-        )
+        _downloadTasks.add(newTask)
         startDownload(taskId, url)
+        _uiState.value = _uiState.value.copy(inputUrl = "")
     }
 
     fun handleLocalVideo(uri: android.net.Uri) {
@@ -142,9 +143,7 @@ class VideoDownloadViewModel(application: Application) : AndroidViewModel(applic
                     localPath = destFile.absolutePath
                 )
                 
-                _uiState.value = _uiState.value.copy(
-                    downloadTasks = _uiState.value.downloadTasks + newTask
-                )
+                _downloadTasks.add(newTask)
                 
                 showSuccess("视频导入成功")
                 // Auto start summary
@@ -183,9 +182,10 @@ class VideoDownloadViewModel(application: Application) : AndroidViewModel(applic
     }
 
     fun removeTask(taskId: String) {
-        _uiState.value = _uiState.value.copy(
-            downloadTasks = _uiState.value.downloadTasks.filter { it.id != taskId }
-        )
+        val index = _downloadTasks.indexOfFirst { it.id == taskId }
+        if (index != -1) {
+            _downloadTasks.removeAt(index)
+        }
     }
 
     fun clearError() {
@@ -197,7 +197,7 @@ class VideoDownloadViewModel(application: Application) : AndroidViewModel(applic
     }
 
     fun startVideoSummary(taskId: String, localPath: String?) {
-        val status = _uiState.value.downloadTasks.firstOrNull { it.id == taskId }?.summary?.status
+        val status = _downloadTasks.firstOrNull { it.id == taskId }?.summary?.status
         if (status == SummaryStatus.PREPARING ||
             status == SummaryStatus.TRANSCRIBING ||
             status == SummaryStatus.SUMMARIZING) {
@@ -267,35 +267,26 @@ class VideoDownloadViewModel(application: Application) : AndroidViewModel(applic
     }
 
     private fun updateTaskProgress(taskId: String, update: (DownloadProgress) -> DownloadProgress) {
-        _uiState.value = _uiState.value.copy(
-            downloadTasks = _uiState.value.downloadTasks.map { task ->
-                if (task.id == taskId) {
-                    task.copy(progress = update(task.progress))
-                } else {
-                    task
-                }
-            }
-        )
+        val index = _downloadTasks.indexOfFirst { it.id == taskId }
+        if (index != -1) {
+            val task = _downloadTasks[index]
+            _downloadTasks[index] = task.copy(progress = update(task.progress))
+        }
     }
 
     private fun updateTask(taskId: String, update: (DownloadTask) -> DownloadTask) {
-        _uiState.value = _uiState.value.copy(
-            downloadTasks = _uiState.value.downloadTasks.map { task ->
-                if (task.id == taskId) update(task) else task
-            }
-        )
+        val index = _downloadTasks.indexOfFirst { it.id == taskId }
+        if (index != -1) {
+            _downloadTasks[index] = update(_downloadTasks[index])
+        }
     }
 
     private fun updateTaskSummary(taskId: String, update: (SummaryState) -> SummaryState) {
-        _uiState.value = _uiState.value.copy(
-            downloadTasks = _uiState.value.downloadTasks.map { task ->
-                if (task.id == taskId) {
-                    task.copy(summary = update(task.summary))
-                } else {
-                    task
-                }
-            }
-        )
+        val index = _downloadTasks.indexOfFirst { it.id == taskId }
+        if (index != -1) {
+            val task = _downloadTasks[index]
+            _downloadTasks[index] = task.copy(summary = update(task.summary))
+        }
     }
 
     private fun showError(message: String) {

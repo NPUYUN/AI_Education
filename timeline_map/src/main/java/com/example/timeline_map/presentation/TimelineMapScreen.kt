@@ -11,16 +11,22 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -37,6 +43,7 @@ import java.io.File
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import org.osmdroid.views.overlay.TilesOverlay
+import com.example.common.presentation.components.ApiKeyDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,8 +61,11 @@ fun TimelineMapScreen(
     val events = viewModel.events
     val selectedId by viewModel.selectedEventId
     val zoom by viewModel.timelineZoom
+    val apiKey by viewModel.apiKey
 
     var queryField by remember { mutableStateOf(TextFieldValue(query)) }
+    var showSettings by remember { mutableStateOf(false) }
+
     LaunchedEffect(query) {
         if (queryField.text != query) queryField = TextFieldValue(query)
     }
@@ -67,7 +77,12 @@ fun TimelineMapScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("时间轴地图") }
+                title = { Text("时间轴地图") },
+                actions = {
+                    IconButton(onClick = { showSettings = true }) {
+                        Icon(Icons.Default.Settings, contentDescription = "设置")
+                    }
+                }
             )
         }
     ) { padding ->
@@ -158,12 +173,25 @@ fun TimelineMapScreen(
                 }
             }
             if (loading) {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-            }
-            if (error != null) {
-                Text(error ?: "", color = MaterialTheme.colorScheme.error)
-            }
-            TimelineBar(
+            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+        }
+        if (error != null) {
+            Text(error ?: "", color = MaterialTheme.colorScheme.error)
+        }
+
+        if (showSettings) {
+            ApiKeyDialog(
+                apiKey = apiKey,
+                onApiKeyChange = { viewModel.updateApiKey(it) },
+                onSave = {
+                    viewModel.saveApiKey()
+                    showSettings = false
+                },
+                onDismiss = { showSettings = false }
+            )
+        }
+
+        TimelineBar(
                 events = events,
                 selectedId = selectedId,
                 zoom = zoom,
@@ -370,3 +398,5 @@ private fun EventDetail(event: HistoricalEvent, events: List<HistoricalEvent>, o
         }
     }
 }
+
+

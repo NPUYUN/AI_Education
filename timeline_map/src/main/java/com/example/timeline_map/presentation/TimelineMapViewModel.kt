@@ -18,13 +18,14 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
 
+import com.example.timeline_map.domain.util.DateUtils
+
 class TimelineMapViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = TimelineRepository()
     private val knowledgeGraphManager = KnowledgeGraphManager()
     
     private val preferences = PreferencesManager(application)
     private val apiKeyKey = "bailian_api_key"
-    private var apiKey = ""
     
     private val voskVoiceManager = VoskVoiceManager(application)
 
@@ -54,13 +55,17 @@ class TimelineMapViewModel(application: Application) : AndroidViewModel(applicat
 
     private val _timelineZoom = mutableStateOf(1f)
     val timelineZoom: State<Float> = _timelineZoom
+    
+    // API Key State
+    private val _apiKey = mutableStateOf("")
+    val apiKey: State<String> = _apiKey
 
     init {
         voskVoiceManager.init(viewModelScope)
         
         viewModelScope.launch {
             preferences.getString(apiKeyKey).collectLatest { key ->
-                apiKey = key
+                _apiKey.value = key
             }
         }
         
@@ -124,9 +129,19 @@ class TimelineMapViewModel(application: Application) : AndroidViewModel(applicat
         _mapTileWarning.value = msg
     }
 
+    fun updateApiKey(value: String) {
+        _apiKey.value = value
+    }
+
+    fun saveApiKey() {
+        viewModelScope.launch {
+            preferences.saveString(apiKeyKey, _apiKey.value.trim())
+        }
+    }
+
     fun generateTimeline() {
-        if (apiKey.isBlank()) {
-            _errorMessage.value = "请先在设置或视频总结模块中填写 API Key"
+        if (_apiKey.value.isBlank()) {
+            _errorMessage.value = "请先在右上角设置中填写 API Key"
             return
         }
         val query = _queryText.value.trim()
@@ -137,7 +152,7 @@ class TimelineMapViewModel(application: Application) : AndroidViewModel(applicat
         viewModelScope.launch {
             _isLoading.value = true
             _errorMessage.value = null
-            val result = repository.generateEvents(query, apiKey)
+            val result = repository.generateEvents(query, _apiKey.value.trim())
             val events = result.getOrElse { repository.sampleEvents() }
             val linked = knowledgeGraphManager.linkEvents(events)
             _events.clear()
@@ -152,32 +167,8 @@ class TimelineMapViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     private fun sortEvents(events: List<HistoricalEvent>): List<HistoricalEvent> {
-        return events.sortedBy { parseDateKey(it.time) }
+        return events.sortedBy { DateUtils.parseDateKey(it.time) }
     }
 
-    private fun parseDateKey(time: String): Long {
-        // Handle "BC" or "公元前"
-        val isBC = time.contains("前") || time.contains("BC", ignoreCase = true)
-        
-        // Extract year, month, day using regex
-        val yearMatch = Regex("(\\d{1,4})\\s*(年|-|/)").find(time) ?: Regex("(\\d{1,4})").find(time)
-        val monthMatch = Regex("(\\d{1,2})\\s*(月|-|/)").find(time)
-        val dayMatch = Regex("(\\d{1,2})\\s*(日|号)").find(time)
-
-        val yearStr = yearMatch?.groupValues?.get(1)
-        if (yearStr != null) {
-            var year = yearStr.toIntOrNull() ?: return Long.MAX_VALUE
-            if (isBC) {
-                year = -year
-            }
-            val month = monthMatch?.groupValues?.get(1)?.toIntOrNull()?.coerceIn(1, 12) ?: 1
-            val day = dayMatch?.groupValues?.get(1)?.toIntOrNull()?.coerceIn(1, 28) ?: 1
-            
-            // To properly sort BC years, we can just use a simple calculated value or epoch day
-            // Since LocalDate doesn't support 0 or negative years easily with simple of(), we calculate an approximate sort key
-            return year.toLong() * 10000 + month * 100 + day
-        }
-        return Long.MAX_VALUE
-    }
 
 }
