@@ -116,7 +116,7 @@ fun ImagePreviewScreen(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         if (isCropping && currentBitmap != null) {
             CropOverlay(
                 bitmap = currentBitmap!!,
@@ -166,7 +166,7 @@ fun ImagePreviewScreen(
             ) {
                 // Close Button (Top Left)
                 IconButton(onClick = onClose) {
-                    Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
+                    Icon(Icons.Default.Close, contentDescription = "Close", tint = MaterialTheme.colorScheme.onBackground)
                 }
 
                 // Action Buttons (Top Right)
@@ -193,17 +193,17 @@ fun ImagePreviewScreen(
                         if (isDownloading) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(24.dp),
-                                color = Color.White,
+                                color = MaterialTheme.colorScheme.primary,
                                 strokeWidth = 2.dp
                             )
                         } else {
-                            Icon(Icons.Default.Download, contentDescription = "Download", tint = Color.White)
+                            Icon(Icons.Default.Download, contentDescription = "Download", tint = MaterialTheme.colorScheme.onBackground)
                         }
                     }
                     
                     // Crop Button
                     IconButton(onClick = { isCropping = true }) {
-                        Icon(Icons.Default.ContentCut, contentDescription = "Crop", tint = Color.White)
+                        Icon(Icons.Default.ContentCut, contentDescription = "Crop", tint = MaterialTheme.colorScheme.onBackground)
                     }
                 }
             }
@@ -226,14 +226,14 @@ fun ImagePreviewScreen(
                     actions.forEach { action ->
                         Box(
                             modifier = Modifier
-                                .border(1.dp, Color.White, RoundedCornerShape(20.dp))
-                                .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(20.dp))
+                                .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(20.dp))
+                                .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.8f), RoundedCornerShape(20.dp))
                                 .clickable { onActionSelected(action, Uri.parse(currentUri)) }
                                 .padding(horizontal = 16.dp, vertical = 8.dp)
                         ) {
                             Text(
                                 text = action,
-                                color = Color.White,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontSize = 14.sp
                             )
                         }

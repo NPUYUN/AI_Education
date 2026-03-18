@@ -20,6 +20,8 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Cameraswitch
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.FlashOff
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -78,7 +80,7 @@ fun CameraScreen(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         AndroidView(
             factory = { previewView },
             modifier = Modifier.fillMaxSize()
@@ -88,17 +90,18 @@ fun CameraScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.3f))
                 .padding(16.dp)
                 .align(Alignment.TopCenter),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             IconButton(onClick = onClose) {
-                Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
+                Icon(Icons.Default.Close, contentDescription = "Close", tint = MaterialTheme.colorScheme.onSurface)
             }
             
             Text(
                 text = "教育助手相机",
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.align(Alignment.CenterVertically)
             )
 
@@ -112,25 +115,31 @@ fun CameraScreen(
                 Icon(
                     if (flashMode == ImageCapture.FLASH_MODE_ON) Icons.Default.FlashOn else Icons.Default.FlashOff,
                     contentDescription = "Flash",
-                    tint = Color.White
+                    tint = MaterialTheme.colorScheme.onSurface
                 )
             }
         }
         
         // Hint Text
-        Text(
-            text = "拍画作业生成艺术评论", // Placeholder text
-            color = Color.White,
+        Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(bottom = 150.dp)
-        )
+                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+        ) {
+            Text(
+                text = "拍画作业生成艺术评论", // Placeholder text
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
 
         // Bottom Controls
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 50.dp)
+                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.3f))
+                .padding(bottom = 50.dp, top = 20.dp)
                 .align(Alignment.BottomCenter),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
@@ -143,7 +152,7 @@ fun CameraScreen(
                 modifier = Modifier
                     .size(80.dp)
                     .background(Color.White, CircleShape)
-                    .border(4.dp, Color.Gray, CircleShape)
+                    .border(4.dp, MaterialTheme.colorScheme.outline, CircleShape)
                     .clickable {
                         takePhoto(
                             imageCapture = imageCapture,
@@ -164,7 +173,7 @@ fun CameraScreen(
                 },
                 modifier = Modifier.size(48.dp)
             ) {
-                Icon(Icons.Default.Cameraswitch, contentDescription = "Switch Camera", tint = Color.White)
+                Icon(Icons.Default.Cameraswitch, contentDescription = "Switch Camera", tint = MaterialTheme.colorScheme.onSurface)
             }
         }
     }

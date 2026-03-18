@@ -35,13 +35,13 @@ import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
 import java.io.File
 
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.foundation.isSystemInDarkTheme
+import org.osmdroid.views.overlay.TilesOverlay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TimelineMapScreen(
-    viewModel: TimelineMapViewModel = viewModel(),
-    onBack: () -> Unit
+    viewModel: TimelineMapViewModel = viewModel()
 ) {
     val context = LocalContext.current
     LaunchedEffect(Unit) { }
@@ -67,12 +67,7 @@ fun TimelineMapScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("时间轴地图") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                }
+                title = { Text("时间轴地图") }
             )
         }
     ) { padding ->
@@ -86,21 +81,36 @@ fun TimelineMapScreen(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 AssistChip(
                     onClick = { viewModel.updateSpeechLanguage(SpeechLanguage.ZH) },
-                    label = { Text("中文") },
+                    label = { 
+                        Text(
+                            "中文", 
+                            color = if (speechLang == SpeechLanguage.ZH) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+                        ) 
+                    },
                     colors = AssistChipDefaults.assistChipColors(
                         containerColor = if (speechLang == SpeechLanguage.ZH) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface
                     )
                 )
                 AssistChip(
                     onClick = { viewModel.updateSpeechLanguage(SpeechLanguage.EN) },
-                    label = { Text("English") },
+                    label = { 
+                        Text(
+                            "English", 
+                            color = if (speechLang == SpeechLanguage.EN) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+                        ) 
+                    },
                     colors = AssistChipDefaults.assistChipColors(
                         containerColor = if (speechLang == SpeechLanguage.EN) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface
                     )
                 )
                 AssistChip(
                     onClick = { viewModel.updateSpeechLanguage(SpeechLanguage.AUTO) },
-                    label = { Text("自动") },
+                    label = { 
+                        Text(
+                            "自动", 
+                            color = if (speechLang == SpeechLanguage.AUTO) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+                        ) 
+                    },
                     colors = AssistChipDefaults.assistChipColors(
                         containerColor = if (speechLang == SpeechLanguage.AUTO) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface
                     )
@@ -192,11 +202,17 @@ private fun TimelineBar(
         )
         LazyRow(horizontalArrangement = Arrangement.spacedBy((zoom * 8).dp)) {
             items(events) { e ->
+                val isSelected = selectedId == e.id
                 AssistChip(
                     onClick = { onSelect(e.id) },
-                    label = { Text("${e.time} • ${e.location}") },
+                    label = { 
+                        Text(
+                            "${e.time} • ${e.location}",
+                            color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+                        ) 
+                    },
                     colors = AssistChipDefaults.assistChipColors(
-                        containerColor = if (selectedId == e.id) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface
+                        containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface
                     )
                 )
             }
@@ -247,6 +263,8 @@ private fun updateMarkers(mapView: MapView, events: List<HistoricalEvent>, onSel
 private fun rememberMapViewWithLifecycle(): MapView {
     val context = LocalContext.current
     val lifecycleOwner = context as? LifecycleOwner
+    val isDark = isSystemInDarkTheme()
+    
     val mapView = remember {
         val config = Configuration.getInstance()
         config.userAgentValue = context.packageName
@@ -261,6 +279,9 @@ private fun rememberMapViewWithLifecycle(): MapView {
             setTileSource(TileSourceFactory.MAPNIK)
             setMultiTouchControls(true)
             controller.setZoom(5.0)
+            if (isDark) {
+                overlayManager.tilesOverlay.setColorFilter(TilesOverlay.INVERT_COLORS)
+            }
         }
     }
 

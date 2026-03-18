@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -41,14 +42,11 @@ import com.example.video_summarizer.presentation.DownloadTask
 import com.example.video_summarizer.presentation.SummaryStatus
 import com.example.video_summarizer.presentation.VideoDownloadViewModel
 
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-
 @androidx.media3.common.util.UnstableApi
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VideoDownloadScreen(
-    viewModel: VideoDownloadViewModel,
-    onBack: () -> Unit
+    viewModel: VideoDownloadViewModel
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
@@ -79,11 +77,6 @@ fun VideoDownloadScreen(
         topBar = {
             TopAppBar(
                 title = { Text("视频下载") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer
                 ),
@@ -564,17 +557,18 @@ fun DownloadTaskCard(
 @Composable
 fun TaskStatusBadge(status: DownloadStatus) {
     val (color, text) = when (status) {
-        DownloadStatus.IDLE -> Color.Gray to "等待中"
-        DownloadStatus.PREPARING -> Color(0xFF2196F3) to "准备中"
-        DownloadStatus.DOWNLOADING -> Color(0xFF4CAF50) to "下载中"
-        DownloadStatus.COMPLETED -> Color(0xFF4CAF50) to "已完成"
-        DownloadStatus.FAILED -> Color(0xFFF44336) to "失败"
-        DownloadStatus.CANCELLED -> Color(0xFFFF9800) to "已取消"
+        DownloadStatus.IDLE -> MaterialTheme.colorScheme.onSurfaceVariant to "等待中"
+        DownloadStatus.PREPARING -> MaterialTheme.colorScheme.primary to "准备中"
+        DownloadStatus.DOWNLOADING -> MaterialTheme.colorScheme.primary to "下载中"
+        DownloadStatus.COMPLETED -> MaterialTheme.colorScheme.primary to "已完成"
+        DownloadStatus.FAILED -> MaterialTheme.colorScheme.error to "失败"
+        DownloadStatus.CANCELLED -> MaterialTheme.colorScheme.secondary to "已取消"
     }
 
     Surface(
         color = color.copy(alpha = 0.1f),
-        shape = RoundedCornerShape(4.dp)
+        shape = RoundedCornerShape(4.dp),
+        border = BorderStroke(1.dp, color.copy(alpha = 0.5f))
     ) {
         Text(
             text = text,
@@ -588,17 +582,18 @@ fun TaskStatusBadge(status: DownloadStatus) {
 @Composable
 fun SummaryStatusBadge(status: SummaryStatus) {
     val (color, text) = when (status) {
-        SummaryStatus.IDLE -> Color.Gray to "未开始"
-        SummaryStatus.PREPARING -> Color(0xFF2196F3) to "准备中"
-        SummaryStatus.TRANSCRIBING -> Color(0xFF4CAF50) to "转写中"
-        SummaryStatus.SUMMARIZING -> Color(0xFF4CAF50) to "摘要中"
-        SummaryStatus.COMPLETED -> Color(0xFF4CAF50) to "摘要完成"
-        SummaryStatus.FAILED -> Color(0xFFF44336) to "摘要失败"
+        SummaryStatus.IDLE -> MaterialTheme.colorScheme.onSurfaceVariant to "未开始"
+        SummaryStatus.PREPARING -> MaterialTheme.colorScheme.primary to "准备中"
+        SummaryStatus.TRANSCRIBING -> MaterialTheme.colorScheme.primary to "转写中"
+        SummaryStatus.SUMMARIZING -> MaterialTheme.colorScheme.primary to "摘要中"
+        SummaryStatus.COMPLETED -> MaterialTheme.colorScheme.primary to "摘要完成"
+        SummaryStatus.FAILED -> MaterialTheme.colorScheme.error to "摘要失败"
     }
 
     Surface(
         color = color.copy(alpha = 0.1f),
-        shape = RoundedCornerShape(4.dp)
+        shape = RoundedCornerShape(4.dp),
+        border = BorderStroke(1.dp, color.copy(alpha = 0.5f))
     ) {
         Text(
             text = text,
@@ -627,7 +622,7 @@ fun ErrorCard(
             Icon(
                 Icons.Default.Error,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.error
+                tint = MaterialTheme.colorScheme.onErrorContainer
             )
             Spacer(modifier = Modifier.width(12.dp))
             Text(
@@ -654,7 +649,7 @@ fun SuccessCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFFE8F5E9)
+            containerColor = MaterialTheme.colorScheme.primaryContainer
         )
     ) {
         Row(
@@ -664,19 +659,19 @@ fun SuccessCard(
             Icon(
                 Icons.Default.CheckCircle,
                 contentDescription = null,
-                tint = Color(0xFF4CAF50)
+                tint = MaterialTheme.colorScheme.onPrimaryContainer
             )
             Spacer(modifier = Modifier.width(12.dp))
             Text(
                 text = message,
                 modifier = Modifier.weight(1f),
-                color = Color(0xFF2E7D32)
+                color = MaterialTheme.colorScheme.onPrimaryContainer
             )
             IconButton(onClick = onDismiss) {
                 Icon(
                     Icons.Default.Close,
                     contentDescription = "关闭",
-                    tint = Color(0xFF2E7D32)
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             }
         }

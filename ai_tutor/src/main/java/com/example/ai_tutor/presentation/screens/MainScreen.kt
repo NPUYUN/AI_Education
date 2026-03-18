@@ -62,7 +62,7 @@ fun MainScreen(
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet(
-                drawerContainerColor = Color.White,
+                drawerContainerColor = MaterialTheme.colorScheme.surface,
                 modifier = Modifier.width(300.dp) // Fixed width for drawer
             ) {
                 Column(
@@ -72,7 +72,7 @@ fun MainScreen(
                 ) {
                     // Search Bar
                     Surface(
-                        color = Color(0xFFF5F5F5),
+                        color = MaterialTheme.colorScheme.surfaceVariant,
                         shape = RoundedCornerShape(24.dp),
                         modifier = Modifier
                             .fillMaxWidth()
@@ -85,11 +85,11 @@ fun MainScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.padding(horizontal = 16.dp)
                         ) {
-                            Icon(Icons.Default.Search, contentDescription = "Search", tint = Color.Gray)
+                            Icon(Icons.Default.Search, contentDescription = "Search", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("搜索", color = Color.Gray)
+                            Text("搜索", color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Spacer(modifier = Modifier.weight(1f))
-                            Icon(Icons.Default.Add, contentDescription = "New Chat", tint = Color.Black, modifier = Modifier
+                            Icon(Icons.Default.Add, contentDescription = "New Chat", tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier
                                 .size(24.dp)
                                 .clickable {
                                     viewModel.startNewChat()
@@ -295,25 +295,26 @@ fun MainScreen(
                 val currentRoute = navBackStackEntry?.destination?.route
 
                 if (currentRoute != "profile") {
-                    NavigationBar(containerColor = Color(0xFFF8F8F8)) {
+                    NavigationBar(
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    ) {
                         val currentDestination = navBackStackEntry?.destination
 
                         items.forEach { (route, icon, label) ->
                             val selected = currentDestination?.hierarchy?.any { it.route == route } == true
                             val scale by animateFloatAsState(if (selected) 1.5f else 1.0f, label = "scale")
-                            val iconColor = if (selected) MaterialTheme.colorScheme.primary else Color.Gray
-
+                            
                             NavigationBarItem(
                                 icon = { 
                                     Icon(
                                         icon, 
                                         contentDescription = label,
-                                        modifier = Modifier.scale(scale),
-                                        tint = iconColor
+                                        modifier = Modifier.scale(scale)
                                     ) 
                                 },
                                 label = { 
-                                    Text(label, color = if (selected) MaterialTheme.colorScheme.primary else Color.Gray, fontSize = 10.sp)
+                                    Text(label, fontSize = 10.sp)
                                 },
                                 selected = selected,
                                 onClick = {
@@ -328,9 +329,9 @@ fun MainScreen(
                                 colors = NavigationBarItemDefaults.colors(
                                     indicatorColor = Color.Transparent, 
                                     selectedIconColor = MaterialTheme.colorScheme.primary,
-                                    unselectedIconColor = Color.Gray,
+                                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                     selectedTextColor = MaterialTheme.colorScheme.primary,
-                                    unselectedTextColor = Color.Gray
+                                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             )
                         }
@@ -344,7 +345,7 @@ fun MainScreen(
                 modifier = Modifier.padding(innerPadding)
             ) {
                 composable("geometry") { GeometryScreen() }
-                composable("timeline") { TimelineScreen(onBack = { navController.popBackStack() }) }
+                composable("timeline") { TimelineScreen() }
                 composable("home") {
                     ChatScreen(
                         viewModel = viewModel,
@@ -352,7 +353,7 @@ fun MainScreen(
                         modifier = Modifier.fillMaxSize()
                     ) 
                 }
-                composable("video") { VideoSummaryScreen(onBack = { navController.popBackStack() }) }
+                composable("video") { VideoSummaryScreen() }
                 composable("review") { ReviewScreen() }
                 composable("profile") { ProfileScreen() }
             }

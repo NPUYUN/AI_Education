@@ -59,7 +59,7 @@ fun ChatInputArea(
             .fillMaxWidth()
             .padding(16.dp),
         shape = RoundedCornerShape(32.dp),
-        color = Color(0xFFF0F0F0) // Light gray background
+        color = MaterialTheme.colorScheme.surfaceContainerHigh
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
@@ -111,7 +111,7 @@ fun ChatInputArea(
                 Icon(
                     Icons.Default.Mic, 
                     contentDescription = "Voice", 
-                    tint = if (isRecording) Color.Red else Color.Gray,
+                    tint = if (isRecording) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -123,7 +123,7 @@ fun ChatInputArea(
                 placeholder = { 
                     Text(
                         "发消息或按住说话...", 
-                        color = Color.Gray,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         softWrap = false,
                         overflow = TextOverflow.Ellipsis
@@ -134,7 +134,9 @@ fun ChatInputArea(
                     unfocusedContainerColor = Color.Transparent,
                     disabledContainerColor = Color.Transparent,
                     focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent
+                    unfocusedIndicatorColor = Color.Transparent,
+                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                 ),
                 singleLine = true,
                 enabled = !isRecording
@@ -142,14 +144,14 @@ fun ChatInputArea(
             
             if (text.isNotEmpty() && !isRecording) {
                 IconButton(onClick = onSend, enabled = !isLoading) {
-                    Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send", tint = Color.Black)
+                    Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send", tint = MaterialTheme.colorScheme.primary)
                 }
             } else if (!isRecording) {
                 IconButton(onClick = onCameraClick) {
-                    Icon(Icons.Default.CameraAlt, contentDescription = "Camera", tint = Color.Black)
+                    Icon(Icons.Default.CameraAlt, contentDescription = "Camera", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 IconButton(onClick = onGalleryClick) {
-                    Icon(Icons.Default.Add, contentDescription = "Add", tint = Color.Black)
+                    Icon(Icons.Default.Add, contentDescription = "Add", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }

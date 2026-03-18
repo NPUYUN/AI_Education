@@ -82,7 +82,7 @@ fun ProfileScreen() {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF8F8F8)) // Light gray background
+            .background(MaterialTheme.colorScheme.background)
             .padding(16.dp)
     ) {
         // Profile Card (Figure 2 Top Half style)
@@ -91,7 +91,7 @@ fun ProfileScreen() {
                 .fillMaxWidth()
                 .shadow(4.dp, RoundedCornerShape(16.dp)),
             shape = RoundedCornerShape(16.dp),
-            color = Color.White
+            color = MaterialTheme.colorScheme.surfaceContainer
         ) {
             Column(
                 modifier = Modifier.padding(24.dp),
@@ -127,7 +127,7 @@ fun ProfileScreen() {
                     Text(
                         text = savedSignature,
                         style = MaterialTheme.typography.bodyMedium.copy(
-                            color = Color.Gray
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     )
                 }

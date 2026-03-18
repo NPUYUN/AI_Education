@@ -47,7 +47,7 @@ fun RegisterScreen(
         )
         
         if (viewModel.error.value != null) {
-            Text(viewModel.error.value!!, color = Color.Red, modifier = Modifier.padding(top = 8.dp))
+            Text(viewModel.error.value!!, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 8.dp))
         }
         
         Spacer(Modifier.height(24.dp))

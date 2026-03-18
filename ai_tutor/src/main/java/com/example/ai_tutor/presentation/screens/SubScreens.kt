@@ -27,15 +27,15 @@ fun GeometryScreen() {
 }
 
 @Composable
-fun TimelineScreen(onBack: () -> Unit) {
-    TimelineMapScreen(onBack = onBack)
+fun TimelineScreen() {
+    TimelineMapScreen()
 }
 
 @androidx.media3.common.util.UnstableApi
 @Composable
-fun VideoSummaryScreen(onBack: () -> Unit) {
+fun VideoSummaryScreen() {
     val viewModel: VideoDownloadViewModel = viewModel()
-    VideoDownloadScreen(viewModel = viewModel, onBack = onBack)
+    VideoDownloadScreen(viewModel = viewModel)
 }
 
 @Composable
@@ -91,7 +91,7 @@ fun SettingsScreen(onBack: () -> Unit) {
             HorizontalDivider()
             
             Text("关于", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            Text("版本: 1.0.0", style = MaterialTheme.typography.bodyMedium, color = androidx.compose.ui.graphics.Color.Gray)
+            Text("版本: 1.0.0", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

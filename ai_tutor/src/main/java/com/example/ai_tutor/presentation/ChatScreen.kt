@@ -146,7 +146,7 @@ fun WelcomeScreen(suggestions: List<String>, onSuggestionClick: (String) -> Unit
         Text(
             text = "欢迎回来，聊聊新话题",
             style = MaterialTheme.typography.headlineMedium,
-            color = Color.DarkGray,
+            color = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier.padding(bottom = 32.dp)
         )
 
@@ -165,15 +165,15 @@ fun SuggestionChip(text: String, onClick: () -> Unit) {
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(24.dp),
-        border = BorderStroke(1.dp, Color.LightGray),
-        color = Color.White,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        color = MaterialTheme.colorScheme.surfaceContainer,
         modifier = Modifier.fillMaxWidth()
     ) {
         Text(
             text = text,
             modifier = Modifier.padding(vertical = 16.dp, horizontal = 20.dp),
             style = MaterialTheme.typography.bodyLarge,
-            color = Color.Gray
+            color = MaterialTheme.colorScheme.onSurface
         )
     }
 }
@@ -236,7 +236,7 @@ fun UserImageBubble(imageUrl: String) {
             modifier = Modifier
                 .widthIn(max = 280.dp)
                 .padding(vertical = 4.dp),
-            color = Color(0xFFF0F0F0),
+            color = MaterialTheme.colorScheme.surfaceContainer,
             shadowElevation = 1.dp
         ) {
             val context = LocalContext.current
@@ -282,17 +282,17 @@ fun UserImageBubble(imageUrl: String) {
                         .heightIn(min = 200.dp)
                         .wrapContentHeight(),
                     contentScale = androidx.compose.ui.layout.ContentScale.FillWidth,
-                    placeholder = androidx.compose.ui.graphics.painter.ColorPainter(Color.LightGray),
-                    error = androidx.compose.ui.graphics.painter.ColorPainter(Color(0xFFFFEBEE))
+                    placeholder = androidx.compose.ui.graphics.painter.ColorPainter(MaterialTheme.colorScheme.surfaceVariant),
+                    error = androidx.compose.ui.graphics.painter.ColorPainter(MaterialTheme.colorScheme.errorContainer)
                 )
             }
             
             if (error != null) {
                 Column(modifier = Modifier.padding(8.dp)) {
-                    Text(text = "❌ Image Error", color = Color.Red, fontSize = 12.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
-                    Text(text = error ?: "Unknown", color = Color.Red, fontSize = 10.sp)
+                    Text(text = "❌ Image Error", color = MaterialTheme.colorScheme.error, fontSize = 12.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                    Text(text = error ?: "Unknown", color = MaterialTheme.colorScheme.error, fontSize = 10.sp)
                     // Show truncated path for debugging
-                    Text(text = imageUrl.take(100), color = Color.Gray, fontSize = 8.sp, lineHeight = 10.sp)
+                    Text(text = imageUrl.take(100), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 8.sp, lineHeight = 10.sp)
                 }
             }
         }
@@ -302,9 +302,9 @@ fun UserImageBubble(imageUrl: String) {
 @Composable
 fun UserTextBubble(text: String) {
     Surface(
-        color = Color.White,
+        color = MaterialTheme.colorScheme.primaryContainer,
         shape = RoundedCornerShape(12.dp),
-        border = BorderStroke(1.dp, Color(0xFFE0E0E0)),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = Modifier
             .widthIn(max = 300.dp)
             .padding(vertical = 4.dp),
@@ -314,7 +314,7 @@ fun UserTextBubble(text: String) {
             text = text,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
             style = MaterialTheme.typography.bodyLarge,
-            color = Color.Black
+            color = MaterialTheme.colorScheme.onPrimaryContainer
         )
     }
 }
@@ -330,7 +330,7 @@ fun AssistantMessage(markdown: String) {
         MarkdownText(
             markdown = markdown,
             style = MaterialTheme.typography.bodyLarge.copy(
-                color = Color.Black,
+                color = MaterialTheme.colorScheme.onBackground,
                 lineHeight = MaterialTheme.typography.bodyLarge.lineHeight * 1.5
             ),
             modifier = Modifier.fillMaxWidth()

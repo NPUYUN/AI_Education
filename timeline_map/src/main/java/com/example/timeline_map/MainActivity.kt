@@ -17,7 +17,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             Ai_EducationTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { padding ->
-                    TimelineMapScreen(onBack = { finish() })
+                    TimelineMapScreen()
                 }
             }
         }
