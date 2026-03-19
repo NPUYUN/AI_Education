@@ -94,3 +94,19 @@ Thumbs.db
 
 # Project specific
 video_summarizer/build_trash/
+video_summarizer/src/main/assets/sherpa-onnx-paraformer-zh-*
+video_summarizer/src/main/assets/*.tar.bz2
+video_summarizer/src/main/assets/*.zip
+video_summarizer/src/main/assets/*.onnx
+
+# Custom clean scripts outputs
+clean_project.log
+
+# CMake and Native build
+**/CMakeLists.txt.user
+**/.cxx/
+**/.externalNativeBuild/
+
+# Local properties and user specific configurations
+*.properties
+!gradle.properties
