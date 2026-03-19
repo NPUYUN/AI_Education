@@ -24,6 +24,7 @@ import com.example.ai_tutor.domain.MultimodalProcessor
 import com.example.common.manager.VoskVoiceManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -32,8 +33,9 @@ import java.util.UUID
 class AiTutorViewModel(application: Application) : AndroidViewModel(application) {
     // Core Dependencies
     private val preferences = com.example.common.database.PreferencesManager(application)
-    private val apiKeyKey = "bailian_api_key"
-    private var apiKey = "" 
+    private var apiKey = ""
+    private var baseUrl = "https://dashscope.aliyuncs.com/compatible-mode/v1/"
+    private var modelName = "qwen-turbo"
     private var repository: QwenRepository? = null
     private val knowledgeGraph = MockKnowledgeGraphManager()
     private val toolsIntegrator = ToolsIntegrator()
@@ -59,6 +61,13 @@ class AiTutorViewModel(application: Application) : AndroidViewModel(application)
     private val _isLoading = mutableStateOf(false)
     val isLoading: State<Boolean> = _isLoading
     
+    private val _showApiSettings = mutableStateOf(false)
+    val showApiSettings: State<Boolean> = _showApiSettings
+
+    fun setApiSettingsVisible(visible: Boolean) {
+        _showApiSettings.value = visible
+    }
+    
     val suggestions = listOf(
         "如何制定高效的学习计划?",
         "帮我解释一下量子力学的基本原理",
@@ -73,13 +82,26 @@ class AiTutorViewModel(application: Application) : AndroidViewModel(application)
         voskVoiceManager.init(viewModelScope)
         
         viewModelScope.launch {
-            preferences.getString(apiKeyKey).collectLatest { key ->
-                apiKey = key
-                if (key.isNotBlank()) {
-                    repository = QwenRepository(key)
-                } else {
-                    repository = null
+            // Load API settings
+            preferences.getString("api_key_ai_tutor").collectLatest { key ->
+                val finalKey = key.ifBlank {
+                    // Fallback to old key
+                    preferences.getString("bailian_api_key", "").first()
                 }
+                apiKey = finalKey
+                updateRepository()
+            }
+        }
+        viewModelScope.launch {
+            preferences.getString("base_url_ai_tutor", "https://dashscope.aliyuncs.com/compatible-mode/v1/").collectLatest { url ->
+                baseUrl = url
+                updateRepository()
+            }
+        }
+        viewModelScope.launch {
+            preferences.getString("model_name_ai_tutor", "qwen-turbo").collectLatest { name ->
+                modelName = name
+                updateRepository()
             }
         }
         
@@ -111,6 +133,14 @@ class AiTutorViewModel(application: Application) : AndroidViewModel(application)
                     }
                 }
             }
+        }
+    }
+
+    private fun updateRepository() {
+        if (apiKey.isNotBlank()) {
+            repository = QwenRepository(apiKey, baseUrl, modelName)
+        } else {
+            repository = null
         }
     }
 
@@ -406,6 +436,13 @@ class AiTutorViewModel(application: Application) : AndroidViewModel(application)
         val image = _inputImage.value
         if (text.isEmpty() && image == null) return
 
+        if (image != null && !isModelImageSupported(modelName)) {
+            _messages.add(Message("system", "当前设置的模型 ($modelName) 可能不支持图片输入，请在设置中更换支持视觉的模型（如 qwen-vl-plus）。"))
+            _inputImage.value = null
+            _inputText.value = ""
+            return
+        }
+
         _isLoading.value = true
         
         var base64Image: String? = null
@@ -461,8 +498,9 @@ class AiTutorViewModel(application: Application) : AndroidViewModel(application)
 
         viewModelScope.launch {
             if (repository == null) {
-                _messages.add(Message("system", "请先在设置或视频总结模块中填写 API Key"))
+                _messages.add(Message("system", "尚未配置 API Key，请在弹出的设置中进行配置。"))
                 _isLoading.value = false
+                _showApiSettings.value = true
                 return@launch
             }
 
@@ -475,6 +513,9 @@ class AiTutorViewModel(application: Application) : AndroidViewModel(application)
             repository?.sendMessage(text, historyToSend, imageUrl = base64Image)?.collect { chunk ->
                 if (chunk.startsWith("Error:")) {
                     _messages.add(Message("system", chunk))
+                    if (chunk.contains("API Key 无效或未授权")) {
+                        _showApiSettings.value = true
+                    }
                 } else {
                     _messages.add(Message("assistant", chunk))
                     context.history.add(Message("assistant", chunk))
@@ -516,7 +557,22 @@ class AiTutorViewModel(application: Application) : AndroidViewModel(application)
     // Placeholder for Voice/Camera Input Handling
     // Removed duplicate onVoiceInput (replaced above)
 
+    private fun isModelImageSupported(modelName: String): Boolean {
+        val lowerName = modelName.lowercase()
+        return lowerName.contains("vl") || 
+               lowerName.contains("gpt-4o") || 
+               lowerName.contains("vision") || 
+               lowerName.contains("glm-4v") ||
+               lowerName.contains("claude-3") ||
+               lowerName.contains("gemini")
+    }
+
     fun sendImageWithPrompt(uri: Uri, prompt: String) {
+        if (!isModelImageSupported(modelName)) {
+            _messages.add(Message("system", "当前设置的模型 ($modelName) 可能不支持图片输入，请在设置中更换支持视觉的模型（如 qwen-vl-plus）。"))
+            return
+        }
+
         // 1. Immediate UI Update using raw URI (Fastest)
         val uiImageUrl = uri.toString()
         val uiContent = listOf(
@@ -548,8 +604,9 @@ class AiTutorViewModel(application: Application) : AndroidViewModel(application)
                     
                     if (repository == null) {
                         withContext(Dispatchers.Main) {
-                            _messages.add(Message("system", "请先在设置或视频总结模块中填写 API Key"))
+                            _messages.add(Message("system", "尚未配置 API Key，请在弹出的设置中进行配置。"))
                             _isLoading.value = false
+                            _showApiSettings.value = true
                         }
                         return@launch
                     }
@@ -588,6 +645,9 @@ class AiTutorViewModel(application: Application) : AndroidViewModel(application)
                         withContext(Dispatchers.Main) {
                             if (chunk.startsWith("Error:")) {
                                 _messages.add(Message("system", chunk))
+                                if (chunk.contains("API Key 无效或未授权")) {
+                                    _showApiSettings.value = true
+                                }
                             } else {
                                 val assistantMsg = Message("assistant", chunk)
                                 _messages.add(assistantMsg)

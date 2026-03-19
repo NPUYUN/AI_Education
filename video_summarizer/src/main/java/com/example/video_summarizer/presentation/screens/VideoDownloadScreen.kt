@@ -36,7 +36,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.ui.PlayerView
 import java.io.File
-import com.example.common.presentation.components.ApiKeyDialog
+import com.example.common.presentation.components.GlobalApiSettingsDialog
 import com.example.video_summarizer.data.downloader.DownloadProgress
 import com.example.video_summarizer.data.downloader.DownloadStatus
 import com.example.video_summarizer.presentation.DownloadTask
@@ -63,17 +63,17 @@ fun VideoDownloadScreen(
         uri?.let { viewModel.handleLocalVideo(it) }
     }
 
-    LaunchedEffect(Unit) {
-        val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            arrayOf(Manifest.permission.READ_MEDIA_VIDEO)
-        } else {
-            arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
-        }
-        permissionLauncher.launch(permissions)
-    }
-
     var playingFile by remember { mutableStateOf<File?>(null) }
     var showSettings by remember { mutableStateOf(false) }
+
+    if (showSettings || uiState.showApiSettings) {
+        GlobalApiSettingsDialog(
+            onDismiss = {
+                showSettings = false
+                viewModel.setApiSettingsVisible(false)
+            }
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -111,6 +111,12 @@ fun VideoDownloadScreen(
 
             LocalVideoInputCard(
                 onPickVideo = {
+                    val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        arrayOf(Manifest.permission.READ_MEDIA_VIDEO)
+                    } else {
+                        arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+                    }
+                    permissionLauncher.launch(permissions)
                     localVideoLauncher.launch("video/*")
                 }
             )
@@ -211,20 +217,6 @@ fun VideoDownloadScreen(
         VideoPlayerDialog(
             file = file,
             onDismiss = { playingFile = null }
-        )
-    }
-
-    if (showSettings) {
-        ApiKeyDialog(
-            apiKey = uiState.apiKey,
-            onApiKeyChange = viewModel::updateApiKey,
-            onSave = {
-                viewModel.saveApiKey()
-                showSettings = false
-            },
-            onDismiss = { showSettings = false },
-            title = "摘要设置",
-            description = "请填写阿里云百炼 API Key 以启用 AI 摘要功能。"
         )
     }
 

@@ -19,6 +19,8 @@ import com.example.timeline_map.presentation.TimelineMapScreen
 import com.example.video_summarizer.presentation.VideoDownloadViewModel
 import com.example.video_summarizer.presentation.screens.VideoDownloadScreen
 
+import com.example.common.presentation.components.GlobalApiSettingsDialog
+
 @Composable
 fun GeometryScreen() {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -50,6 +52,11 @@ fun SettingsScreen(onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
     val preferencesManager = remember { PreferencesManager(context) }
     val themeMode by preferencesManager.getString("theme_mode", "auto").collectAsState(initial = "auto")
+    var showApiSettings by remember { mutableStateOf(false) }
+
+    if (showApiSettings) {
+        GlobalApiSettingsDialog(onDismiss = { showApiSettings = false })
+    }
 
     SubScreenScaffold(title = "设置", onBack = onBack) {
         Column(
@@ -85,6 +92,22 @@ fun SettingsScreen(onBack: () -> Unit) {
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(label)
                 }
+            }
+            
+            HorizontalDivider()
+            
+            Text("API 设置", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { showApiSettings = true }
+                    .padding(vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("全局 API 配置 (AI辅导、视频总结)")
+                Spacer(modifier = Modifier.weight(1f))
+                Icon(Icons.Default.ArrowBack, contentDescription = null, modifier = Modifier.size(16.dp)) // Maybe use a forward arrow or just skip icon
             }
             
             HorizontalDivider()

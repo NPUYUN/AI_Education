@@ -1,11 +1,19 @@
 package com.example.ai_tutor.presentation
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Error
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.common.manager.VoskModelManager
 import com.example.video_summarizer.data.downloader.ModelDownloader
@@ -57,97 +65,170 @@ fun SplashScreen(onLoadComplete: () -> Unit) {
     }
 
     Box(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background),
         contentAlignment = Alignment.Center
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-            modifier = Modifier.padding(32.dp)
+            modifier = Modifier
+                .padding(32.dp)
+                .fillMaxWidth()
         ) {
             Text(
                 text = "AI 辅导助手",
-                style = MaterialTheme.typography.headlineLarge,
+                style = MaterialTheme.typography.displayMedium.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.primary
             )
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "正在准备运行环境...",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            
+            Spacer(modifier = Modifier.height(48.dp))
 
-            // Vosk Model Status
-            when (val state = voskState) {
-                is VoskModelManager.InitState.Idle -> {
-                    Text("语音唤醒模型准备中...")
+            // Vosk Model Card
+            ModelStatusCard(
+                title = "语音唤醒模型",
+                status = when (val state = voskState) {
+                    is VoskModelManager.InitState.Idle -> ModelStatus.Preparing
+                    is VoskModelManager.InitState.Downloading -> ModelStatus.Downloading(state.progress)
+                    is VoskModelManager.InitState.Loading -> ModelStatus.Processing
+                    is VoskModelManager.InitState.Ready -> ModelStatus.Ready
+                    is VoskModelManager.InitState.Error -> ModelStatus.Error(state.message)
+                },
+                onRetry = { VoskModelManager.initModel(context) }
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Sherpa Model Card
+            ModelStatusCard(
+                title = "语音识别模型",
+                status = if (sherpaReady) ModelStatus.Ready
+                else if (sherpaError != null) ModelStatus.Error(sherpaError!!)
+                else {
+                    val progress = sherpaProgress
+                    if (progress == null || progress.status == DownloadStatus.PREPARING) ModelStatus.Preparing
+                    else if (progress.status == DownloadStatus.DOWNLOADING) ModelStatus.Downloading(progress.progress / 100f)
+                    else ModelStatus.Processing
+                },
+                onRetry = { sherpaRetryTrigger++ }
+            )
+
+            Spacer(modifier = Modifier.height(48.dp))
+
+            // Background Download Button
+            if (voskState !is VoskModelManager.InitState.Ready || !sherpaReady) {
+                TextButton(
+                    onClick = { onLoadComplete() }
+                ) {
+                    Text("后台下载并进入主页")
                 }
-                is VoskModelManager.InitState.Downloading -> {
-                    LinearProgressIndicator(
-                        progress = { state.progress },
-                        modifier = Modifier.fillMaxWidth().height(8.dp),
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text("正在下载语音唤醒模型... ${(state.progress * 100).toInt()}%")
-                }
-                is VoskModelManager.InitState.Loading -> {
-                    CircularProgressIndicator()
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text("正在加载语音唤醒模型...")
-                }
-                is VoskModelManager.InitState.Ready -> {
-                    Text("语音唤醒模型就绪")
-                }
-                is VoskModelManager.InitState.Error -> {
-                    Text(
-                        text = "语音唤醒模型失败: ${state.message}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.error
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Button(onClick = { VoskModelManager.initModel(context) }) {
-                        Text("重试唤醒模型")
+            }
+        }
+    }
+}
+
+sealed class ModelStatus {
+    object Preparing : ModelStatus()
+    data class Downloading(val progress: Float) : ModelStatus()
+    object Processing : ModelStatus()
+    object Ready : ModelStatus()
+    data class Error(val message: String) : ModelStatus()
+}
+
+@Composable
+fun ModelStatusCard(
+    title: String,
+    status: ModelStatus,
+    onRetry: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f)
+                )
+                
+                when (status) {
+                    is ModelStatus.Ready -> {
+                        Icon(
+                            imageVector = Icons.Default.CheckCircle,
+                            contentDescription = "Ready",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    is ModelStatus.Error -> {
+                        Icon(
+                            imageVector = Icons.Default.Error,
+                            contentDescription = "Error",
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    }
+                    else -> {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp
+                        )
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Sherpa Model Status
-            if (sherpaReady) {
-                Text("语音识别模型就绪")
-            } else if (sherpaError != null) {
-                Text(
-                    text = "语音识别模型失败: $sherpaError",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.error
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Button(onClick = { 
-                    sherpaRetryTrigger++
-                }) {
-                    Text("重试识别模型")
-                }
-            } else {
-                val progress = sherpaProgress
-                if (progress == null || progress.status == DownloadStatus.PREPARING) {
-                    Text("语音识别模型准备中...")
-                } else if (progress.status == DownloadStatus.DOWNLOADING) {
-                    LinearProgressIndicator(
-                        progress = { progress.progress / 100f },
-                        modifier = Modifier.fillMaxWidth().height(8.dp),
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text("正在下载语音识别模型... ${progress.progress.toInt()}%")
-                } else {
-                    CircularProgressIndicator()
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text("正在处理语音识别模型...")
-                }
-            }
-            
-            // Background Download Button (Visible when not ready)
-            if (voskState !is VoskModelManager.InitState.Ready || !sherpaReady) {
-                Spacer(modifier = Modifier.height(32.dp))
-                OutlinedButton(
-                    onClick = { onLoadComplete() }
-                ) {
-                    Text("后台下载 (进入主页)")
+            if (status !is ModelStatus.Ready) {
+                Spacer(modifier = Modifier.height(12.dp))
+                when (status) {
+                    is ModelStatus.Preparing -> Text("准备中...", style = MaterialTheme.typography.bodyMedium)
+                    is ModelStatus.Processing -> Text("正在处理...", style = MaterialTheme.typography.bodyMedium)
+                    is ModelStatus.Downloading -> {
+                        val animatedProgress by animateFloatAsState(targetValue = status.progress)
+                        Column {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("下载中...", style = MaterialTheme.typography.bodySmall)
+                                Text("${(status.progress * 100).toInt()}%", style = MaterialTheme.typography.bodySmall)
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            LinearProgressIndicator(
+                                progress = { animatedProgress },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(6.dp)
+                                    .clip(RoundedCornerShape(3.dp)),
+                            )
+                        }
+                    }
+                    is ModelStatus.Error -> {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            Text(
+                                text = "失败: ${status.message}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Button(onClick = onRetry, modifier = Modifier.align(Alignment.End)) {
+                                Text("重试")
+                            }
+                        }
+                    }
+                    else -> {}
                 }
             }
         }

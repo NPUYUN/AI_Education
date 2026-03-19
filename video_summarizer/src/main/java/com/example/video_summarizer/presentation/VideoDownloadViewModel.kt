@@ -15,8 +15,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import okhttp3.Call
+import okhttp3.Callback
 
 import com.example.video_summarizer.data.downloader.ModelDownloader
 
@@ -58,7 +62,10 @@ data class VideoDownloadUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
     val successMessage: String? = null,
-    val apiKey: String = ""
+    val apiKey: String = "",
+    val modelName: String = "qwen-turbo",
+    val baseUrl: String = "https://dashscope.aliyuncs.com/compatible-mode/v1/",
+    val showApiSettings: Boolean = false
 )
 
 class VideoDownloadViewModel(application: Application) : AndroidViewModel(application) {
@@ -79,8 +86,21 @@ class VideoDownloadViewModel(application: Application) : AndroidViewModel(applic
 
     init {
         viewModelScope.launch {
-            preferences.getString(apiKeyKey).collect { key ->
-                _uiState.value = _uiState.value.copy(apiKey = key)
+            preferences.getString("api_key_video_summary", "").collect { key ->
+                val finalKey = key.ifBlank {
+                    preferences.getString("bailian_api_key", "").first()
+                }
+                _uiState.value = _uiState.value.copy(apiKey = finalKey)
+            }
+        }
+        viewModelScope.launch {
+            preferences.getString("model_name_video_summary", "qwen-turbo").collect { modelName ->
+                _uiState.value = _uiState.value.copy(modelName = modelName)
+            }
+        }
+        viewModelScope.launch {
+            preferences.getString("base_url_video_summary", "https://dashscope.aliyuncs.com/compatible-mode/v1/").collect { baseUrl ->
+                _uiState.value = _uiState.value.copy(baseUrl = baseUrl)
             }
         }
         checkAndDownloadModel()
@@ -119,16 +139,8 @@ class VideoDownloadViewModel(application: Application) : AndroidViewModel(applic
         _uiState.value = _uiState.value.copy(inputUrl = url, error = null)
     }
 
-    fun updateApiKey(value: String) {
-        _uiState.value = _uiState.value.copy(apiKey = value)
-    }
-
-    fun saveApiKey() {
-        viewModelScope.launch {
-            val key = _uiState.value.apiKey.trim()
-            preferences.saveString(apiKeyKey, key)
-            showSuccess("API Key 已保存")
-        }
+    fun setApiSettingsVisible(visible: Boolean) {
+        _uiState.value = _uiState.value.copy(showApiSettings = visible)
     }
 
     fun addDownloadTask(url: String) {
@@ -242,9 +254,13 @@ class VideoDownloadViewModel(application: Application) : AndroidViewModel(applic
         }
         viewModelScope.launch {
             val apiKey = _uiState.value.apiKey.trim()
+            val modelName = _uiState.value.modelName
+            val baseUrl = _uiState.value.baseUrl
+
             if (apiKey.isBlank()) {
-                updateTaskSummary(taskId) { it.copy(status = SummaryStatus.FAILED, error = "请先在设置中填写 API Key") }
-                showError("请先在设置中填写 API Key")
+                updateTaskSummary(taskId) { it.copy(status = SummaryStatus.FAILED, error = "尚未配置 API Key，请在弹出的设置中进行配置。") }
+                showError("尚未配置 API Key，请在弹出的设置中进行配置。")
+                _uiState.value = _uiState.value.copy(showApiSettings = true)
                 return@launch
             }
 
@@ -285,7 +301,7 @@ class VideoDownloadViewModel(application: Application) : AndroidViewModel(applic
             }
 
             updateTaskSummary(taskId) { it.copy(status = SummaryStatus.SUMMARIZING, transcript = transcript) }
-            val summaryResult = summaryRepository.summarize(apiKey, transcript)
+            val summaryResult = summaryRepository.summarize(apiKey, transcript, modelName, baseUrl)
             val summaryText = summaryResult.getOrNull().orEmpty()
             if (summaryText.isBlank()) {
                 val message = summaryResult.exceptionOrNull()?.message ?: "摘要生成失败"
@@ -296,6 +312,9 @@ class VideoDownloadViewModel(application: Application) : AndroidViewModel(applic
                     )
                 }
                 showError(message)
+                if (message.contains("API Key 无效或未授权") || message.contains("尚未配置 API Key")) {
+                    _uiState.value = _uiState.value.copy(showApiSettings = true)
+                }
                 return@launch
             }
 

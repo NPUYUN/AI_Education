@@ -13,10 +13,14 @@ import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 
-class QwenRepository(private val apiKey: String) {
+class QwenRepository(
+    private val apiKey: String,
+    private val baseUrl: String,
+    private val modelName: String
+) {
     
     private val api: QwenService by lazy {
-        RetrofitClient.create(apiKey).create(QwenService::class.java)
+        RetrofitClient.create(apiKey, baseUrl).create(QwenService::class.java)
     }
 
     suspend fun sendMessage(
@@ -39,7 +43,7 @@ class QwenRepository(private val apiKey: String) {
         messages.add(Message("user", userContent))
         
         val request = ChatRequest(
-            model = if (imageUrl != null) "qwen-vl-max" else "qwen-turbo",
+            model = if (imageUrl != null && modelName.startsWith("qwen-turbo")) "qwen-vl-max" else modelName,
             messages = messages
         )
 
@@ -56,8 +60,12 @@ class QwenRepository(private val apiKey: String) {
             
             emit(replyText)
         } catch (e: retrofit2.HttpException) {
-            val errorBody = e.response()?.errorBody()?.string()
-            emit("Error: HTTP ${e.code()} - $errorBody")
+            val errorBody = e.response()?.errorBody()?.string() ?: ""
+            if (e.code() == 401) {
+                emit("Error: API Key 无效或未授权，请在设置中检查您的 API Key。")
+            } else {
+                emit("Error: HTTP ${e.code()} - $errorBody")
+            }
         } catch (e: Exception) {
             emit("Error: ${e.message}")
         }

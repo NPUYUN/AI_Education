@@ -41,6 +41,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 import com.example.common.presentation.components.ChatInputArea
+import com.example.common.presentation.components.GlobalApiSettingsDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -82,6 +83,12 @@ fun ChatScreen(
             // Use sendImageWithPrompt to handle loading, rotation (EXIF), and sending
             viewModel.sendImageWithPrompt(uri, viewModel.inputText.value)
         }
+    }
+
+    if (viewModel.showApiSettings.value) {
+        GlobalApiSettingsDialog(
+            onDismiss = { viewModel.setApiSettingsVisible(false) }
+        )
     }
 
     Column(

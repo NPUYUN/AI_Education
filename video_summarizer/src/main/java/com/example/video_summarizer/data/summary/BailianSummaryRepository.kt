@@ -347,11 +347,11 @@ class BailianSummaryRepository(private val sherpaAsrManager: SherpaAsrManager? =
         }
     }
 
-    suspend fun summarize(apiKey: String, transcript: String): Result<String> = withContext(Dispatchers.IO) {
-        val service = RetrofitClient.create(apiKey).create(BailianChatService::class.java)
+    suspend fun summarize(apiKey: String, transcript: String, modelName: String = "qwen-turbo", baseUrl: String = "https://dashscope.aliyuncs.com/compatible-mode/v1/"): Result<String> = withContext(Dispatchers.IO) {
+        val service = RetrofitClient.create(apiKey, baseUrl).create(BailianChatService::class.java)
         return@withContext try {
             val request = ChatRequest(
-                model = "qwen-turbo",
+                model = modelName,
                 messages = listOf(
                     ChatMessage(
                         role = "system",
@@ -372,7 +372,11 @@ class BailianSummaryRepository(private val sherpaAsrManager: SherpaAsrManager? =
                 Result.success(content)
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            if (e is retrofit2.HttpException && e.code() == 401) {
+                Result.failure(IllegalStateException("API Key 无效或未授权，请在设置中检查您的 API Key。"))
+            } else {
+                Result.failure(e)
+            }
         }
     }
 
