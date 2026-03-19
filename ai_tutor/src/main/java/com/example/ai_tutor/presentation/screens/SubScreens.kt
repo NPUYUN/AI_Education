@@ -33,8 +33,7 @@ fun TimelineScreen() {
 
 @androidx.media3.common.util.UnstableApi
 @Composable
-fun VideoSummaryScreen() {
-    val viewModel: VideoDownloadViewModel = viewModel()
+fun VideoSummaryScreen(viewModel: VideoDownloadViewModel) {
     VideoDownloadScreen(viewModel = viewModel)
 }
 

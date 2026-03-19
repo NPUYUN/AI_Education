@@ -515,7 +515,7 @@ fun DownloadTaskCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End
             ) {
-                if (task.progress.status == DownloadStatus.DOWNLOADING) {
+                if (task.progress.status == DownloadStatus.DOWNLOADING && task.id != "model_download_task") {
                     TextButton(onClick = onCancel) {
                         Icon(Icons.Default.Close, contentDescription = null)
                         Spacer(modifier = Modifier.width(4.dp))
@@ -524,20 +524,22 @@ fun DownloadTaskCard(
                 }
 
                 if (task.progress.status == DownloadStatus.COMPLETED) {
-                    TextButton(onClick = onPlay) {
-                        Icon(Icons.Default.PlayArrow, contentDescription = null)
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("在线播放")
-                    }
-                    TextButton(onClick = onOpenFolder) {
-                        Icon(Icons.Default.FolderOpen, contentDescription = null)
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("打开文件夹")
-                    }
-                    TextButton(onClick = onSummarize) {
-                        Icon(Icons.Default.AutoAwesome, contentDescription = null)
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(if (task.summary.status == SummaryStatus.COMPLETED) "重新摘要" else "生成摘要")
+                    if (task.id != "model_download_task") {
+                        TextButton(onClick = onPlay) {
+                            Icon(Icons.Default.PlayArrow, contentDescription = null)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("在线播放")
+                        }
+                        TextButton(onClick = onOpenFolder) {
+                            Icon(Icons.Default.FolderOpen, contentDescription = null)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("打开文件夹")
+                        }
+                        TextButton(onClick = onSummarize) {
+                            Icon(Icons.Default.AutoAwesome, contentDescription = null)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(if (task.summary.status == SummaryStatus.COMPLETED) "重新摘要" else "生成摘要")
+                        }
                     }
                     TextButton(onClick = onRemove) {
                         Icon(Icons.Default.Delete, contentDescription = null)

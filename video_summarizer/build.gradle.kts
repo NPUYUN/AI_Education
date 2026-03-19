@@ -44,6 +44,9 @@ kotlin {
 dependencies {
     implementation(project(":common"))
 
+    // Compress
+    implementation(libs.commons.compress)
+
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
@@ -59,7 +62,7 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
 
     // Video Processing
-    implementation(libs.ffmpeg.kit.full)
+    implementation(libs.ffmpeg.kit.min)
     implementation(libs.youtubedl.android)
     implementation(libs.youtubedl.android.ffmpeg)
     implementation(libs.androidx.media3.exoplayer)

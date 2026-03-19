@@ -29,6 +29,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.video_summarizer.presentation.VideoDownloadViewModel
 import com.example.ai_tutor.presentation.AiTutorViewModel
 import com.example.ai_tutor.presentation.ChatScreen
 import kotlinx.coroutines.launch
@@ -40,7 +42,8 @@ fun MainScreen(
     onNavigateToSettings: () -> Unit,
     onLogout: () -> Unit,
     onNavigateToCamera: () -> Unit,
-    viewModel: AiTutorViewModel
+    viewModel: AiTutorViewModel,
+    videoViewModel: VideoDownloadViewModel = viewModel()
 ) {
     val navController = rememberNavController()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
@@ -353,7 +356,7 @@ fun MainScreen(
                         modifier = Modifier.fillMaxSize()
                     ) 
                 }
-                composable("video") { VideoSummaryScreen() }
+                composable("video") { VideoSummaryScreen(videoViewModel) }
                 composable("review") { ReviewScreen() }
                 composable("profile") { ProfileScreen() }
             }

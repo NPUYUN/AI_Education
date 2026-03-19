@@ -28,8 +28,14 @@ class SherpaAsrManager(private val context: Context) {
         if (recognizer == null) {
             try {
                 // Initialize config
-                // The model files are located in assets/sherpa-onnx-paraformer-zh-2023-09-14
-                val modelDir = "sherpa-onnx-paraformer-zh-2023-09-14"
+                // The model files are located in external cache dir
+                val baseDir = context.externalCacheDir ?: context.cacheDir
+                val modelDir = File(baseDir, "sherpa-onnx-paraformer-zh-2023-09-14").absolutePath
+                
+                if (!File(modelDir).exists() || !File(modelDir, "model.int8.onnx").exists()) {
+                    throw IllegalStateException("语音识别模型未下载或不完整，请先下载模型")
+                }
+
                 val config = OfflineRecognizerConfig(
                     modelConfig = OfflineModelConfig(
                         paraformer = OfflineParaformerModelConfig(
@@ -42,13 +48,13 @@ class SherpaAsrManager(private val context: Context) {
                 )
                 
                 recognizer = OfflineRecognizer(
-                    assetManager = context.assets,
+                    assetManager = null, // Set to null to load from file paths instead of assets
                     config = config
                 )
-                Log.d(TAG, "Sherpa-onnx initialized successfully")
+                Log.d(TAG, "Sherpa-onnx initialized successfully from file path: $modelDir")
             } catch (e: Throwable) {
                 Log.e(TAG, "Failed to initialize Sherpa-onnx", e)
-                throw IllegalStateException("Failed to initialize speech recognizer: ${e.message}", e)
+                throw IllegalStateException("语音识别初始化失败: ${e.message}", e)
             }
         }
         return recognizer!!

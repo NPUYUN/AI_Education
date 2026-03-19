@@ -18,6 +18,8 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
+import com.example.video_summarizer.data.downloader.ModelDownloader
+
 data class VideoUrlItem(
     val url: String,
     val title: String = "",
@@ -67,6 +69,8 @@ class VideoDownloadViewModel(application: Application) : AndroidViewModel(applic
     private val preferences = PreferencesManager(application)
     private val apiKeyKey = "bailian_api_key"
 
+    private val modelDownloader = ModelDownloader(application)
+
     private val _downloadTasks = androidx.compose.runtime.mutableStateListOf<DownloadTask>()
     val downloadTasks: List<DownloadTask> get() = _downloadTasks
 
@@ -77,6 +81,36 @@ class VideoDownloadViewModel(application: Application) : AndroidViewModel(applic
         viewModelScope.launch {
             preferences.getString(apiKeyKey).collect { key ->
                 _uiState.value = _uiState.value.copy(apiKey = key)
+            }
+        }
+        checkAndDownloadModel()
+    }
+
+    private fun checkAndDownloadModel() {
+        if (!modelDownloader.isModelReady()) {
+            val taskId = "model_download_task"
+            val modelTask = DownloadTask(
+                id = taskId,
+                url = "https://github.com/k2-fsa/sherpa-onnx",
+                title = "离线语音识别模型 (首次运行必需)",
+                progress = DownloadProgress(status = DownloadStatus.PREPARING)
+            )
+            _downloadTasks.add(modelTask)
+
+            viewModelScope.launch {
+                modelDownloader.downloadAndExtractModel { progress ->
+                    updateTaskProgress(taskId) { progress }
+                }.fold(
+                    onSuccess = { dir ->
+                        updateTaskProgress(taskId) { DownloadProgress(status = DownloadStatus.COMPLETED, progress = 100f) }
+                        updateTask(taskId) { it.copy(localPath = dir.absolutePath) }
+                        showSuccess("语音识别模型下载完成！")
+                    },
+                    onFailure = { error ->
+                        updateTaskProgress(taskId) { DownloadProgress(status = DownloadStatus.FAILED) }
+                        showError("模型下载失败: ${error.message}")
+                    }
+                )
             }
         }
     }
@@ -177,6 +211,9 @@ class VideoDownloadViewModel(application: Application) : AndroidViewModel(applic
     }
 
     fun cancelDownload(taskId: String) {
+        if (taskId == "model_download_task") {
+            return // Not supported for model download yet
+        }
         downloader.cancelDownload()
         updateTaskProgress(taskId) { DownloadProgress(status = DownloadStatus.CANCELLED) }
     }

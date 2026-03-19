@@ -16,6 +16,13 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        
+        ndk {
+            // 只保留主流架构，减少 APK 和构建占用空间
+            abiFilters.add("arm64-v8a")
+            // 如果需要支持较老设备或 32 位模拟器，可以取消下面这行的注释
+            // abiFilters.add("armeabi-v7a")
+        }
     }
 
     buildTypes {
