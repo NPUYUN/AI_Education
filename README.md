@@ -93,6 +93,7 @@ AI_Education/
     - [x] **通用 UI 组件**:
         - `CameraScreen`: 基于 CameraX 的全屏自定义相机，支持前后摄切换，已完成深色模式适配。
         - `ImagePreviewScreen`: 图片预览与重拍/确认界面，已完成深色模式适配。
+        - `GlobalApiSettingsDialog`: 统一的 API Key 和模型设置对话框，支持多模块共享配置。
     - [x] **网络与存储基础设施**:
         - `RetrofitClient` & `AuthInterceptor`: 统一的网络请求配置、日志拦截与 Token 管理。
         - `PreferencesManager`: 基于 Kotlin Flow 的协程安全键值对存储。
@@ -120,7 +121,7 @@ AI_Education/
 ## 快速开始 (Getting Started)
 
 ### 环境要求
-- Android Studio Iguana | 2023.2.1 或更高版本
+- Android Studio Koala | 2024.1.1 或更高版本 (推荐)
 - JDK 17
 - Android SDK 35 (Min SDK 24)
 
@@ -128,8 +129,19 @@ AI_Education/
 1. 克隆项目到本地。
 2. 使用 Android Studio 打开项目根目录。
 3. 等待 Gradle 同步完成 (可能需要下载较大的依赖包，如 ffmpeg-kit 和模型文件)。
-4. (重要) 如果运行视频总结功能，请确保 assets 目录中已放置 `sherpa-onnx-paraformer-zh-2023-09-14` 模型文件（模型较大，可能需要通过脚本或单独下载）。
-5. 选择 `app` 运行配置，连接物理设备或模拟器（建议物理设备以测试相机和麦克风），点击 Run。
+4. 运行 `gradlew sherpaDownload` 任务或手动下载 Sherpa-onnx 语音模型：
+   - 确保 `video_summarizer/src/main/assets/sherpa-onnx-paraformer-zh-2023-09-14` 目录下存在模型文件。
+5. 选择 `app` 运行配置，连接物理设备或模拟器（强烈建议使用**物理设备**以测试相机、麦克风和高性能本地模型推理），点击 Run。
+
+### API Key 配置
+本项目依赖阿里云百炼大模型平台。首次运行应用后：
+1. 点击主界面或相关模块右上角的设置图标，打开 **全局 API 设置** (`GlobalApiSettingsDialog`)。
+2. 填入您的阿里云百炼 API Key。
+3. (可选) 修改基础 URL 和切换所需的 Qwen 模型。
+
+### 构建清理
+如果您在构建过程中遇到缓存冲突或构建产物锁定问题（例如 `Unable to delete directory`），可以使用项目根目录提供的深度清理脚本：
+- **Windows**: 双击运行 `clean_project.bat` 或在终端执行 `.\clean_project.bat`。该脚本会停止后台 Gradle/Kotlin 守护进程，并彻底清除所有 `.gradle`、`build` 和 `.cxx` 缓存目录。
 
 ---
 
