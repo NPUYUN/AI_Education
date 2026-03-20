@@ -55,19 +55,19 @@ class GlobalConfigRepository @Inject constructor(
     suspend fun saveUserSignature(signature: String) = preferencesManager.saveString("user_signature", signature)
     fun getEffectiveAiTutorApiKey(): Flow<String> {
         return getAiTutorApiKey().combine(getBailianApiKey()) { featureKey, generalKey ->
-            featureKey.ifBlank { generalKey }
+            featureKey.ifBlank { generalKey.ifBlank { AppConstants.DEFAULT_API_KEY } }
         }
     }
 
     fun getEffectiveTimelineMapApiKey(): Flow<String> {
         return getTimelineMapApiKey().combine(getBailianApiKey()) { featureKey, generalKey ->
-            featureKey.ifBlank { generalKey }
+            featureKey.ifBlank { generalKey.ifBlank { AppConstants.DEFAULT_API_KEY } }
         }
     }
 
     fun getEffectiveVideoSummaryApiKey(): Flow<String> {
         return getVideoSummaryApiKey().combine(getBailianApiKey()) { featureKey, generalKey ->
-            featureKey.ifBlank { generalKey }
+            featureKey.ifBlank { generalKey.ifBlank { AppConstants.DEFAULT_API_KEY } }
         }
     }
 }

@@ -15,6 +15,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.example.common.config.AppConstants
 import com.example.common.database.PreferencesManager
 import kotlinx.coroutines.launch
 
@@ -59,33 +60,51 @@ fun GlobalApiSettingsDialog(
     var timelineBaseUrl by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) {
-        prefs.getString("api_key_ai_tutor", "").collect { tutorApiKey = it }
+        prefs.getString("api_key_ai_tutor", "").collect { 
+            tutorApiKey = it.ifBlank { AppConstants.DEFAULT_API_KEY } 
+        }
     }
     LaunchedEffect(Unit) {
-        prefs.getString("model_name_ai_tutor", "qwen-vl-plus").collect { tutorModel = it }
+        prefs.getString("model_name_ai_tutor", "").collect { 
+            tutorModel = it.ifBlank { AppConstants.DEFAULT_MODEL_NAME } 
+        }
     }
     LaunchedEffect(Unit) {
-        prefs.getString("base_url_ai_tutor", "https://dashscope.aliyuncs.com/compatible-mode/v1/").collect { tutorBaseUrl = it }
-    }
-
-    LaunchedEffect(Unit) {
-        prefs.getString("api_key_video_summary", "").collect { videoApiKey = it }
-    }
-    LaunchedEffect(Unit) {
-        prefs.getString("model_name_video_summary", "qwen-turbo").collect { videoModel = it }
-    }
-    LaunchedEffect(Unit) {
-        prefs.getString("base_url_video_summary", "https://dashscope.aliyuncs.com/compatible-mode/v1/").collect { videoBaseUrl = it }
+        prefs.getString("base_url_ai_tutor", "").collect { 
+            tutorBaseUrl = it.ifBlank { AppConstants.BASE_URL } 
+        }
     }
 
     LaunchedEffect(Unit) {
-        prefs.getString("api_key_timeline_map", "").collect { timelineApiKey = it }
+        prefs.getString("api_key_video_summary", "").collect { 
+            videoApiKey = it.ifBlank { AppConstants.DEFAULT_API_KEY } 
+        }
     }
     LaunchedEffect(Unit) {
-        prefs.getString("model_name_timeline_map", "qwen-turbo").collect { timelineModel = it }
+        prefs.getString("model_name_video_summary", "").collect { 
+            videoModel = it.ifBlank { AppConstants.DEFAULT_MODEL_NAME } 
+        }
     }
     LaunchedEffect(Unit) {
-        prefs.getString("base_url_timeline_map", "https://dashscope.aliyuncs.com/compatible-mode/v1/").collect { timelineBaseUrl = it }
+        prefs.getString("base_url_video_summary", "").collect { 
+            videoBaseUrl = it.ifBlank { AppConstants.BASE_URL } 
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        prefs.getString("api_key_timeline_map", "").collect { 
+            timelineApiKey = it.ifBlank { AppConstants.DEFAULT_API_KEY } 
+        }
+    }
+    LaunchedEffect(Unit) {
+        prefs.getString("model_name_timeline_map", "").collect { 
+            timelineModel = it.ifBlank { AppConstants.DEFAULT_MODEL_NAME } 
+        }
+    }
+    LaunchedEffect(Unit) {
+        prefs.getString("base_url_timeline_map", "").collect { 
+            timelineBaseUrl = it.ifBlank { AppConstants.BASE_URL } 
+        }
     }
 
     Dialog(

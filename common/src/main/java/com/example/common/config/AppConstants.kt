@@ -1,8 +1,8 @@
 package com.example.common.config
 
 object AppConstants {
-    // API Configuration (OpenAI Compatible)
-    const val BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1/" // Default to Qwen API Base URL
+    // API Configuration
+    const val BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1/" // Qwen API Base URL
     const val TIMEOUT_SECONDS = 30L
     const val DEFAULT_MODEL_NAME = "qwen-turbo"
     
@@ -13,6 +13,6 @@ object AppConstants {
     const val PREFERENCES_NAME = "app_preferences"
     
     // API Keys (Note: In production, these should be in BuildConfig or secure storage)
-    const val DEFAULT_API_KEY = "" // Removed hardcoded key for security
+    val DEFAULT_API_KEY = com.example.common.BuildConfig.API_KEY
     const val API_KEY_HEADER = "Authorization"
 }
