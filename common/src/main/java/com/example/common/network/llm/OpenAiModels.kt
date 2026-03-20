@@ -1,16 +1,16 @@
-package com.example.ai_tutor.data.model
+package com.example.common.network.llm
 
 import com.google.gson.annotations.SerializedName
 
 data class ChatRequest(
-    @SerializedName("model") val model: String = "qwen-turbo",
-    @SerializedName("messages") val messages: List<Message>,
-    @SerializedName("parameters") val parameters: Parameters? = null
+    @SerializedName("model") val model: String,
+    @SerializedName("messages") val messages: List<ChatMessage>,
+    @SerializedName("parameters") val parameters: ChatParameters? = null
 )
 
-data class Message(
+data class ChatMessage(
     @SerializedName("role") val role: String,
-    @SerializedName("content") val content: Any // String or List<ContentItem>
+    @SerializedName("content") val content: Any // Can be String or List<ContentItem>
 )
 
 data class ContentItem(
@@ -23,29 +23,29 @@ data class ImageUrl(
     @SerializedName("url") val url: String
 )
 
-data class Parameters(
+data class ChatParameters(
     @SerializedName("result_format") val resultFormat: String = "message"
 )
 
 data class ChatResponse(
-    @SerializedName("output") val output: Output?,
-    @SerializedName("choices") val choices: List<Choice>?, // Added for OpenAI-compatible format
-    @SerializedName("usage") val usage: Usage?,
+    @SerializedName("output") val output: ChatOutput?,
+    @SerializedName("choices") val choices: List<ChatChoice>?,
+    @SerializedName("usage") val usage: ChatUsage?,
     @SerializedName("request_id") val requestId: String?
 )
 
-data class Output(
+data class ChatOutput(
     @SerializedName("text") val text: String?,
     @SerializedName("finish_reason") val finishReason: String?,
-    @SerializedName("choices") val choices: List<Choice>?
+    @SerializedName("choices") val choices: List<ChatChoice>?
 )
 
-data class Choice(
-    @SerializedName("message") val message: Message,
-    @SerializedName("finish_reason") val finishReason: String
+data class ChatChoice(
+    @SerializedName("message") val message: ChatMessage,
+    @SerializedName("finish_reason") val finishReason: String? = null
 )
 
-data class Usage(
+data class ChatUsage(
     @SerializedName("total_tokens") val totalTokens: Int,
     @SerializedName("input_tokens") val inputTokens: Int,
     @SerializedName("output_tokens") val outputTokens: Int

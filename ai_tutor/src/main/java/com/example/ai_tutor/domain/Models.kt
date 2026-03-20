@@ -1,6 +1,6 @@
 package com.example.ai_tutor.domain
 
-import com.example.ai_tutor.data.model.Message
+import com.example.common.network.llm.ChatMessage
 
 // Basic entity for Knowledge Graph
 data class KnowledgePoint(
@@ -14,6 +14,6 @@ data class KnowledgePoint(
 // Entity for Dialogue Context
 data class DialogueContext(
     val sessionId: String,
-    val history: MutableList<Message> = mutableListOf(),
+    val history: MutableList<ChatMessage> = mutableListOf(),
     val currentIntent: String? = null
 )

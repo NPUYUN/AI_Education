@@ -29,6 +29,11 @@ import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 import javax.inject.Singleton
 import com.example.common.dispatchers.DispatcherProvider
+import com.example.common.network.llm.ChatRequest
+import com.example.common.network.llm.ChatMessage
+import com.example.common.network.llm.ChatParameters
+import com.example.common.network.llm.ChatResponse
+import com.example.common.network.llm.OpenAiService
 
 private const val ASR_BASE_URL = "https://dashscope.aliyuncs.com/api/v1/"
 
@@ -75,34 +80,7 @@ data class AsrResultItem(
     val subtask_status: String? = null
 )
 
-data class ChatRequest(
-    val model: String,
-    val messages: List<ChatMessage>,
-    val parameters: ChatParameters? = null
-)
 
-data class ChatMessage(
-    val role: String,
-    val content: Any
-)
-
-data class ChatParameters(
-    val result_format: String = "message"
-)
-
-data class ChatResponse(
-    val output: ChatOutput? = null,
-    val choices: List<ChatChoice>? = null
-)
-
-data class ChatOutput(
-    val text: String? = null,
-    val choices: List<ChatChoice>? = null
-)
-
-data class ChatChoice(
-    val message: ChatMessage? = null
-)
 
 interface BailianAsrService {
     @POST("services/audio/asr/transcription")
@@ -116,10 +94,7 @@ interface BailianAsrService {
     suspend fun getTask(@Path("taskId") taskId: String): AsrTaskResponse
 }
 
-interface BailianChatService {
-    @POST("chat/completions")
-    suspend fun chat(@Body request: ChatRequest): ChatResponse
-}
+
 
 @Singleton
 class BailianSummaryRepository @Inject constructor(
@@ -355,7 +330,7 @@ class BailianSummaryRepository @Inject constructor(
     }
 
     suspend fun summarize(apiKey: String, transcript: String, modelName: String = com.example.common.config.AppConstants.DEFAULT_MODEL_NAME, baseUrl: String = com.example.common.config.AppConstants.BASE_URL): Result<String> = withContext(dispatcherProvider.io) {
-        val service = RetrofitClient.create(apiKey, baseUrl).create(BailianChatService::class.java)
+        val service = RetrofitClient.create(apiKey, baseUrl).create(OpenAiService::class.java)
         return@withContext try {
             val request = ChatRequest(
                 model = modelName,

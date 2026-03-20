@@ -32,8 +32,8 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
-import com.example.ai_tutor.data.model.Message
-import com.example.ai_tutor.data.model.ContentItem
+import com.example.common.network.llm.ChatMessage as Message
+import com.example.common.network.llm.ContentItem
 import dev.jeziellago.compose.markdowntext.MarkdownText
 import kotlinx.coroutines.launch
 import android.graphics.ImageDecoder

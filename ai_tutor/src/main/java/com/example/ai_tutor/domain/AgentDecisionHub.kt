@@ -1,12 +1,12 @@
 package com.example.ai_tutor.domain
 
-import com.example.ai_tutor.data.model.Message
-import com.example.ai_tutor.data.repository.QwenRepository
+import com.example.common.network.llm.ChatMessage
+import com.example.ai_tutor.data.repository.LlmRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
 class AgentDecisionHub(
-    private val repository: QwenRepository,
+    private val repository: LlmRepository,
     private val knowledgeGraph: KnowledgeGraphManager,
     private val toolsIntegrator: ToolsIntegrator
 ) {
@@ -14,7 +14,7 @@ class AgentDecisionHub(
 
     suspend fun processUserRequest(
         input: MultimodalInput,
-        history: List<Message>
+        history: List<ChatMessage>
     ): Flow<String> = flow {
         // 1. Goal Management & Intent Recognition
         val intent = intentClassifier.classify(input.text)
@@ -35,7 +35,7 @@ class AgentDecisionHub(
                     // emit("[Knowledge Graph] Found info on ${kp.name}...") 
                 }
                 
-                // 3. AI Chat (Qwen) with Context
+                // 3. AI Chat with Context
                 // We append the context to the user's message effectively
                 val augmentedInput = if (contextEnhancement.isNotEmpty()) {
                     "$contextEnhancement\n\nUser Question: ${input.text}"

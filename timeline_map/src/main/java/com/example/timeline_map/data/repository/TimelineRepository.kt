@@ -1,10 +1,10 @@
 package com.example.timeline_map.data.repository
 
 import com.example.common.network.RetrofitClient
-import com.example.timeline_map.data.api.ChatRequest
-import com.example.timeline_map.data.api.Message
-import com.example.timeline_map.data.api.Parameters
-import com.example.timeline_map.data.api.QwenService
+import com.example.common.network.llm.ChatRequest
+import com.example.common.network.llm.ChatMessage
+import com.example.common.network.llm.ChatParameters
+import com.example.common.network.llm.OpenAiService
 import com.example.timeline_map.data.model.HistoricalEvent
 import com.google.gson.JsonElement
 import com.google.gson.JsonParser
@@ -29,7 +29,7 @@ class TimelineRepository @Inject constructor(
     ): Result<List<HistoricalEvent>> {
         return withContext(dispatcherProvider.io) {
             try {
-                val service = RetrofitClient.create(apiKey, baseUrl).create(QwenService::class.java)
+                val service = RetrofitClient.create(apiKey, baseUrl).create(OpenAiService::class.java)
                 val prompt = """
                     你是历史事件整理助手。请根据问题生成事件列表。
                     输出严格 JSON 数组，每个元素包含：
@@ -40,8 +40,8 @@ class TimelineRepository @Inject constructor(
 
                 val request = ChatRequest(
                     model = model,
-                    messages = listOf(Message("user", prompt)),
-                    parameters = Parameters("message")
+                    messages = listOf(ChatMessage("user", prompt)),
+                    parameters = ChatParameters("message")
                 )
                 val response = service.chat(request)
                 val raw = response.choices?.firstOrNull()?.message?.content

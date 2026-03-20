@@ -266,7 +266,7 @@ fun MainScreen(
                                     val shareText = when (val c = latest?.content) {
                                         is String -> c
                                         is List<*> -> {
-                                            c.filterIsInstance<com.example.ai_tutor.data.model.ContentItem>()
+                                            c.filterIsInstance<com.example.common.network.llm.ContentItem>()
                                                 .firstOrNull { it.type == "text" }?.text ?: ""
                                         }
                                         else -> ""

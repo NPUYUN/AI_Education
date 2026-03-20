@@ -94,20 +94,20 @@ fun SettingsScreen(onBack: () -> Unit) {
                 }
             }
             
-            HorizontalDivider()
-            
-            Text("API 设置", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable { showApiSettings = true }
                     .padding(vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text("全局 API 配置 (AI辅导、视频总结)")
-                Spacer(modifier = Modifier.weight(1f))
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, modifier = Modifier.size(16.dp)) // Maybe use a forward arrow or just skip icon
+                Column {
+                    Text("全局大模型设置", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text("配置各模块的 API Key、模型和 Base URL", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
             
             HorizontalDivider()

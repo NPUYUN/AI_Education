@@ -21,11 +21,17 @@ import kotlinx.coroutines.launch
 val COMMON_MODELS = listOf(
     "qwen-turbo" to "https://dashscope.aliyuncs.com/compatible-mode/v1/",
     "qwen-vl-plus" to "https://dashscope.aliyuncs.com/compatible-mode/v1/",
+    "qwen-plus" to "https://dashscope.aliyuncs.com/compatible-mode/v1/",
+    "qwen-max" to "https://dashscope.aliyuncs.com/compatible-mode/v1/",
     "deepseek-chat" to "https://api.deepseek.com/v1/",
     "deepseek-reasoner" to "https://api.deepseek.com/v1/",
     "moonshot-v1-8k" to "https://api.moonshot.cn/v1/",
+    "moonshot-v1-32k" to "https://api.moonshot.cn/v1/",
     "glm-4" to "https://open.bigmodel.cn/api/paas/v4/",
-    "gpt-4o" to "https://api.openai.com/v1/"
+    "gpt-3.5-turbo" to "https://api.openai.com/v1/",
+    "gpt-4o" to "https://api.openai.com/v1/",
+    "gpt-4o-mini" to "https://api.openai.com/v1/",
+    "claude-3-5-sonnet-20240620" to "https://api.anthropic.com/v1/"
 )
 
 @OptIn(ExperimentalMaterial3Api::class)

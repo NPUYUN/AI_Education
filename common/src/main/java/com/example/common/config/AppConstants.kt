@@ -1,8 +1,8 @@
 package com.example.common.config
 
 object AppConstants {
-    // API Configuration
-    const val BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1/" // Qwen API Base URL
+    // API Configuration (OpenAI Compatible)
+    const val BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1/" // Default to Qwen API Base URL
     const val TIMEOUT_SECONDS = 30L
     const val DEFAULT_MODEL_NAME = "qwen-turbo"
     

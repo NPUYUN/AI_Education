@@ -13,10 +13,10 @@ import com.example.ai_tutor.data.local.AiTutorDatabase
 import com.example.ai_tutor.data.local.dao.ChatDao
 import com.example.ai_tutor.data.local.entity.ChatSessionEntity
 import com.example.ai_tutor.data.local.entity.MessageEntity
-import com.example.ai_tutor.data.model.ContentItem
-import com.example.ai_tutor.data.model.ImageUrl
-import com.example.ai_tutor.data.model.Message
-import com.example.ai_tutor.data.repository.QwenRepository
+import com.example.common.network.llm.ContentItem
+import com.example.common.network.llm.ImageUrl
+import com.example.common.network.llm.ChatMessage as Message
+import com.example.ai_tutor.data.repository.LlmRepository
 import com.example.ai_tutor.domain.AgentDecisionHub
 import com.example.ai_tutor.domain.DialogueContext
 import com.example.ai_tutor.domain.MockKnowledgeGraphManager
@@ -54,7 +54,7 @@ class AiTutorViewModel @Inject constructor(
     private val chatDao: ChatDao,
     private val voskVoiceManager: VoskVoiceManager,
     private val dispatcherProvider: DispatcherProvider,
-    private val repository: QwenRepository
+    private val repository: LlmRepository
 ) : ViewModel() {
     // Core Dependencies
     private var apiKey = ""
@@ -92,7 +92,7 @@ class AiTutorViewModel @Inject constructor(
         checkNotNull(chatDao) { "ChatDao is not injected" }
         checkNotNull(voskVoiceManager) { "VoskVoiceManager is not injected" }
         checkNotNull(dispatcherProvider) { "DispatcherProvider is not injected" }
-        checkNotNull(repository) { "QwenRepository is not injected" }
+        checkNotNull(repository) { "LlmRepository is not injected" }
 
         // Initialize Vosk Voice Manager
         voskVoiceManager.init(viewModelScope)
@@ -410,24 +410,29 @@ class AiTutorViewModel @Inject constructor(
     private suspend fun prepareHistoryForApi(history: List<Message>): List<Message> = withContext(dispatcherProvider.io) {
         history.map { msg ->
             if (msg.content is List<*>) {
-                val newContent = (msg.content as List<*>).map { item ->
-                    if (item is ContentItem && item.type == "image_url" && item.imageUrl?.url?.startsWith("file://") == true) {
-                        val path = item.imageUrl.url.substringAfter("file://")
-                        val file = java.io.File(path)
-                        if (file.exists()) {
-                            try {
-                                val bytes = file.readBytes()
-                                val base64 = "data:image/jpeg;base64," + android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
-                                item.copy(imageUrl = ImageUrl(url = base64))
-                            } catch (e: Exception) {
-                                e.printStackTrace()
-                                item
+                val newContent = (msg.content as List<*>).map { itemAny ->
+                    if (itemAny is ContentItem) {
+                        val itemUrl = itemAny.imageUrl?.url
+                        if (itemAny.type == "image_url" && itemUrl?.startsWith("file://") == true) {
+                            val path = itemUrl.substringAfter("file://")
+                            val file = java.io.File(path)
+                            if (file.exists()) {
+                                try {
+                                    val bytes = file.readBytes()
+                                    val base64 = "data:image/jpeg;base64," + android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+                                    itemAny.copy(imageUrl = ImageUrl(url = base64))
+                                } catch (e: Exception) {
+                                    e.printStackTrace()
+                                    itemAny
+                                }
+                            } else {
+                                itemAny
                             }
                         } else {
-                            item
+                            itemAny
                         }
                     } else {
-                        item
+                        itemAny
                     }
                 }
                 msg.copy(content = newContent)
