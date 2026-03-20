@@ -42,29 +42,32 @@ import org.osmdroid.views.overlay.Marker
 import java.io.File
 
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.collectAsState
 import org.osmdroid.views.overlay.TilesOverlay
 import com.example.common.presentation.components.GlobalApiSettingsDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TimelineMapScreen(
-    viewModel: TimelineMapViewModel = hiltViewModel()
+    viewModel: TimelineMapViewModel = hiltViewModel(),
+    onNavigateBack: () -> Unit = {}
 ) {
+    val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     LaunchedEffect(Unit) { }
 
-    val query by viewModel.queryText
-    val speechLang by viewModel.speechLanguage
-    val listening by viewModel.isListening
-    val loading by viewModel.isLoading
-    val error by viewModel.errorMessage
-    val events = viewModel.events
-    val selectedId by viewModel.selectedEventId
-    val zoom by viewModel.timelineZoom
-    val apiKey by viewModel.apiKey
+    val query = uiState.queryText
+    val speechLang = uiState.speechLanguage
+    val listening = uiState.isListening
+    val loading = uiState.isLoading
+    val error = uiState.errorMessage
+    val events = uiState.events
+    val selectedId = uiState.selectedEventId
+    val zoom = uiState.timelineZoom
+    val apiKey = uiState.apiKey
+    val showSettings = uiState.showApiSettings
 
     var queryField by remember { mutableStateOf(TextFieldValue(query)) }
-    var showSettings by remember { mutableStateOf(false) }
 
     LaunchedEffect(query) {
         if (queryField.text != query) queryField = TextFieldValue(query)
@@ -79,7 +82,7 @@ fun TimelineMapScreen(
             TopAppBar(
                 title = { Text("时间轴地图") },
                 actions = {
-                    IconButton(onClick = { showSettings = true }) {
+                    IconButton(onClick = { viewModel.setApiSettingsVisible(true) }) {
                         Icon(Icons.Default.Settings, contentDescription = "设置")
                     }
                 }
@@ -170,7 +173,7 @@ fun TimelineMapScreen(
                 }
                 Button(onClick = {
                     if (apiKey.isBlank()) {
-                        showSettings = true
+                        viewModel.setApiSettingsVisible(true)
                     } else {
                         viewModel.generateTimeline()
                     }
@@ -187,7 +190,7 @@ fun TimelineMapScreen(
 
         if (showSettings) {
             GlobalApiSettingsDialog(
-                onDismiss = { showSettings = false }
+                onDismiss = { viewModel.setApiSettingsVisible(false) }
             )
         }
 

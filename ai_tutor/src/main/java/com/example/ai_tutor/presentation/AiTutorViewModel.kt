@@ -23,10 +23,14 @@ import com.example.ai_tutor.domain.MockKnowledgeGraphManager
 import com.example.ai_tutor.domain.ToolsIntegrator
 import com.example.ai_tutor.domain.MultimodalProcessor
 import com.example.common.manager.VoskVoiceManager
-import com.example.common.database.PreferencesManager
+import com.example.common.config.GlobalConfigRepository
 import com.example.common.config.AppConstants
 import com.example.common.dispatchers.DispatcherProvider
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
@@ -35,10 +39,18 @@ import kotlinx.coroutines.withContext
 import java.util.UUID
 import javax.inject.Inject
 
+data class AiTutorUiState(
+    val messages: List<Message> = emptyList(),
+    val inputText: String = "",
+    val isLoading: Boolean = false,
+    val showApiSettings: Boolean = false,
+    val isVoiceMode: Boolean = false
+)
+
 @HiltViewModel
 class AiTutorViewModel @Inject constructor(
     private val application: Application,
-    private val preferences: PreferencesManager,
+    private val globalConfigRepository: GlobalConfigRepository,
     private val chatDao: ChatDao,
     private val voskVoiceManager: VoskVoiceManager,
     private val dispatcherProvider: DispatcherProvider,
@@ -51,7 +63,6 @@ class AiTutorViewModel @Inject constructor(
     private val knowledgeGraph = MockKnowledgeGraphManager()
     private val toolsIntegrator = ToolsIntegrator()
     private val multimodalProcessor = MultimodalProcessor()
-    private var _isVoiceMode = false
 
     // Simple user ID for now, in real app would get from AuthViewModel or Preferences
     private val userId = "current_user" 
@@ -60,20 +71,11 @@ class AiTutorViewModel @Inject constructor(
     val sessions = chatDao.getSessions(userId)
 
     // UI State
-    private val _messages = mutableStateListOf<Message>()
-    val messages: List<Message> get() = _messages
-
-    private val _inputText = mutableStateOf("")
-    val inputText: State<String> = _inputText
-
-    private val _isLoading = mutableStateOf(false)
-    val isLoading: State<Boolean> = _isLoading
-    
-    private val _showApiSettings = mutableStateOf(false)
-    val showApiSettings: State<Boolean> = _showApiSettings
+    private val _uiState = MutableStateFlow(AiTutorUiState())
+    val uiState: StateFlow<AiTutorUiState> = _uiState.asStateFlow()
 
     fun setApiSettingsVisible(visible: Boolean) {
-        _showApiSettings.value = visible
+        _uiState.update { it.copy(showApiSettings = visible) }
     }
     
     val suggestions = listOf(
@@ -86,28 +88,30 @@ class AiTutorViewModel @Inject constructor(
     private var context = DialogueContext(sessionId = UUID.randomUUID().toString())
 
     init {
+        checkNotNull(globalConfigRepository) { "GlobalConfigRepository is not injected" }
+        checkNotNull(chatDao) { "ChatDao is not injected" }
+        checkNotNull(voskVoiceManager) { "VoskVoiceManager is not injected" }
+        checkNotNull(dispatcherProvider) { "DispatcherProvider is not injected" }
+        checkNotNull(repository) { "QwenRepository is not injected" }
+
         // Initialize Vosk Voice Manager
         voskVoiceManager.init(viewModelScope)
         
-        viewModelScope.launch {
+        viewModelScope.launch(dispatcherProvider.io) {
             // Load API settings
-            preferences.getString("api_key_ai_tutor").collectLatest { key ->
-                val finalKey = key.ifBlank {
-                    // Fallback to old key
-                    preferences.getString("bailian_api_key", "").first()
-                }
-                apiKey = finalKey
+            globalConfigRepository.getEffectiveAiTutorApiKey().collectLatest { key ->
+                apiKey = key
                 updateRepository()
             }
         }
-        viewModelScope.launch {
-            preferences.getString("base_url_ai_tutor", AppConstants.BASE_URL).collectLatest { url ->
+        viewModelScope.launch(dispatcherProvider.io) {
+            globalConfigRepository.getAiTutorBaseUrl().collectLatest { url ->
                 baseUrl = url
                 updateRepository()
             }
         }
-        viewModelScope.launch {
-            preferences.getString("model_name_ai_tutor", AppConstants.DEFAULT_MODEL_NAME).collectLatest { name ->
+        viewModelScope.launch(dispatcherProvider.io) {
+            globalConfigRepository.getAiTutorModelName().collectLatest { name ->
                 modelName = name
                 updateRepository()
             }
@@ -126,18 +130,19 @@ class AiTutorViewModel @Inject constructor(
                         // Ready
                     }
                     is VoskVoiceManager.VoiceState.Listening -> {
-                        _inputText.value = "正在听..."
+                        _uiState.update { it.copy(inputText = "正在听...") }
                     }
                     is VoskVoiceManager.VoiceState.Result -> {
                         if (state.text.isNotEmpty()) {
-                            _inputText.value = state.text
-                            _isVoiceMode = true
+                            _uiState.update { it.copy(inputText = state.text, isVoiceMode = true) }
                             sendMessage()
                         }
                     }
                     is VoskVoiceManager.VoiceState.Error -> {
-                        _messages.add(Message("system", "Voice Error: ${state.error}"))
-                        _inputText.value = "" // Reset input
+                        _uiState.update { it.copy(
+                            messages = it.messages + Message("system", "Voice Error: ${state.error}"),
+                            inputText = ""
+                        ) }
                     }
                 }
             }
@@ -179,7 +184,7 @@ class AiTutorViewModel @Inject constructor(
     private fun createNewSession() {
         val newSessionId = UUID.randomUUID().toString()
         context = DialogueContext(sessionId = newSessionId)
-        _messages.clear()
+        _uiState.update { it.copy(messages = emptyList()) }
         
         viewModelScope.launch(dispatcherProvider.io) {
              val session = ChatSessionEntity(
@@ -195,7 +200,7 @@ class AiTutorViewModel @Inject constructor(
     
     fun loadSession(sessionId: String) {
         context = DialogueContext(sessionId = sessionId)
-        _messages.clear()
+        _uiState.update { it.copy(messages = emptyList()) }
         context.history.clear()
         
         viewModelScope.launch(dispatcherProvider.io) {
@@ -203,7 +208,7 @@ class AiTutorViewModel @Inject constructor(
             val msgs = entities.map { Message(it.role, deserializeContent(it.content)) }
             
             withContext(dispatcherProvider.main) {
-                _messages.addAll(msgs)
+                _uiState.update { it.copy(messages = msgs) }
                 context.history.addAll(msgs)
             }
         }
@@ -214,8 +219,7 @@ class AiTutorViewModel @Inject constructor(
     // ...
     
     fun onInputChanged(text: String) {
-        _inputText.value = text
-        _isVoiceMode = false
+        _uiState.update { it.copy(inputText = text, isVoiceMode = false) }
     }
     
     // Vosk Voice Input Handling
@@ -233,14 +237,13 @@ class AiTutorViewModel @Inject constructor(
 
     // Deprecated: Placeholder for Voice/Camera Input Handling
     fun onVoiceInput(text: String) {
-        _inputText.value = text
-        _isVoiceMode = true
+        _uiState.update { it.copy(inputText = text, isVoiceMode = true) }
         sendMessage()
     }
 
     fun onImageCaptured(bitmap: Bitmap) {
         _inputImage.value = bitmap
-        _inputText.value = "[图片已添加] 请输入您的问题..."
+        _uiState.update { it.copy(inputText = "[图片已添加] 请输入您的问题...") }
     }
     
     // ...
@@ -401,7 +404,7 @@ class AiTutorViewModel @Inject constructor(
     
     fun startNewChat() {
         createNewSession()
-        _inputText.value = ""
+        _uiState.update { it.copy(inputText = "") }
     }
 
     private suspend fun prepareHistoryForApi(history: List<Message>): List<Message> = withContext(dispatcherProvider.io) {
@@ -436,18 +439,22 @@ class AiTutorViewModel @Inject constructor(
 
     // Re-adding the correct sendMessage (Multimodal)
     fun sendMessage() {
-        val text = _inputText.value.trim()
+        val text = _uiState.value.inputText.trim()
         val image = _inputImage.value
         if (text.isEmpty() && image == null) return
 
         if (image != null && !isModelImageSupported(modelName)) {
-            _messages.add(Message("system", "当前设置的模型 ($modelName) 可能不支持图片输入，请在设置中更换支持视觉的模型（如 qwen-vl-plus）。"))
+            _uiState.update { state ->
+                state.copy(
+                    messages = state.messages + Message("system", "当前设置的模型 ($modelName) 可能不支持图片输入，请在设置中更换支持视觉的模型（如 qwen-vl-plus）。"),
+                    inputText = ""
+                )
+            }
             _inputImage.value = null
-            _inputText.value = ""
             return
         }
 
-        _isLoading.value = true
+        _uiState.update { it.copy(isLoading = true) }
         
         var base64Image: String? = null
         var displayUrl: String? = null
@@ -496,15 +503,23 @@ class AiTutorViewModel @Inject constructor(
         val uiMsg = Message("user", uiContent)
         val dbMsg = Message("user", dbContent)
         
-        _messages.add(uiMsg)
+        _uiState.update { state ->
+            state.copy(
+                messages = state.messages + uiMsg,
+                inputText = ""
+            )
+        }
         context.history.add(dbMsg) // Add DB-friendly message to history
-        _inputText.value = ""
 
         viewModelScope.launch {
             if (repository == null) {
-                _messages.add(Message("system", "尚未配置 API Key，请在弹出的设置中进行配置。"))
-                _isLoading.value = false
-                _showApiSettings.value = true
+                _uiState.update { state ->
+                    state.copy(
+                        messages = state.messages + Message("system", "尚未配置 API Key，请在弹出的设置中进行配置。"),
+                        isLoading = false,
+                        showApiSettings = true
+                    )
+                }
                 return@launch
             }
 
@@ -523,16 +538,23 @@ class AiTutorViewModel @Inject constructor(
                 baseUrl = baseUrl
             ).collect { chunk ->
                 if (chunk.startsWith("Error:")) {
-                    _messages.add(Message("system", chunk))
-                    if (chunk.contains("API Key 无效或未授权")) {
-                        _showApiSettings.value = true
+                    _uiState.update { state ->
+                        state.copy(
+                            messages = state.messages + Message("system", chunk),
+                            showApiSettings = if (chunk.contains("API Key 无效或未授权")) true else state.showApiSettings,
+                            isLoading = false
+                        )
                     }
                 } else {
-                    _messages.add(Message("assistant", chunk))
+                    _uiState.update { state ->
+                        state.copy(
+                            messages = state.messages + Message("assistant", chunk),
+                            isLoading = false
+                        )
+                    }
                     context.history.add(Message("assistant", chunk))
                     saveMessageToDb(Message("assistant", chunk))
                 }
-                _isLoading.value = false
             }
         }
     }
@@ -580,7 +602,11 @@ class AiTutorViewModel @Inject constructor(
 
     fun sendImageWithPrompt(uri: Uri, prompt: String) {
         if (!isModelImageSupported(modelName)) {
-            _messages.add(Message("system", "当前设置的模型 ($modelName) 可能不支持图片输入，请在设置中更换支持视觉的模型（如 qwen-vl-plus）。"))
+            _uiState.update { state ->
+                state.copy(
+                    messages = state.messages + Message("system", "当前设置的模型 ($modelName) 可能不支持图片输入，请在设置中更换支持视觉的模型（如 qwen-vl-plus）。")
+                )
+            }
             return
         }
 
@@ -591,9 +617,13 @@ class AiTutorViewModel @Inject constructor(
             ContentItem(type = "text", text = prompt)
         )
         val uiMsg = Message("user", uiContent)
-        _messages.add(uiMsg)
-        _inputText.value = "" // Clear input immediately
-        _isLoading.value = true
+        _uiState.update { state ->
+            state.copy(
+                messages = state.messages + uiMsg,
+                inputText = "",
+                isLoading = true
+            )
+        }
 
         viewModelScope.launch(dispatcherProvider.io) {
             try {
@@ -615,22 +645,30 @@ class AiTutorViewModel @Inject constructor(
                     
                     if (repository == null) {
                         withContext(dispatcherProvider.main) {
-                            _messages.add(Message("system", "尚未配置 API Key，请在弹出的设置中进行配置。"))
-                            _isLoading.value = false
-                            _showApiSettings.value = true
+                            _uiState.update { state ->
+                                state.copy(
+                                    messages = state.messages + Message("system", "尚未配置 API Key，请在弹出的设置中进行配置。"),
+                                    isLoading = false,
+                                    showApiSettings = true
+                                )
+                            }
                         }
                         return@launch
                     }
 
                     withContext(dispatcherProvider.main) {
-                        val index = _messages.indexOf(uiMsg)
-                        if (index != -1) {
-                            _messages[index] = uiMsg.copy(
-                                content = listOf(
-                                    ContentItem(type = "image_url", imageUrl = ImageUrl(url = stableUiImageUrl)),
-                                    ContentItem(type = "text", text = prompt)
+                        _uiState.update { state ->
+                            val newMessages = state.messages.toMutableList()
+                            val index = newMessages.indexOf(uiMsg)
+                            if (index != -1) {
+                                newMessages[index] = uiMsg.copy(
+                                    content = listOf(
+                                        ContentItem(type = "image_url", imageUrl = ImageUrl(url = stableUiImageUrl)),
+                                        ContentItem(type = "text", text = prompt)
+                                    )
                                 )
-                            )
+                            }
+                            state.copy(messages = newMessages)
                         }
                     }
                     
@@ -662,34 +700,43 @@ class AiTutorViewModel @Inject constructor(
                     ).collect { chunk ->
                         withContext(dispatcherProvider.main) {
                             if (chunk.startsWith("Error:")) {
-                                _messages.add(Message("system", chunk))
-                                if (chunk.contains("API Key 无效或未授权")) {
-                                    _showApiSettings.value = true
+                                _uiState.update { state ->
+                                    state.copy(
+                                        messages = state.messages + Message("system", chunk),
+                                        showApiSettings = if (chunk.contains("API Key 无效或未授权")) true else state.showApiSettings,
+                                        isLoading = false
+                                    )
                                 }
                             } else {
-                                val assistantMsg = Message("assistant", chunk)
-                                _messages.add(assistantMsg)
-                                context.history.add(assistantMsg)
-                                saveMessageToDb(assistantMsg)
-                                // if (_isVoiceMode) {
-                                //     ttsManager.speak(chunk)
-                                // }
+                                _uiState.update { state ->
+                                    state.copy(
+                                        messages = state.messages + Message("assistant", chunk),
+                                        isLoading = false
+                                    )
+                                }
+                                context.history.add(Message("assistant", chunk))
+                                saveMessageToDb(Message("assistant", chunk))
                             }
-                            _isLoading.value = false
                         }
                     }
                 } else {
-                    // Bitmap load failed
                     withContext(dispatcherProvider.main) {
-                         _messages.add(Message("system", "Error: Failed to load image."))
-                         _isLoading.value = false
+                        _uiState.update { state ->
+                            state.copy(
+                                messages = state.messages + Message("system", "无法处理图片。"),
+                                isLoading = false
+                            )
+                        }
                     }
                 }
             } catch (e: Exception) {
-                e.printStackTrace()
                 withContext(dispatcherProvider.main) {
-                    _messages.add(Message("system", "Error processing image: ${e.message}"))
-                    _isLoading.value = false
+                    _uiState.update { state ->
+                        state.copy(
+                            messages = state.messages + Message("system", "Error: ${e.message}"),
+                            isLoading = false
+                        )
+                    }
                 }
             }
         }

@@ -10,7 +10,7 @@ import com.example.ai_tutor.data.local.entity.MessageEntity
 
 @Database(
     entities = [ChatSessionEntity::class, MessageEntity::class],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class AiTutorDatabase : RoomDatabase() {
@@ -26,7 +26,9 @@ abstract class AiTutorDatabase : RoomDatabase() {
                     context.applicationContext,
                     AiTutorDatabase::class.java,
                     "ai_tutor_db"
-                ).build()
+                )
+                .fallbackToDestructiveMigration()
+                .build()
                 INSTANCE = instance
                 instance
             }

@@ -15,6 +15,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.common.dispatchers.DefaultDispatcherProvider
 import com.example.common.manager.VoskModelManager
 import com.example.video_summarizer.data.downloader.ModelDownloader
@@ -23,39 +24,16 @@ import com.example.video_summarizer.data.downloader.DownloadStatus
 import kotlinx.coroutines.delay
 
 @Composable
-fun SplashScreen(onLoadComplete: () -> Unit) {
-    val context = LocalContext.current
+fun SplashScreen(
+    onLoadComplete: () -> Unit,
+    viewModel: SplashViewModel = hiltViewModel()
+) {
     // Collect the initialization state from the manager
-    val voskState by VoskModelManager.initState.collectAsState()
+    val voskState by viewModel.voskModelManager.initState.collectAsState()
     
-    var sherpaProgress by remember { mutableStateOf<DownloadProgress?>(null) }
-    var sherpaReady by remember { mutableStateOf(false) }
-    var sherpaError by remember { mutableStateOf<String?>(null) }
-    var sherpaRetryTrigger by remember { mutableIntStateOf(0) }
-
-    // Start initialization when the screen launches
-    LaunchedEffect(Unit) {
-        VoskModelManager.initModel(context)
-    }
-
-    LaunchedEffect(sherpaRetryTrigger) {
-        sherpaError = null
-        val sherpaDownloader = ModelDownloader(context, DefaultDispatcherProvider())
-        if (!sherpaDownloader.isModelReady()) {
-            sherpaDownloader.downloadAndExtractModel { progress ->
-                sherpaProgress = progress
-            }.fold(
-                onSuccess = {
-                    sherpaReady = true
-                },
-                onFailure = { error ->
-                    sherpaError = error.message
-                }
-            )
-        } else {
-            sherpaReady = true
-        }
-    }
+    val sherpaProgress by viewModel.sherpaProgress.collectAsState()
+    val sherpaReady by viewModel.sherpaReady.collectAsState()
+    val sherpaError by viewModel.sherpaError.collectAsState()
 
     // Auto-navigate when ready
     LaunchedEffect(voskState, sherpaReady) {
@@ -101,7 +79,7 @@ fun SplashScreen(onLoadComplete: () -> Unit) {
                     is VoskModelManager.InitState.Ready -> ModelStatus.Ready
                     is VoskModelManager.InitState.Error -> ModelStatus.Error(state.message)
                 },
-                onRetry = { VoskModelManager.initModel(context) }
+                onRetry = { viewModel.retryVosk() }
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -117,7 +95,7 @@ fun SplashScreen(onLoadComplete: () -> Unit) {
                     else if (progress.status == DownloadStatus.DOWNLOADING) ModelStatus.Downloading(progress.progress / 100f)
                     else ModelStatus.Processing
                 },
-                onRetry = { sherpaRetryTrigger++ }
+                onRetry = { viewModel.initSherpaModel() }
             )
 
             Spacer(modifier = Modifier.height(48.dp))

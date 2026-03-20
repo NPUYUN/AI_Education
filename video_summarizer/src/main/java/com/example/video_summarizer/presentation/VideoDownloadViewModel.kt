@@ -5,7 +5,7 @@ import android.database.Cursor
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.common.config.AppConstants
-import com.example.common.database.PreferencesManager
+import com.example.common.config.GlobalConfigRepository
 import com.example.video_summarizer.data.asr.SherpaAsrManager
 import com.example.video_summarizer.data.downloader.DownloadProgress
 import com.example.video_summarizer.data.downloader.DownloadStatus
@@ -24,6 +24,8 @@ import kotlinx.coroutines.withContext
 import okhttp3.Call
 import okhttp3.Callback
 
+import com.example.video_summarizer.domain.usecase.ProcessLocalVideoUseCase
+import com.example.video_summarizer.domain.usecase.SummarizeVideoUseCase
 import com.example.video_summarizer.data.downloader.ModelDownloader
 import com.example.common.dispatchers.DispatcherProvider
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -71,7 +73,8 @@ data class VideoDownloadUiState(
     val modelName: String = AppConstants.DEFAULT_MODEL_NAME,
     val baseUrl: String = AppConstants.BASE_URL,
     val showApiSettings: Boolean = false,
-    val currentUserId: String = "" // Added to verify cross-app user data access
+    val currentUserId: String = "", // Added to verify cross-app user data access
+    val downloadTasks: List<DownloadTask> = emptyList()
 )
 
 @HiltViewModel
@@ -79,16 +82,14 @@ class VideoDownloadViewModel @Inject constructor(
     private val application: Application,
     private val downloader: VideoDownloader,
     private val sherpaAsrManager: SherpaAsrManager,
-    private val preferences: PreferencesManager,
+    private val globalConfigRepository: GlobalConfigRepository,
     private val modelDownloader: ModelDownloader,
-    private val summaryRepository: BailianSummaryRepository,
-    private val dispatcherProvider: DispatcherProvider
+    private val dispatcherProvider: DispatcherProvider,
+    private val processLocalVideoUseCase: ProcessLocalVideoUseCase,
+    private val summarizeVideoUseCase: SummarizeVideoUseCase
 ) : ViewModel() {
 
     private val apiKeyKey = "bailian_api_key"
-
-    private val _downloadTasks = androidx.compose.runtime.mutableStateListOf<DownloadTask>()
-    val downloadTasks: List<DownloadTask> get() = _downloadTasks
 
     private val _uiState = MutableStateFlow(VideoDownloadUiState())
     val uiState: StateFlow<VideoDownloadUiState> = _uiState.asStateFlow()
@@ -96,26 +97,23 @@ class VideoDownloadViewModel @Inject constructor(
     init {
         // Verify cross-app user data access
         viewModelScope.launch(dispatcherProvider.main) {
-            preferences.getString("current_user_id").collect { userId ->
+            globalConfigRepository.getCurrentUserId().collect { userId ->
                 _uiState.value = _uiState.value.copy(currentUserId = userId)
             }
         }
         
         viewModelScope.launch(dispatcherProvider.main) {
-            preferences.getString("api_key_video_summary", "").collect { key ->
-                val finalKey = key.ifBlank {
-                    preferences.getString("bailian_api_key", "").first()
-                }
-                _uiState.value = _uiState.value.copy(apiKey = finalKey)
+            globalConfigRepository.getEffectiveVideoSummaryApiKey().collect { key ->
+                _uiState.value = _uiState.value.copy(apiKey = key)
             }
         }
         viewModelScope.launch(dispatcherProvider.main) {
-            preferences.getString("model_name_video_summary", AppConstants.DEFAULT_MODEL_NAME).collect { modelName ->
+            globalConfigRepository.getVideoSummaryModelName().collect { modelName ->
                 _uiState.value = _uiState.value.copy(modelName = modelName)
             }
         }
         viewModelScope.launch(dispatcherProvider.main) {
-            preferences.getString("base_url_video_summary", AppConstants.BASE_URL).collect { baseUrl ->
+            globalConfigRepository.getVideoSummaryBaseUrl().collect { baseUrl ->
                 _uiState.value = _uiState.value.copy(baseUrl = baseUrl)
             }
         }
@@ -131,7 +129,9 @@ class VideoDownloadViewModel @Inject constructor(
                 title = "离线语音识别模型 (首次运行必需)",
                 progress = DownloadProgress(status = DownloadStatus.PREPARING)
             )
-            _downloadTasks.add(modelTask)
+            _uiState.update { state -> 
+                state.copy(downloadTasks = state.downloadTasks + modelTask)
+            }
 
             viewModelScope.launch(dispatcherProvider.main) {
                 modelDownloader.downloadAndExtractModel { progress ->
@@ -167,59 +167,43 @@ class VideoDownloadViewModel @Inject constructor(
             url = url,
             title = extractVideoTitle(url)
         )
-        _downloadTasks.add(newTask)
+        _uiState.update { state -> 
+            state.copy(downloadTasks = state.downloadTasks + newTask)
+        }
         startDownload(taskId, url)
         _uiState.value = _uiState.value.copy(inputUrl = "")
     }
 
     fun handleLocalVideo(uri: android.net.Uri) {
         viewModelScope.launch(dispatcherProvider.io) {
-            try {
-                val context = application
-                val contentResolver = context.contentResolver
-                
-                // Get file name
-                var fileName = "local_video_${System.currentTimeMillis()}.mp4"
-                contentResolver.query(uri, null, null, null, null)?.use { cursor: Cursor ->
-                    if (cursor.moveToFirst()) {
-                        val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
-                        if (nameIndex != -1) {
-                            cursor.getString(nameIndex)?.let { 
-                                fileName = it 
-                            }
+            val result = processLocalVideoUseCase(application, uri)
+            
+            result.fold(
+                onSuccess = { (fileName, destFile) ->
+                    val taskId = "local_${System.currentTimeMillis()}"
+                    val newTask = DownloadTask(
+                        id = taskId,
+                        url = "Local File: $fileName",
+                        title = fileName,
+                        progress = DownloadProgress(status = DownloadStatus.COMPLETED, progress = 100f),
+                        localPath = destFile.absolutePath
+                    )
+                    
+                    withContext(dispatcherProvider.main) {
+                        _uiState.update { state -> 
+                            state.copy(downloadTasks = state.downloadTasks + newTask)
                         }
+                        showSuccess("视频导入成功")
+                    }
+                    // Auto start summary
+                    startVideoSummary(taskId, destFile.absolutePath)
+                },
+                onFailure = { error ->
+                    withContext(dispatcherProvider.main) {
+                        showError("导入视频失败: ${error.message}")
                     }
                 }
-                
-                // Copy to private storage
-                val destFile = File(context.getExternalFilesDir(android.os.Environment.DIRECTORY_MOVIES), fileName)
-                contentResolver.openInputStream(uri)?.use { input ->
-                    destFile.outputStream().use { output ->
-                        input.copyTo(output)
-                    }
-                }
-                
-                val taskId = "local_${System.currentTimeMillis()}"
-                val newTask = DownloadTask(
-                    id = taskId,
-                    url = "Local File: $fileName",
-                    title = fileName,
-                    progress = DownloadProgress(status = DownloadStatus.COMPLETED, progress = 100f),
-                    localPath = destFile.absolutePath
-                )
-                
-                withContext(dispatcherProvider.main) {
-                    _downloadTasks.add(newTask)
-                    showSuccess("视频导入成功")
-                }
-                // Auto start summary
-                startVideoSummary(taskId, destFile.absolutePath)
-                
-            } catch (e: Exception) {
-                withContext(dispatcherProvider.main) {
-                    showError("导入视频失败: ${e.message}")
-                }
-            }
+            )
         }
     }
 
@@ -253,9 +237,8 @@ class VideoDownloadViewModel @Inject constructor(
     }
 
     fun removeTask(taskId: String) {
-        val index = _downloadTasks.indexOfFirst { it.id == taskId }
-        if (index != -1) {
-            _downloadTasks.removeAt(index)
+        _uiState.update { state ->
+            state.copy(downloadTasks = state.downloadTasks.filter { it.id != taskId })
         }
     }
 
@@ -268,7 +251,7 @@ class VideoDownloadViewModel @Inject constructor(
     }
 
     fun startVideoSummary(taskId: String, localPath: String?) {
-        val status = _downloadTasks.firstOrNull { it.id == taskId }?.summary?.status
+        val status = _uiState.value.downloadTasks.firstOrNull { it.id == taskId }?.summary?.status
         if (status == SummaryStatus.PREPARING ||
             status == SummaryStatus.TRANSCRIBING ||
             status == SummaryStatus.SUMMARIZING) {
@@ -301,74 +284,62 @@ class VideoDownloadViewModel @Inject constructor(
             }
 
             val localFile = localPath?.let { File(it) }
-            if (localFile == null || !localFile.exists()) {
-                updateTaskSummary(taskId) {
-                    it.copy(
-                        status = SummaryStatus.FAILED,
-                        error = "未找到本地文件，无法上传转写"
-                    )
-                }
-                showError("未找到本地文件，无法上传转写")
+            if (localFile == null) {
+                val errorMsg = "未找到本地文件，无法上传转写"
+                updateTaskSummary(taskId) { it.copy(status = SummaryStatus.FAILED, error = errorMsg) }
+                showError(errorMsg)
                 return@launch
             }
 
             updateTaskSummary(taskId) { it.copy(status = SummaryStatus.TRANSCRIBING) }
-            val transcriptResult = summaryRepository.transcribeOffline(localFile)
-            val transcript = transcriptResult.getOrNull().orEmpty()
-            if (transcript.isBlank()) {
-                val message = transcriptResult.exceptionOrNull()?.message ?: "转写失败"
-                updateTaskSummary(taskId) {
-                    it.copy(
-                        status = SummaryStatus.FAILED,
-                        error = message
-                    )
+            
+            val result = summarizeVideoUseCase(
+                apiKey = apiKey,
+                localFile = localFile,
+                modelName = modelName,
+                baseUrl = baseUrl,
+                onTranscriptReady = { transcript ->
+                    updateTaskSummary(taskId) { it.copy(status = SummaryStatus.SUMMARIZING, transcript = transcript) }
                 }
-                showError(message)
-                return@launch
-            }
+            )
 
-            updateTaskSummary(taskId) { it.copy(status = SummaryStatus.SUMMARIZING, transcript = transcript) }
-            val summaryResult = summaryRepository.summarize(apiKey, transcript, modelName, baseUrl)
-            val summaryText = summaryResult.getOrNull().orEmpty()
-            if (summaryText.isBlank()) {
-                val message = summaryResult.exceptionOrNull()?.message ?: "摘要生成失败"
-                updateTaskSummary(taskId) {
-                    it.copy(
-                        status = SummaryStatus.FAILED,
-                        error = message
-                    )
+            result.fold(
+                onSuccess = { summaryText ->
+                    updateTaskSummary(taskId) { it.copy(status = SummaryStatus.COMPLETED, summary = summaryText) }
+                },
+                onFailure = { error ->
+                    val message = error.message ?: "处理失败"
+                    updateTaskSummary(taskId) { it.copy(status = SummaryStatus.FAILED, error = message) }
+                    showError(message)
+                    if (message.contains("API Key 无效或未授权") || message.contains("尚未配置 API Key")) {
+                        _uiState.value = _uiState.value.copy(showApiSettings = true)
+                    }
                 }
-                showError(message)
-                if (message.contains("API Key 无效或未授权") || message.contains("尚未配置 API Key")) {
-                    _uiState.value = _uiState.value.copy(showApiSettings = true)
-                }
-                return@launch
-            }
-
-            updateTaskSummary(taskId) { it.copy(status = SummaryStatus.COMPLETED, summary = summaryText) }
+            )
         }
     }
 
     private fun updateTaskProgress(taskId: String, update: (DownloadProgress) -> DownloadProgress) {
-        val index = _downloadTasks.indexOfFirst { it.id == taskId }
-        if (index != -1) {
-            val task = _downloadTasks[index]
-            _downloadTasks[index] = task.copy(progress = update(task.progress))
+        _uiState.update { state ->
+            state.copy(downloadTasks = state.downloadTasks.map { task ->
+                if (task.id == taskId) task.copy(progress = update(task.progress)) else task
+            })
         }
     }
 
     private fun updateTask(taskId: String, update: (DownloadTask) -> DownloadTask) {
-        val index = _downloadTasks.indexOfFirst { it.id == taskId }
-        if (index != -1) {
-            _downloadTasks[index] = update(_downloadTasks[index])
+        _uiState.update { state ->
+            state.copy(downloadTasks = state.downloadTasks.map { task ->
+                if (task.id == taskId) update(task) else task
+            })
         }
     }
 
     private fun updateTaskSummary(taskId: String, update: (SummaryState) -> SummaryState) {
-        val index = _downloadTasks.indexOfFirst { it.id == taskId }
-        if (index != -1) {
-            val task = _downloadTasks[index]
-            _downloadTasks[index] = task.copy(summary = update(task.summary))
+        _uiState.update { state ->
+            state.copy(downloadTasks = state.downloadTasks.map { task ->
+                if (task.id == taskId) task.copy(summary = update(task.summary)) else task
+            })
         }
     }
 

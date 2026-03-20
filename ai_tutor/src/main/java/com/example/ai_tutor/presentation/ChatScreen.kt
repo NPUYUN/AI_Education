@@ -53,6 +53,7 @@ fun ChatScreen(
 ) {
     val context = LocalContext.current
     val listState = rememberLazyListState()
+    val uiState by viewModel.uiState.collectAsState()
 
     // Removed VoiceInputManager (using Native Recorder in ViewModel)
 
@@ -82,11 +83,11 @@ fun ChatScreen(
     ) { uri: Uri? ->
         if (uri != null) {
             // Use sendImageWithPrompt to handle loading, rotation (EXIF), and sending
-            viewModel.sendImageWithPrompt(uri, viewModel.inputText.value)
+            viewModel.sendImageWithPrompt(uri, uiState.inputText)
         }
     }
 
-    if (viewModel.showApiSettings.value) {
+    if (uiState.showApiSettings) {
         GlobalApiSettingsDialog(
             onDismiss = { viewModel.setApiSettingsVisible(false) }
         )
@@ -95,7 +96,7 @@ fun ChatScreen(
     Column(
         modifier = modifier.fillMaxSize()
     ) {
-        if (viewModel.messages.isEmpty()) {
+        if (uiState.messages.isEmpty()) {
             WelcomeScreen(
                 suggestions = viewModel.suggestions,
                 onSuggestionClick = { viewModel.onSuggestionClicked(it) },
@@ -110,24 +111,24 @@ fun ChatScreen(
                         reverseLayout = false,
                         contentPadding = PaddingValues(bottom = 16.dp)
                     ) {
-                        items(viewModel.messages) { message ->
+                        items(uiState.messages) { message ->
                             MessageItem(message)
                             Spacer(modifier = Modifier.height(16.dp))
                         }
                     }
 
-                    LaunchedEffect(viewModel.messages.size) {
-                        if (viewModel.messages.isNotEmpty()) {
-                            listState.animateScrollToItem(viewModel.messages.size - 1)
+                    LaunchedEffect(uiState.messages.size) {
+                        if (uiState.messages.isNotEmpty()) {
+                            listState.animateScrollToItem(uiState.messages.size - 1)
                         }
                     }
                 }
 
                 ChatInputArea(
-                    text = viewModel.inputText.value,
+                    text = uiState.inputText,
                     onTextChanged = { viewModel.onInputChanged(it) },
                     onSend = { viewModel.sendMessage() },
-                    isLoading = viewModel.isLoading.value,
+                    isLoading = uiState.isLoading,
                     onVoiceStart = {
                         viewModel.startVoiceRecording()
                     },

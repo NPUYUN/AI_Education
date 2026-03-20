@@ -28,7 +28,9 @@ object CommonModule {
             context,
             AuthDatabase::class.java,
             "auth_db"
-        ).build()
+        )
+        .fallbackToDestructiveMigration()
+        .build()
     }
 
     @Provides
@@ -45,8 +47,11 @@ object CommonModule {
 
     @Provides
     @Singleton
-    fun provideVoskVoiceManager(@ApplicationContext context: Context): VoskVoiceManager {
-        return VoskVoiceManager(context)
+    fun provideVoskVoiceManager(
+        @ApplicationContext context: Context,
+        voskModelManager: com.example.common.manager.VoskModelManager
+    ): VoskVoiceManager {
+        return VoskVoiceManager(context, voskModelManager)
     }
 
     @Provides

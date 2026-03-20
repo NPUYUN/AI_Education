@@ -50,7 +50,7 @@ fun VideoDownloadScreen(
     viewModel: VideoDownloadViewModel
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val downloadTasks = viewModel.downloadTasks
+    val downloadTasks = uiState.downloadTasks
     val context = LocalContext.current
 
     val permissionLauncher = rememberLauncherForActivityResult(

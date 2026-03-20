@@ -11,12 +11,16 @@ import com.example.timeline_map.data.model.HistoricalEvent
 import com.example.timeline_map.data.model.SpeechLanguage
 import com.example.timeline_map.data.repository.TimelineRepository
 import com.example.timeline_map.domain.KnowledgeGraphManager
-import com.example.common.database.PreferencesManager
+import com.example.common.config.GlobalConfigRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
+
 import java.time.format.DateTimeParseException
 import javax.inject.Inject
 
@@ -25,91 +29,68 @@ import com.example.common.dispatchers.DispatcherProvider
 
 import com.example.timeline_map.domain.util.DateUtils
 
+data class TimelineMapUiState(
+    val queryText: String = "",
+    val speechLanguage: SpeechLanguage = SpeechLanguage.AUTO,
+    val isListening: Boolean = false,
+    val isLoading: Boolean = false,
+    val errorMessage: String? = null,
+    val mapTileWarning: String? = null,
+    val events: List<HistoricalEvent> = emptyList(),
+    val selectedEventId: String? = null,
+    val timelineZoom: Float = 1f,
+    val apiKey: String = "",
+    val modelName: String = AppConstants.DEFAULT_MODEL_NAME,
+    val baseUrl: String = AppConstants.BASE_URL,
+    val showApiSettings: Boolean = false
+)
+
 @HiltViewModel
 class TimelineMapViewModel @Inject constructor(
-    private val preferences: PreferencesManager,
+    private val globalConfigRepository: GlobalConfigRepository,
     private val voskVoiceManager: VoskVoiceManager,
     private val repository: TimelineRepository,
     private val dispatcherProvider: DispatcherProvider
 ) : ViewModel() {
     private val knowledgeGraphManager = KnowledgeGraphManager()
-    
-    private val apiKeyKey = "api_key_timeline_map"
 
-    private val _queryText = mutableStateOf("")
-    val queryText: State<String> = _queryText
-
-    private val _speechLanguage = mutableStateOf(SpeechLanguage.AUTO)
-    val speechLanguage: State<SpeechLanguage> = _speechLanguage
-
-    private val _isListening = mutableStateOf(false)
-    val isListening: State<Boolean> = _isListening
-
-    private val _isLoading = mutableStateOf(false)
-    val isLoading: State<Boolean> = _isLoading
-
-    private val _errorMessage = mutableStateOf<String?>(null)
-    val errorMessage: State<String?> = _errorMessage
-    
-    private val _mapTileWarning = mutableStateOf<String?>(null)
-    val mapTileWarning: State<String?> = _mapTileWarning
-
-    private val _events = mutableStateListOf<HistoricalEvent>()
-    val events: List<HistoricalEvent> get() = _events
-
-    private val _selectedEventId = mutableStateOf<String?>(null)
-    val selectedEventId: State<String?> = _selectedEventId
-
-    private val _timelineZoom = mutableStateOf(1f)
-    val timelineZoom: State<Float> = _timelineZoom
-    
-    // API Key State
-    private val _apiKey = mutableStateOf("")
-    val apiKey: State<String> = _apiKey
-    
-    private val _modelName = mutableStateOf(AppConstants.DEFAULT_MODEL_NAME)
-    private val _baseUrl = mutableStateOf(AppConstants.BASE_URL)
-
-    private val _showApiSettings = mutableStateOf(false)
-    val showApiSettings: State<Boolean> = _showApiSettings
+    private val _uiState = MutableStateFlow(TimelineMapUiState())
+    val uiState: StateFlow<TimelineMapUiState> = _uiState.asStateFlow()
 
     init {
         voskVoiceManager.init(viewModelScope)
         
         viewModelScope.launch(dispatcherProvider.main) {
-            preferences.getString(apiKeyKey).collectLatest { key ->
-                _apiKey.value = key.ifBlank {
-                    // Fallback to old bailian key
-                    preferences.getString("bailian_api_key", "").first()
-                }
+            globalConfigRepository.getEffectiveTimelineMapApiKey().collectLatest { key ->
+                _uiState.update { it.copy(apiKey = key) }
             }
         }
 
         viewModelScope.launch(dispatcherProvider.io) {
-            preferences.getString("model_name_timeline_map", AppConstants.DEFAULT_MODEL_NAME).collectLatest {
-                _modelName.value = it
+            globalConfigRepository.getTimelineMapModelName().collectLatest { name ->
+                _uiState.update { it.copy(modelName = name) }
             }
         }
 
         viewModelScope.launch(dispatcherProvider.io) {
-            preferences.getString("base_url_timeline_map", AppConstants.BASE_URL).collectLatest {
-                _baseUrl.value = it
+            globalConfigRepository.getTimelineMapBaseUrl().collectLatest { url ->
+                _uiState.update { it.copy(baseUrl = url) }
             }
         }
         
         viewModelScope.launch(dispatcherProvider.main) {
             voskVoiceManager.voiceState.collectLatest { state ->
                 when (state) {
-                    is VoskVoiceManager.VoiceState.Listening -> _isListening.value = true
+                    is VoskVoiceManager.VoiceState.Listening -> _uiState.update { it.copy(isListening = true) }
                     is VoskVoiceManager.VoiceState.Result -> {
                          if (state.text.isNotEmpty()) {
-                             _queryText.value = state.text
+                             _uiState.update { it.copy(queryText = state.text, isListening = false) }
+                         } else {
+                             _uiState.update { it.copy(isListening = false) }
                          }
-                         _isListening.value = false
                     }
                     is VoskVoiceManager.VoiceState.Error -> {
-                        _errorMessage.value = state.error
-                        _isListening.value = false
+                        _uiState.update { it.copy(errorMessage = state.error, isListening = false) }
                     }
                     else -> {}
                 }
@@ -117,16 +98,19 @@ class TimelineMapViewModel @Inject constructor(
         }
 
         val sample = knowledgeGraphManager.linkEvents(repository.sampleEvents())
-        _events.addAll(sortEvents(sample))
-        _selectedEventId.value = _events.firstOrNull()?.id
+        val sortedEvents = sortEvents(sample)
+        _uiState.update { it.copy(
+            events = sortedEvents,
+            selectedEventId = sortedEvents.firstOrNull()?.id
+        ) }
     }
 
     fun updateQuery(text: String) {
-        _queryText.value = text
+        _uiState.update { it.copy(queryText = text) }
     }
 
     fun updateSpeechLanguage(language: SpeechLanguage) {
-        _speechLanguage.value = language
+        _uiState.update { it.copy(speechLanguage = language) }
     }
 
     fun startVoiceRecording() {
@@ -138,60 +122,73 @@ class TimelineMapViewModel @Inject constructor(
     }
 
     fun setListening(listening: Boolean) {
-        _isListening.value = listening
+        _uiState.update { it.copy(isListening = listening) }
     }
 
     fun updateTimelineZoom(value: Float) {
-        _timelineZoom.value = value
+        _uiState.update { it.copy(timelineZoom = value) }
     }
 
-    fun selectEvent(eventId: String) {
-        _selectedEventId.value = eventId
+    fun selectEvent(id: String) {
+        _uiState.update { it.copy(selectedEventId = id) }
+    }
+
+    fun setZoom(zoom: Float) {
+        _uiState.update { it.copy(timelineZoom = zoom) }
     }
 
     fun clearError() {
-        _errorMessage.value = null
+        _uiState.update { it.copy(errorMessage = null) }
+    }
+
+    fun setApiSettingsVisible(visible: Boolean) {
+        _uiState.update { it.copy(showApiSettings = visible) }
     }
     
     fun setMapTileWarning(msg: String?) {
-        _mapTileWarning.value = msg
+        _uiState.update { it.copy(mapTileWarning = msg) }
     }
 
     fun updateApiKey(value: String) {
-        _apiKey.value = value
+        _uiState.update { it.copy(apiKey = value) }
     }
 
     fun saveApiKey() {
         viewModelScope.launch(dispatcherProvider.io) {
-            preferences.saveString(apiKeyKey, _apiKey.value.trim())
+            globalConfigRepository.saveTimelineMapApiKey(_uiState.value.apiKey.trim())
+            _uiState.update { it.copy(showApiSettings = false) }
         }
     }
 
     fun generateTimeline() {
-        val query = _queryText.value.trim()
+        val query = _uiState.value.queryText.trim()
         if (query.isEmpty()) {
-            _errorMessage.value = "请输入历史事件问题"
+            _uiState.update { it.copy(errorMessage = "请输入历史事件问题") }
             return
         }
         viewModelScope.launch(dispatcherProvider.main) {
-            _isLoading.value = true
-            _errorMessage.value = null
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             val result = repository.generateEvents(
                 query = query,
-                apiKey = _apiKey.value.trim(),
-                model = _modelName.value,
-                baseUrl = _baseUrl.value
+                apiKey = _uiState.value.apiKey.trim(),
+                model = _uiState.value.modelName,
+                baseUrl = _uiState.value.baseUrl
             )
             val events = result.getOrElse { repository.sampleEvents() }
             val linked = knowledgeGraphManager.linkEvents(events)
-            _events.clear()
-            _events.addAll(sortEvents(linked))
-            _selectedEventId.value = _events.firstOrNull()?.id
-            if (result.isFailure) {
-                val reason = result.exceptionOrNull()?.message?.takeIf { it.isNotBlank() } ?: "请求失败"
-                _errorMessage.value = "已使用内置示例数据（原因：$reason）"
+            val sortedEvents = sortEvents(linked)
+            
+            _uiState.update { state ->
+                state.copy(
+                    events = sortedEvents,
+                    selectedEventId = sortedEvents.firstOrNull()?.id,
+                    errorMessage = if (result.isFailure) {
+                        val reason = result.exceptionOrNull()?.message?.takeIf { it.isNotBlank() } ?: "请求失败"
+                        "已使用内置示例数据（原因：$reason）"
+                    } else null,
+                    isLoading = false
+                )
             }
-            _isLoading.value = false
         }
     }
 

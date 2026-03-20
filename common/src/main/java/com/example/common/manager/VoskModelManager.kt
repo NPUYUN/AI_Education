@@ -4,7 +4,6 @@ import android.content.Context
 import android.util.Log
 import com.example.common.dispatchers.DispatcherProvider
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,16 +17,23 @@ import org.vosk.Model
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import javax.inject.Inject
+import javax.inject.Singleton
+import dagger.hilt.android.qualifiers.ApplicationContext
 
-object VoskModelManager {
+@Singleton
+class VoskModelManager @Inject constructor(
+    @ApplicationContext private val context: Context,
+    private val dispatcherProvider: DispatcherProvider
+) {
     // Use HF Mirror for faster download in China
-    private const val MODEL_URL = "https://hf-mirror.com/localstack/vosk-models/resolve/main/vosk-model-small-cn-0.22.zip"
-    private const val MODEL_DIR_NAME = "vosk-model-small-cn-0.22"
+    private val MODEL_URL = "https://hf-mirror.com/localstack/vosk-models/resolve/main/vosk-model-small-cn-0.22.zip"
+    private val MODEL_DIR_NAME = "vosk-model-small-cn-0.22"
     
     private var loadedModel: Model? = null
     
     // Scope for background download that survives UI lifecycle
-    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val scope = CoroutineScope(dispatcherProvider.io + SupervisorJob())
 
     sealed class InitState {
         object Idle : InitState()
@@ -40,7 +46,7 @@ object VoskModelManager {
     private val _initState = MutableStateFlow<InitState>(InitState.Idle)
     val initState = _initState.asStateFlow()
 
-    fun initModel(context: Context) {
+    fun initModel() {
         if (_initState.value is InitState.Ready || 
             _initState.value is InitState.Loading || 
             _initState.value is InitState.Downloading) {
@@ -63,7 +69,7 @@ object VoskModelManager {
 
                     _initState.value = InitState.Downloading(0f)
                     
-                    downloadAndUnzipModel(context, modelDir.parentFile!!) { progress ->
+                    downloadAndUnzipModel(modelDir.parentFile!!) { progress ->
                         _initState.value = InitState.Downloading(progress)
                     }
                     
@@ -86,17 +92,17 @@ object VoskModelManager {
     }
     
     // Legacy support / Direct access
-    fun getModel(context: Context, onProgress: ((Float, String) -> Unit)? = null): Model? {
+    fun getModel(onProgress: ((Float, String) -> Unit)? = null): Model? {
         if (loadedModel != null) return loadedModel
         
         // If init hasn't started, start it
-        initModel(context)
+        initModel()
         
         // Return current state (likely null if just started)
         return loadedModel
     }
 
-    private fun downloadAndUnzipModel(context: Context, destDir: File, onDownloadProgress: (Float) -> Unit) {
+    private fun downloadAndUnzipModel(destDir: File, onDownloadProgress: (Float) -> Unit) {
         val client = OkHttpClient()
         val request = Request.Builder().url(MODEL_URL).build()
 

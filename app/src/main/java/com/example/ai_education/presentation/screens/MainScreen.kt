@@ -262,7 +262,7 @@ fun MainScreen(
                         actions = {
                             if (currentRoute == "home") {
                                 IconButton(onClick = {
-                                    val latest = viewModel.messages.lastOrNull { it.role == "assistant" }
+                                    val latest = viewModel.uiState.value.messages.lastOrNull { it.role == "assistant" }
                                     val shareText = when (val c = latest?.content) {
                                         is String -> c
                                         is List<*> -> {

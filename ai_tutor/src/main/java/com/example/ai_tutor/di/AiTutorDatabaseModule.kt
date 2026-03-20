@@ -24,7 +24,9 @@ object AiTutorDatabaseModule {
             context,
             AiTutorDatabase::class.java,
             "ai_tutor_db"
-        ).build()
+        )
+        .fallbackToDestructiveMigration()
+        .build()
     }
 
     @Provides

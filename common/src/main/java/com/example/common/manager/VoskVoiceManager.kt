@@ -12,7 +12,10 @@ import org.vosk.Recognizer
 import org.vosk.android.RecognitionListener
 import org.vosk.android.SpeechService
 
-class VoskVoiceManager(private val context: Context) : RecognitionListener {
+class VoskVoiceManager(
+    private val context: Context,
+    private val voskModelManager: VoskModelManager
+) : RecognitionListener {
 
     private var speechService: SpeechService? = null
     private var model: Model? = null
@@ -34,7 +37,7 @@ class VoskVoiceManager(private val context: Context) : RecognitionListener {
                 _voiceState.send(VoiceState.Loading("正在检查语音模型..."))
                 // Using 0.0f and "" as dummy values since we don't display progress in this init path anymore
                 // Ideally init should be called after Splash has loaded the model.
-                model = VoskModelManager.getModel(context) { _, msg ->
+                model = voskModelManager.getModel { _, msg ->
                     // scope.launch { _voiceState.send(VoiceState.Loading(msg)) }
                 }
                 
@@ -51,7 +54,7 @@ class VoskVoiceManager(private val context: Context) : RecognitionListener {
 
     fun startListening() {
         if (model == null) {
-            model = VoskModelManager.getModel(context)
+            model = voskModelManager.getModel()
             if (model == null) {
                 _voiceState.trySend(VoiceState.Error("模型仍在下载中，请稍后重试"))
                 return
