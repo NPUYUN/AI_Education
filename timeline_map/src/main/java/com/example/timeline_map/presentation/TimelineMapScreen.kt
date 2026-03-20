@@ -27,7 +27,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
@@ -43,12 +43,12 @@ import java.io.File
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import org.osmdroid.views.overlay.TilesOverlay
-import com.example.common.presentation.components.ApiKeyDialog
+import com.example.common.presentation.components.GlobalApiSettingsDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TimelineMapScreen(
-    viewModel: TimelineMapViewModel = viewModel()
+    viewModel: TimelineMapViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
     LaunchedEffect(Unit) { }
@@ -168,7 +168,13 @@ fun TimelineMapScreen(
                     Spacer(Modifier.width(8.dp))
                     Text("停止")
                 }
-                Button(onClick = { viewModel.generateTimeline() }) {
+                Button(onClick = {
+                    if (apiKey.isBlank()) {
+                        showSettings = true
+                    } else {
+                        viewModel.generateTimeline()
+                    }
+                }) {
                     Text("生成时间轴")
                 }
             }
@@ -180,13 +186,7 @@ fun TimelineMapScreen(
         }
 
         if (showSettings) {
-            ApiKeyDialog(
-                apiKey = apiKey,
-                onApiKeyChange = { viewModel.updateApiKey(it) },
-                onSave = {
-                    viewModel.saveApiKey()
-                    showSettings = false
-                },
+            GlobalApiSettingsDialog(
                 onDismiss = { showSettings = false }
             )
         }
@@ -302,6 +302,8 @@ private fun rememberMapViewWithLifecycle(): MapView {
         if (!tilePath.exists()) tilePath.mkdirs()
         config.osmdroidBasePath = basePath
         config.osmdroidTileCache = tilePath
+        config.tileFileSystemCacheMaxBytes = 100L * 1024 * 1024 // 100MB缓存，提升离线和二次加载速度
+        config.tileFileSystemCacheTrimBytes = 80L * 1024 * 1024
         config.load(context, context.getSharedPreferences("osmdroid", 0))
         MapView(context).apply {
             setTileSource(TileSourceFactory.MAPNIK)

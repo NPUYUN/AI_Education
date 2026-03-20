@@ -10,6 +10,9 @@ import androidx.compose.ui.Modifier
 import com.example.timeline_map.ui.theme.Ai_EducationTheme
 import com.example.timeline_map.presentation.TimelineMapScreen
 
+import dagger.hilt.android.AndroidEntryPoint
+
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

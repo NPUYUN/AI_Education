@@ -13,21 +13,25 @@ import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 
-class QwenRepository(
-    private val apiKey: String,
-    private val baseUrl: String,
-    private val modelName: String
-) {
-    
-    private val api: QwenService by lazy {
-        RetrofitClient.create(apiKey, baseUrl).create(QwenService::class.java)
-    }
+import javax.inject.Inject
+import javax.inject.Singleton
+import com.example.common.config.AppConstants
+import com.example.common.dispatchers.DispatcherProvider
+import kotlinx.coroutines.withContext
 
+@Singleton
+class QwenRepository @Inject constructor(
+    private val dispatcherProvider: DispatcherProvider
+) {
     suspend fun sendMessage(
+        apiKey: String,
+        baseUrl: String = AppConstants.BASE_URL,
+        modelName: String = AppConstants.DEFAULT_MODEL_NAME,
         prompt: String, 
         history: List<Message>, 
         imageUrl: String? = null
     ): Flow<String> = flow {
+        val api = RetrofitClient.create(apiKey, baseUrl).create(QwenService::class.java)
         // Construct messages: history + current user message
         val messages = history.toMutableList()
         

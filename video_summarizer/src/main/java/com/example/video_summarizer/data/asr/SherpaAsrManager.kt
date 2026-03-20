@@ -5,6 +5,7 @@ import android.util.Log
 import com.arthenica.ffmpegkit.FFmpegKit
 import com.arthenica.ffmpegkit.FFprobeKit
 import com.arthenica.ffmpegkit.ReturnCode
+import com.example.common.dispatchers.DispatcherProvider
 import com.k2fsa.sherpa.onnx.OfflineModelConfig
 import com.k2fsa.sherpa.onnx.OfflineParaformerModelConfig
 import com.k2fsa.sherpa.onnx.OfflineRecognizer
@@ -12,13 +13,15 @@ import com.k2fsa.sherpa.onnx.OfflineRecognizerConfig
 import com.k2fsa.sherpa.onnx.OfflineStream
 import com.k2fsa.sherpa.onnx.WaveReader
 import java.io.File
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-class SherpaAsrManager(private val context: Context) {
+class SherpaAsrManager(
+    private val context: Context,
+    private val dispatcherProvider: DispatcherProvider
+) {
     private var recognizer: OfflineRecognizer? = null
     private val TAG = "SherpaAsrManager"
     private val mutex = Mutex()
@@ -60,7 +63,7 @@ class SherpaAsrManager(private val context: Context) {
         return recognizer!!
     }
 
-    suspend fun transcribe(audioFile: File): String = withContext(Dispatchers.IO) {
+    suspend fun transcribe(audioFile: File): String = withContext(dispatcherProvider.io) {
         var wavFile: File? = null
         var stream: OfflineStream? = null
         try {

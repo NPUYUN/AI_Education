@@ -2,7 +2,7 @@ package com.example.video_summarizer.data.downloader
 
 import android.content.Context
 import android.util.Log
-import kotlinx.coroutines.Dispatchers
+import com.example.common.dispatchers.DispatcherProvider
 import kotlinx.coroutines.withContext
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream
@@ -13,7 +13,10 @@ import java.io.FileOutputStream
 import java.net.URL
 import java.net.HttpURLConnection
 
-class ModelDownloader(private val context: Context) {
+class ModelDownloader(
+    private val context: Context,
+    private val dispatcherProvider: DispatcherProvider
+) {
 
     companion object {
         private const val TAG = "ModelDownloader"
@@ -35,7 +38,7 @@ class ModelDownloader(private val context: Context) {
         return modelDir.exists() && modelDir.isDirectory && onnxFile.exists() && tokensFile.exists()
     }
 
-    suspend fun downloadAndExtractModel(onProgress: (DownloadProgress) -> Unit): Result<File> = withContext(Dispatchers.IO) {
+    suspend fun downloadAndExtractModel(onProgress: (DownloadProgress) -> Unit): Result<File> = withContext(dispatcherProvider.io) {
         val cacheDir = context.externalCacheDir ?: context.cacheDir
         val tarBz2File = File(cacheDir, "sherpa-model.tar.bz2")
         val destDir = cacheDir

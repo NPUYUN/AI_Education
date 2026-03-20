@@ -18,14 +18,17 @@ import retrofit2.http.Header
 import retrofit2.http.POST
 import retrofit2.http.Path
 import java.io.File
+import java.net.Inet4Address
+import java.net.NetworkInterface
 import java.net.URI
 import java.util.concurrent.TimeUnit
 
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.withTimeoutOrNull
-import java.net.Inet4Address
-import java.net.NetworkInterface
+import javax.inject.Inject
+import javax.inject.Singleton
+import com.example.common.dispatchers.DispatcherProvider
 
 private const val ASR_BASE_URL = "https://dashscope.aliyuncs.com/api/v1/"
 
@@ -118,7 +121,11 @@ interface BailianChatService {
     suspend fun chat(@Body request: ChatRequest): ChatResponse
 }
 
-class BailianSummaryRepository(private val sherpaAsrManager: SherpaAsrManager? = null) {
+@Singleton
+class BailianSummaryRepository @Inject constructor(
+    private val sherpaAsrManager: SherpaAsrManager,
+    private val dispatcherProvider: DispatcherProvider
+) {
 
     private val gson = Gson()
     private val httpClient = OkHttpClient.Builder()
@@ -146,7 +153,7 @@ class BailianSummaryRepository(private val sherpaAsrManager: SherpaAsrManager? =
         return null
     }
 
-    private suspend fun scanLocalNetwork(): String? = withContext(Dispatchers.IO) {
+    private suspend fun scanLocalNetwork(): String? = withContext(dispatcherProvider.io) {
         // 1. 优先检查缓存
         cachedEndpoint?.let { return@withContext it }
 
@@ -198,7 +205,7 @@ class BailianSummaryRepository(private val sherpaAsrManager: SherpaAsrManager? =
         return@withContext null
     }
 
-    private suspend fun checkEndpoints(urls: List<String>, timeoutMs: Long): String? = withContext(Dispatchers.IO) {
+    private suspend fun checkEndpoints(urls: List<String>, timeoutMs: Long): String? = withContext(dispatcherProvider.io) {
         try {
             val deferreds = urls.map { url ->
                 async {
@@ -236,7 +243,7 @@ class BailianSummaryRepository(private val sherpaAsrManager: SherpaAsrManager? =
         }
     }
 
-    suspend fun transcribeOffline(file: File): Result<String> = withContext(Dispatchers.IO) {
+    suspend fun transcribeOffline(file: File): Result<String> = withContext(dispatcherProvider.io) {
         if (sherpaAsrManager == null) {
             return@withContext Result.failure(IllegalStateException("SherpaAsrManager 未初始化"))
         }
@@ -255,7 +262,7 @@ class BailianSummaryRepository(private val sherpaAsrManager: SherpaAsrManager? =
         }
     }
 
-    suspend fun uploadToTemporaryStorage(apiKey: String, file: File): Result<String> = withContext(Dispatchers.IO) {
+    suspend fun uploadToTemporaryStorage(apiKey: String, file: File): Result<String> = withContext(dispatcherProvider.io) {
         if (!file.exists() || file.length() <= 0) {
             return@withContext Result.failure(IllegalStateException("本地文件不存在或为空"))
         }
@@ -316,7 +323,7 @@ class BailianSummaryRepository(private val sherpaAsrManager: SherpaAsrManager? =
         }
     }
 
-    suspend fun transcribe(apiKey: String, fileUrl: String): Result<String> = withContext(Dispatchers.IO) {
+    suspend fun transcribe(apiKey: String, fileUrl: String): Result<String> = withContext(dispatcherProvider.io) {
         val service = RetrofitClient.create(apiKey, ASR_BASE_URL).create(BailianAsrService::class.java)
         return@withContext try {
             val submit = service.submitTranscription(
@@ -347,7 +354,7 @@ class BailianSummaryRepository(private val sherpaAsrManager: SherpaAsrManager? =
         }
     }
 
-    suspend fun summarize(apiKey: String, transcript: String, modelName: String = "qwen-turbo", baseUrl: String = "https://dashscope.aliyuncs.com/compatible-mode/v1/"): Result<String> = withContext(Dispatchers.IO) {
+    suspend fun summarize(apiKey: String, transcript: String, modelName: String = com.example.common.config.AppConstants.DEFAULT_MODEL_NAME, baseUrl: String = com.example.common.config.AppConstants.BASE_URL): Result<String> = withContext(dispatcherProvider.io) {
         val service = RetrofitClient.create(apiKey, baseUrl).create(BailianChatService::class.java)
         return@withContext try {
             val request = ChatRequest(

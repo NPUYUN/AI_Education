@@ -4,6 +4,7 @@ object AppConstants {
     // API Configuration
     const val BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1/" // Qwen API Base URL
     const val TIMEOUT_SECONDS = 30L
+    const val DEFAULT_MODEL_NAME = "qwen-turbo"
     
     // Database Name
     const val DATABASE_NAME = "education_app_db"

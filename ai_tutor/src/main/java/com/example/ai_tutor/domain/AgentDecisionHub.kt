@@ -43,12 +43,20 @@ class AgentDecisionHub(
                     input.text
                 }
                 
-                repository.sendMessage(augmentedInput, history).collect { response ->
+                repository.sendMessage(
+                    apiKey = "", // AgentDecisionHub is a placeholder, need to be refactored or passed apiKey
+                    prompt = augmentedInput, 
+                    history = history
+                ).collect { response ->
                     emit(response)
                 }
             }
             is UserIntent.GeneralChat, UserIntent.Unknown -> {
-                repository.sendMessage(input.text, history).collect { response ->
+                repository.sendMessage(
+                    apiKey = "", // AgentDecisionHub is a placeholder, need to be refactored or passed apiKey
+                    prompt = input.text, 
+                    history = history
+                ).collect { response ->
                     emit(response)
                 }
             }

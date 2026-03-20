@@ -4,7 +4,7 @@ import android.app.Application
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.common.manager.VoskVoiceManager
 import com.example.timeline_map.data.model.HistoricalEvent
@@ -12,22 +12,29 @@ import com.example.timeline_map.data.model.SpeechLanguage
 import com.example.timeline_map.data.repository.TimelineRepository
 import com.example.timeline_map.domain.KnowledgeGraphManager
 import com.example.common.database.PreferencesManager
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
+import javax.inject.Inject
+
+import com.example.common.config.AppConstants
+import com.example.common.dispatchers.DispatcherProvider
 
 import com.example.timeline_map.domain.util.DateUtils
 
-class TimelineMapViewModel(application: Application) : AndroidViewModel(application) {
-    private val repository = TimelineRepository()
+@HiltViewModel
+class TimelineMapViewModel @Inject constructor(
+    private val preferences: PreferencesManager,
+    private val voskVoiceManager: VoskVoiceManager,
+    private val repository: TimelineRepository,
+    private val dispatcherProvider: DispatcherProvider
+) : ViewModel() {
     private val knowledgeGraphManager = KnowledgeGraphManager()
     
-    private val preferences = PreferencesManager(application)
-    private val apiKeyKey = "bailian_api_key"
-    
-    private val voskVoiceManager = VoskVoiceManager(application)
+    private val apiKeyKey = "api_key_timeline_map"
 
     private val _queryText = mutableStateOf("")
     val queryText: State<String> = _queryText
@@ -59,17 +66,38 @@ class TimelineMapViewModel(application: Application) : AndroidViewModel(applicat
     // API Key State
     private val _apiKey = mutableStateOf("")
     val apiKey: State<String> = _apiKey
+    
+    private val _modelName = mutableStateOf(AppConstants.DEFAULT_MODEL_NAME)
+    private val _baseUrl = mutableStateOf(AppConstants.BASE_URL)
+
+    private val _showApiSettings = mutableStateOf(false)
+    val showApiSettings: State<Boolean> = _showApiSettings
 
     init {
         voskVoiceManager.init(viewModelScope)
         
-        viewModelScope.launch {
+        viewModelScope.launch(dispatcherProvider.main) {
             preferences.getString(apiKeyKey).collectLatest { key ->
-                _apiKey.value = key
+                _apiKey.value = key.ifBlank {
+                    // Fallback to old bailian key
+                    preferences.getString("bailian_api_key", "").first()
+                }
+            }
+        }
+
+        viewModelScope.launch(dispatcherProvider.io) {
+            preferences.getString("model_name_timeline_map", AppConstants.DEFAULT_MODEL_NAME).collectLatest {
+                _modelName.value = it
+            }
+        }
+
+        viewModelScope.launch(dispatcherProvider.io) {
+            preferences.getString("base_url_timeline_map", AppConstants.BASE_URL).collectLatest {
+                _baseUrl.value = it
             }
         }
         
-        viewModelScope.launch {
+        viewModelScope.launch(dispatcherProvider.main) {
             voskVoiceManager.voiceState.collectLatest { state ->
                 when (state) {
                     is VoskVoiceManager.VoiceState.Listening -> _isListening.value = true
@@ -134,25 +162,26 @@ class TimelineMapViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     fun saveApiKey() {
-        viewModelScope.launch {
+        viewModelScope.launch(dispatcherProvider.io) {
             preferences.saveString(apiKeyKey, _apiKey.value.trim())
         }
     }
 
     fun generateTimeline() {
-        if (_apiKey.value.isBlank()) {
-            _errorMessage.value = "请先在右上角设置中填写 API Key"
-            return
-        }
         val query = _queryText.value.trim()
         if (query.isEmpty()) {
             _errorMessage.value = "请输入历史事件问题"
             return
         }
-        viewModelScope.launch {
+        viewModelScope.launch(dispatcherProvider.main) {
             _isLoading.value = true
             _errorMessage.value = null
-            val result = repository.generateEvents(query, _apiKey.value.trim())
+            val result = repository.generateEvents(
+                query = query,
+                apiKey = _apiKey.value.trim(),
+                model = _modelName.value,
+                baseUrl = _baseUrl.value
+            )
             val events = result.getOrElse { repository.sampleEvents() }
             val linked = knowledgeGraphManager.linkEvents(events)
             _events.clear()

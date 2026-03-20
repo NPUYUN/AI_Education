@@ -2,6 +2,8 @@ plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.hilt)
+    alias(libs.plugins.google.devtools.ksp)
 }
 
 android {
@@ -62,6 +64,13 @@ dependencies {
     implementation(libs.play.services.mlkit.text.recognition)
 
     // OpenGL/Graphics (Native libs would be added here or via CMake, for now basic setup)
+
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+
+    // Hilt
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
+    implementation(libs.androidx.hilt.navigation.compose)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

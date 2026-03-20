@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.ai_tutor.data.model.Message
@@ -46,7 +47,7 @@ import com.example.common.presentation.components.GlobalApiSettingsDialog
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(
-    viewModel: AiTutorViewModel = viewModel(),
+    viewModel: AiTutorViewModel = hiltViewModel(),
     onCameraClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {

@@ -2,12 +2,12 @@ package com.example.video_summarizer.data.downloader
 
 import android.content.Context
 import android.os.Environment
+import com.example.common.dispatchers.DispatcherProvider
 import com.yausername.youtubedl_android.YoutubeDL
 import com.yausername.youtubedl_android.YoutubeDLRequest
 import com.arthenica.ffmpegkit.FFprobeKit
 import com.arthenica.ffmpegkit.FFmpegKit
 import com.arthenica.ffmpegkit.ReturnCode
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.net.URI
@@ -47,13 +47,16 @@ enum class DownloadStatus {
     CANCELLED
 }
 
-class VideoDownloader(private val context: Context) {
+class VideoDownloader(
+    private val context: Context,
+    private val dispatcherProvider: DispatcherProvider
+) {
 
     private val isCancelled = AtomicBoolean(false)
     private var activeProcessId: String? = null
     private var isInitialized = false
 
-    private suspend fun ensureInitialized() = withContext(Dispatchers.IO) {
+    private suspend fun ensureInitialized() = withContext(dispatcherProvider.io) {
         if (isInitialized) return@withContext
         try {
             YoutubeDL.getInstance().init(context)
@@ -71,18 +74,18 @@ class VideoDownloader(private val context: Context) {
         }
     }
 
-    suspend fun getVideoInfo(url: String): Result<VideoInfo> = withContext(Dispatchers.IO) {
+    suspend fun getVideoInfo(url: String): Result<VideoInfo> = withContext(dispatcherProvider.io) {
         getVideoInfoInternal(url, allowUpdate = true)
     }
 
     suspend fun downloadVideo(
         url: String,
         onProgress: (DownloadProgress) -> Unit
-    ): Result<String> = withContext(Dispatchers.IO) {
+    ): Result<String> = withContext(dispatcherProvider.io) {
         downloadVideoInternal(url, onProgress, allowUpdate = true)
     }
 
-    suspend fun getAudioUrl(url: String): Result<String> = withContext(Dispatchers.IO) {
+    suspend fun getAudioUrl(url: String): Result<String> = withContext(dispatcherProvider.io) {
         return@withContext try {
             ensureInitialized()
             val resolvedUrl = resolveRedirects(url)

@@ -1,4 +1,4 @@
-package com.example.ai_tutor.data.local.entity
+package com.example.common.data.local.auth
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey

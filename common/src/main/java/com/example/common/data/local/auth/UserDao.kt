@@ -1,10 +1,9 @@
-package com.example.ai_tutor.data.local.dao
+package com.example.common.data.local.auth
 
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
-import com.example.ai_tutor.data.local.entity.UserEntity
 
 @Dao
 interface UserDao {

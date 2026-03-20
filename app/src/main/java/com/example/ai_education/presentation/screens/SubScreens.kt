@@ -1,4 +1,4 @@
-package com.example.ai_tutor.presentation.screens
+package com.example.ai_education.presentation.screens
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -107,7 +107,7 @@ fun SettingsScreen(onBack: () -> Unit) {
             ) {
                 Text("全局 API 配置 (AI辅导、视频总结)")
                 Spacer(modifier = Modifier.weight(1f))
-                Icon(Icons.Default.ArrowBack, contentDescription = null, modifier = Modifier.size(16.dp)) // Maybe use a forward arrow or just skip icon
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, modifier = Modifier.size(16.dp)) // Maybe use a forward arrow or just skip icon
             }
             
             HorizontalDivider()
@@ -138,3 +138,4 @@ fun SubScreenScaffold(title: String, onBack: () -> Unit, content: @Composable ()
         }
     }
 }
+

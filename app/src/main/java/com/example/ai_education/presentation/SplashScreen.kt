@@ -1,4 +1,4 @@
-package com.example.ai_tutor.presentation
+package com.example.ai_education.presentation
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
@@ -15,6 +15,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.common.dispatchers.DefaultDispatcherProvider
 import com.example.common.manager.VoskModelManager
 import com.example.video_summarizer.data.downloader.ModelDownloader
 import com.example.video_summarizer.data.downloader.DownloadProgress
@@ -39,7 +40,7 @@ fun SplashScreen(onLoadComplete: () -> Unit) {
 
     LaunchedEffect(sherpaRetryTrigger) {
         sherpaError = null
-        val sherpaDownloader = ModelDownloader(context)
+        val sherpaDownloader = ModelDownloader(context, DefaultDispatcherProvider())
         if (!sherpaDownloader.isModelReady()) {
             sherpaDownloader.downloadAndExtractModel { progress ->
                 sherpaProgress = progress
@@ -234,3 +235,4 @@ fun ModelStatusCard(
         }
     }
 }
+

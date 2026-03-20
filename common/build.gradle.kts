@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.google.devtools.ksp)
+    alias(libs.plugins.hilt)
 }
 
 android {
@@ -75,6 +76,10 @@ dependencies {
 
     // Coil
     api(libs.coil.compose)
+
+    // Hilt
+    api(libs.hilt.android)
+    ksp(libs.hilt.compiler)
 
     // AI/ML
     // api(libs.mnn) // TODO: MNN dependency com.taobao.android:mnn:2.7.0 is not resolvable. Please check the correct coordinate or add the AAR manually.

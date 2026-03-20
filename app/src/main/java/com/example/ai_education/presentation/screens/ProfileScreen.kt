@@ -1,4 +1,4 @@
-package com.example.ai_tutor.presentation.screens
+package com.example.ai_education.presentation.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -153,3 +153,4 @@ fun ProfileScreen() {
         }
     }
 }
+

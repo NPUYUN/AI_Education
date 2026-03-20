@@ -1,4 +1,4 @@
-package com.example.ai_tutor.presentation.screens
+package com.example.ai_education.presentation.screens
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
@@ -30,6 +30,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.video_summarizer.presentation.VideoDownloadViewModel
 import com.example.ai_tutor.presentation.AiTutorViewModel
 import com.example.ai_tutor.presentation.ChatScreen
@@ -43,7 +44,7 @@ fun MainScreen(
     onLogout: () -> Unit,
     onNavigateToCamera: () -> Unit,
     viewModel: AiTutorViewModel,
-    videoViewModel: VideoDownloadViewModel = viewModel()
+    videoViewModel: VideoDownloadViewModel = hiltViewModel()
 ) {
     val navController = rememberNavController()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
@@ -363,3 +364,4 @@ fun MainScreen(
         }
     }
 }
+

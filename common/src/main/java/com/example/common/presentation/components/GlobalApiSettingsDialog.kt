@@ -47,6 +47,11 @@ fun GlobalApiSettingsDialog(
     var videoModel by remember { mutableStateOf("") }
     var videoBaseUrl by remember { mutableStateOf("") }
 
+    // Timeline Map
+    var timelineApiKey by remember { mutableStateOf("") }
+    var timelineModel by remember { mutableStateOf("") }
+    var timelineBaseUrl by remember { mutableStateOf("") }
+
     LaunchedEffect(Unit) {
         prefs.getString("api_key_ai_tutor", "").collect { tutorApiKey = it }
     }
@@ -65,6 +70,16 @@ fun GlobalApiSettingsDialog(
     }
     LaunchedEffect(Unit) {
         prefs.getString("base_url_video_summary", "https://dashscope.aliyuncs.com/compatible-mode/v1/").collect { videoBaseUrl = it }
+    }
+
+    LaunchedEffect(Unit) {
+        prefs.getString("api_key_timeline_map", "").collect { timelineApiKey = it }
+    }
+    LaunchedEffect(Unit) {
+        prefs.getString("model_name_timeline_map", "qwen-turbo").collect { timelineModel = it }
+    }
+    LaunchedEffect(Unit) {
+        prefs.getString("base_url_timeline_map", "https://dashscope.aliyuncs.com/compatible-mode/v1/").collect { timelineBaseUrl = it }
     }
 
     Dialog(
@@ -116,6 +131,18 @@ fun GlobalApiSettingsDialog(
                         baseUrl = videoBaseUrl,
                         onBaseUrlChange = { videoBaseUrl = it }
                     )
+
+                    HorizontalDivider()
+
+                    ApiSettingSection(
+                        title = "时间轴地图",
+                        apiKey = timelineApiKey,
+                        onApiKeyChange = { timelineApiKey = it },
+                        modelName = timelineModel,
+                        onModelNameChange = { timelineModel = it },
+                        baseUrl = timelineBaseUrl,
+                        onBaseUrlChange = { timelineBaseUrl = it }
+                    )
                 }
 
                 Row(
@@ -138,9 +165,13 @@ fun GlobalApiSettingsDialog(
                                 prefs.saveString("api_key_video_summary", videoApiKey)
                                 prefs.saveString("model_name_video_summary", videoModel)
                                 prefs.saveString("base_url_video_summary", videoBaseUrl)
-                                
-                                // Backward compatibility
-                                if (tutorApiKey.isNotBlank()) {
+
+                                prefs.saveString("api_key_timeline_map", timelineApiKey)
+                                prefs.saveString("model_name_timeline_map", timelineModel)
+                                prefs.saveString("base_url_timeline_map", timelineBaseUrl)
+
+                                // Fallback global bailian key
+                                if (tutorApiKey.isNotBlank() && prefs.getString("bailian_api_key", "").equals("")) {
                                     prefs.saveString("bailian_api_key", tutorApiKey)
                                 }
                                 onDismiss()

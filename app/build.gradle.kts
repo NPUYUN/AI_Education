@@ -2,6 +2,8 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.hilt)
+    alias(libs.plugins.google.devtools.ksp)
 }
 
 android {
@@ -77,6 +79,14 @@ dependencies {
     
     // Navigation
     implementation(libs.androidx.navigation.compose)
+
+    // Media3
+    implementation(libs.androidx.media3.common)
+
+    // Hilt
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
+    implementation(libs.androidx.hilt.navigation.compose)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

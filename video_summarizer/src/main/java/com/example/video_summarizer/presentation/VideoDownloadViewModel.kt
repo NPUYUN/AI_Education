@@ -1,7 +1,8 @@
 package com.example.video_summarizer.presentation
 
 import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import android.database.Cursor
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.common.config.AppConstants
 import com.example.common.database.PreferencesManager
@@ -19,10 +20,14 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import okhttp3.Call
 import okhttp3.Callback
 
 import com.example.video_summarizer.data.downloader.ModelDownloader
+import com.example.common.dispatchers.DispatcherProvider
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 
 data class VideoUrlItem(
     val url: String,
@@ -63,20 +68,24 @@ data class VideoDownloadUiState(
     val error: String? = null,
     val successMessage: String? = null,
     val apiKey: String = "",
-    val modelName: String = "qwen-turbo",
-    val baseUrl: String = "https://dashscope.aliyuncs.com/compatible-mode/v1/",
-    val showApiSettings: Boolean = false
+    val modelName: String = AppConstants.DEFAULT_MODEL_NAME,
+    val baseUrl: String = AppConstants.BASE_URL,
+    val showApiSettings: Boolean = false,
+    val currentUserId: String = "" // Added to verify cross-app user data access
 )
 
-class VideoDownloadViewModel(application: Application) : AndroidViewModel(application) {
+@HiltViewModel
+class VideoDownloadViewModel @Inject constructor(
+    private val application: Application,
+    private val downloader: VideoDownloader,
+    private val sherpaAsrManager: SherpaAsrManager,
+    private val preferences: PreferencesManager,
+    private val modelDownloader: ModelDownloader,
+    private val summaryRepository: BailianSummaryRepository,
+    private val dispatcherProvider: DispatcherProvider
+) : ViewModel() {
 
-    private val downloader = VideoDownloader(application)
-    private val sherpaAsrManager = SherpaAsrManager(application)
-    private val summaryRepository = BailianSummaryRepository(sherpaAsrManager)
-    private val preferences = PreferencesManager(application)
     private val apiKeyKey = "bailian_api_key"
-
-    private val modelDownloader = ModelDownloader(application)
 
     private val _downloadTasks = androidx.compose.runtime.mutableStateListOf<DownloadTask>()
     val downloadTasks: List<DownloadTask> get() = _downloadTasks
@@ -85,7 +94,14 @@ class VideoDownloadViewModel(application: Application) : AndroidViewModel(applic
     val uiState: StateFlow<VideoDownloadUiState> = _uiState.asStateFlow()
 
     init {
-        viewModelScope.launch {
+        // Verify cross-app user data access
+        viewModelScope.launch(dispatcherProvider.main) {
+            preferences.getString("current_user_id").collect { userId ->
+                _uiState.value = _uiState.value.copy(currentUserId = userId)
+            }
+        }
+        
+        viewModelScope.launch(dispatcherProvider.main) {
             preferences.getString("api_key_video_summary", "").collect { key ->
                 val finalKey = key.ifBlank {
                     preferences.getString("bailian_api_key", "").first()
@@ -93,13 +109,13 @@ class VideoDownloadViewModel(application: Application) : AndroidViewModel(applic
                 _uiState.value = _uiState.value.copy(apiKey = finalKey)
             }
         }
-        viewModelScope.launch {
-            preferences.getString("model_name_video_summary", "qwen-turbo").collect { modelName ->
+        viewModelScope.launch(dispatcherProvider.main) {
+            preferences.getString("model_name_video_summary", AppConstants.DEFAULT_MODEL_NAME).collect { modelName ->
                 _uiState.value = _uiState.value.copy(modelName = modelName)
             }
         }
-        viewModelScope.launch {
-            preferences.getString("base_url_video_summary", "https://dashscope.aliyuncs.com/compatible-mode/v1/").collect { baseUrl ->
+        viewModelScope.launch(dispatcherProvider.main) {
+            preferences.getString("base_url_video_summary", AppConstants.BASE_URL).collect { baseUrl ->
                 _uiState.value = _uiState.value.copy(baseUrl = baseUrl)
             }
         }
@@ -117,7 +133,7 @@ class VideoDownloadViewModel(application: Application) : AndroidViewModel(applic
             )
             _downloadTasks.add(modelTask)
 
-            viewModelScope.launch {
+            viewModelScope.launch(dispatcherProvider.main) {
                 modelDownloader.downloadAndExtractModel { progress ->
                     updateTaskProgress(taskId) { progress }
                 }.fold(
@@ -140,6 +156,7 @@ class VideoDownloadViewModel(application: Application) : AndroidViewModel(applic
     }
 
     fun setApiSettingsVisible(visible: Boolean) {
+        // Update API settings visibility
         _uiState.value = _uiState.value.copy(showApiSettings = visible)
     }
 
@@ -156,18 +173,20 @@ class VideoDownloadViewModel(application: Application) : AndroidViewModel(applic
     }
 
     fun handleLocalVideo(uri: android.net.Uri) {
-        viewModelScope.launch {
+        viewModelScope.launch(dispatcherProvider.io) {
             try {
-                val context = getApplication<Application>()
+                val context = application
                 val contentResolver = context.contentResolver
                 
                 // Get file name
                 var fileName = "local_video_${System.currentTimeMillis()}.mp4"
-                contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                contentResolver.query(uri, null, null, null, null)?.use { cursor: Cursor ->
                     if (cursor.moveToFirst()) {
                         val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
                         if (nameIndex != -1) {
-                            fileName = cursor.getString(nameIndex)
+                            cursor.getString(nameIndex)?.let { 
+                                fileName = it 
+                            }
                         }
                     }
                 }
@@ -189,21 +208,24 @@ class VideoDownloadViewModel(application: Application) : AndroidViewModel(applic
                     localPath = destFile.absolutePath
                 )
                 
-                _downloadTasks.add(newTask)
-                
-                showSuccess("视频导入成功")
+                withContext(dispatcherProvider.main) {
+                    _downloadTasks.add(newTask)
+                    showSuccess("视频导入成功")
+                }
                 // Auto start summary
                 startVideoSummary(taskId, destFile.absolutePath)
                 
             } catch (e: Exception) {
-                showError("导入视频失败: ${e.message}")
+                withContext(dispatcherProvider.main) {
+                    showError("导入视频失败: ${e.message}")
+                }
             }
         }
     }
 
-    fun startDownload(taskId: String, url: String) {
-        viewModelScope.launch {
-            updateTaskProgress(taskId) { DownloadProgress(status = DownloadStatus.PREPARING) }
+   private fun startDownload(taskId: String, url: String) {
+        viewModelScope.launch(dispatcherProvider.io) {
+            updateTaskProgress(taskId) { DownloadProgress(status = DownloadStatus.DOWNLOADING) }
 
             downloader.downloadVideo(url) { progress ->
                 updateTaskProgress(taskId) { progress }
@@ -252,7 +274,12 @@ class VideoDownloadViewModel(application: Application) : AndroidViewModel(applic
             status == SummaryStatus.SUMMARIZING) {
             return
         }
-        viewModelScope.launch {
+        if (!modelDownloader.isModelReady()) {
+            showError("语音识别模型尚未就绪，请等待模型下载完成")
+            return
+        }
+
+        viewModelScope.launch(dispatcherProvider.io) {
             val apiKey = _uiState.value.apiKey.trim()
             val modelName = _uiState.value.modelName
             val baseUrl = _uiState.value.baseUrl
@@ -368,7 +395,7 @@ class VideoDownloadViewModel(application: Application) : AndroidViewModel(applic
         super.onCleared()
         // Release resources in a separate scope to ensure it completes even if ViewModel is cleared
         // and to avoid blocking the main thread
-        kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
+        kotlinx.coroutines.CoroutineScope(dispatcherProvider.io).launch {
             sherpaAsrManager.release()
         }
     }

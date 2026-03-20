@@ -9,10 +9,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.video_summarizer.presentation.VideoDownloadViewModel
 import com.example.video_summarizer.presentation.screens.VideoDownloadScreen
 import com.example.video_summarizer.ui.theme.Ai_EducationTheme
 
+import dagger.hilt.android.AndroidEntryPoint
+
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     @androidx.media3.common.util.UnstableApi
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -24,7 +28,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    val viewModel: VideoDownloadViewModel = viewModel()
+                    val viewModel: VideoDownloadViewModel = hiltViewModel()
                     VideoDownloadScreen(viewModel = viewModel)
                 }
             }

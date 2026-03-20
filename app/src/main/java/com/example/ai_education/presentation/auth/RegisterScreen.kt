@@ -1,4 +1,4 @@
-package com.example.ai_tutor.presentation.auth
+package com.example.ai_education.presentation.auth
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -8,26 +8,33 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 
 @Composable
-fun LoginScreen(
-    onLoginSuccess: () -> Unit,
-    onNavigateToRegister: () -> Unit,
-    viewModel: AuthViewModel = viewModel()
+fun RegisterScreen(
+    onRegisterSuccess: () -> Unit,
+    onNavigateToLogin: () -> Unit,
+    viewModel: AuthViewModel = hiltViewModel()
 ) {
     Column(
         modifier = Modifier.fillMaxSize().padding(32.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("AI Tutor 登录", style = MaterialTheme.typography.headlineMedium)
+        Text("创建账号", style = MaterialTheme.typography.headlineMedium)
         Spacer(Modifier.height(32.dp))
         
         OutlinedTextField(
             value = viewModel.username.value,
             onValueChange = { viewModel.username.value = it },
             label = { Text("用户名") },
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(Modifier.height(16.dp))
+        OutlinedTextField(
+            value = viewModel.nickname.value,
+            onValueChange = { viewModel.nickname.value = it },
+            label = { Text("昵称 (选填)") },
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(Modifier.height(16.dp))
@@ -45,14 +52,15 @@ fun LoginScreen(
         
         Spacer(Modifier.height(24.dp))
         Button(
-            onClick = { viewModel.login(onLoginSuccess) },
+            onClick = { viewModel.register(onRegisterSuccess) },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("登录")
+            Text("注册")
         }
         Spacer(Modifier.height(16.dp))
-        TextButton(onClick = onNavigateToRegister) {
-            Text("注册新账号")
+        TextButton(onClick = onNavigateToLogin) {
+            Text("已有账号？去登录")
         }
     }
 }
+

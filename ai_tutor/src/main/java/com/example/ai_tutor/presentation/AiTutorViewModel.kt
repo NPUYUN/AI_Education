@@ -7,9 +7,10 @@ import android.net.Uri
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.ai_tutor.data.local.AiTutorDatabase
+import com.example.ai_tutor.data.local.dao.ChatDao
 import com.example.ai_tutor.data.local.entity.ChatSessionEntity
 import com.example.ai_tutor.data.local.entity.MessageEntity
 import com.example.ai_tutor.data.model.ContentItem
@@ -22,27 +23,34 @@ import com.example.ai_tutor.domain.MockKnowledgeGraphManager
 import com.example.ai_tutor.domain.ToolsIntegrator
 import com.example.ai_tutor.domain.MultimodalProcessor
 import com.example.common.manager.VoskVoiceManager
-import kotlinx.coroutines.Dispatchers
+import com.example.common.database.PreferencesManager
+import com.example.common.config.AppConstants
+import com.example.common.dispatchers.DispatcherProvider
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.UUID
+import javax.inject.Inject
 
-class AiTutorViewModel(application: Application) : AndroidViewModel(application) {
+@HiltViewModel
+class AiTutorViewModel @Inject constructor(
+    private val application: Application,
+    private val preferences: PreferencesManager,
+    private val chatDao: ChatDao,
+    private val voskVoiceManager: VoskVoiceManager,
+    private val dispatcherProvider: DispatcherProvider,
+    private val repository: QwenRepository
+) : ViewModel() {
     // Core Dependencies
-    private val preferences = com.example.common.database.PreferencesManager(application)
     private var apiKey = ""
-    private var baseUrl = "https://dashscope.aliyuncs.com/compatible-mode/v1/"
-    private var modelName = "qwen-turbo"
-    private var repository: QwenRepository? = null
+    private var baseUrl = AppConstants.BASE_URL
+    private var modelName = AppConstants.DEFAULT_MODEL_NAME
     private val knowledgeGraph = MockKnowledgeGraphManager()
     private val toolsIntegrator = ToolsIntegrator()
     private val multimodalProcessor = MultimodalProcessor()
-    private val chatDao = AiTutorDatabase.getDatabase(application).chatDao()
-    // private val ttsManager = TextToSpeechManager(application) // TTS Disabled
-    private val voskVoiceManager = VoskVoiceManager(application)
     private var _isVoiceMode = false
 
     // Simple user ID for now, in real app would get from AuthViewModel or Preferences
@@ -93,13 +101,13 @@ class AiTutorViewModel(application: Application) : AndroidViewModel(application)
             }
         }
         viewModelScope.launch {
-            preferences.getString("base_url_ai_tutor", "https://dashscope.aliyuncs.com/compatible-mode/v1/").collectLatest { url ->
+            preferences.getString("base_url_ai_tutor", AppConstants.BASE_URL).collectLatest { url ->
                 baseUrl = url
                 updateRepository()
             }
         }
         viewModelScope.launch {
-            preferences.getString("model_name_ai_tutor", "qwen-turbo").collectLatest { name ->
+            preferences.getString("model_name_ai_tutor", AppConstants.DEFAULT_MODEL_NAME).collectLatest { name ->
                 modelName = name
                 updateRepository()
             }
@@ -138,16 +146,14 @@ class AiTutorViewModel(application: Application) : AndroidViewModel(application)
 
     private fun updateRepository() {
         if (apiKey.isNotBlank()) {
-            repository = QwenRepository(apiKey, baseUrl, modelName)
-        } else {
-            repository = null
+            // apiKey is verified
         }
     }
 
     private fun initializeSession() {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(dispatcherProvider.io) {
             val sessionsList = chatDao.getSessions(userId).firstOrNull()
-            withContext(Dispatchers.Main) {
+            withContext(dispatcherProvider.main) {
                 if (!sessionsList.isNullOrEmpty()) {
                     // Load the most recent session
                     loadSession(sessionsList.first().id)
@@ -159,9 +165,9 @@ class AiTutorViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun deleteSession(sessionId: String) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(dispatcherProvider.io) {
             chatDao.deleteSessionAndMessages(sessionId)
-            withContext(Dispatchers.Main) {
+            withContext(dispatcherProvider.main) {
                 if (context.sessionId == sessionId) {
                     // If current session is deleted, reload/create new
                     initializeSession()
@@ -175,7 +181,7 @@ class AiTutorViewModel(application: Application) : AndroidViewModel(application)
         context = DialogueContext(sessionId = newSessionId)
         _messages.clear()
         
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(dispatcherProvider.io) {
              val session = ChatSessionEntity(
                 id = newSessionId,
                 userId = userId,
@@ -192,11 +198,11 @@ class AiTutorViewModel(application: Application) : AndroidViewModel(application)
         _messages.clear()
         context.history.clear()
         
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(dispatcherProvider.io) {
             val entities = chatDao.getMessages(sessionId).firstOrNull() ?: emptyList()
             val msgs = entities.map { Message(it.role, deserializeContent(it.content)) }
             
-            withContext(Dispatchers.Main) {
+            withContext(dispatcherProvider.main) {
                 _messages.addAll(msgs)
                 context.history.addAll(msgs)
             }
@@ -256,16 +262,14 @@ class AiTutorViewModel(application: Application) : AndroidViewModel(application)
 
     private fun getRotationDegrees(uri: Uri): Float {
         try {
-            val contentResolver = getApplication<Application>().contentResolver
-            val inputStream = contentResolver.openInputStream(uri)
-            if (inputStream != null) {
+            val contentResolver = application.contentResolver
+            contentResolver.openInputStream(uri)?.use { inputStream ->
                 // Use standard Android ExifInterface
                 val exif = android.media.ExifInterface(inputStream)
                 val orientation = exif.getAttributeInt(
                     android.media.ExifInterface.TAG_ORIENTATION,
                     android.media.ExifInterface.ORIENTATION_NORMAL
                 )
-                inputStream.close()
                 return when (orientation) {
                     android.media.ExifInterface.ORIENTATION_ROTATE_90 -> 90f
                     android.media.ExifInterface.ORIENTATION_ROTATE_180 -> 180f
@@ -279,9 +283,9 @@ class AiTutorViewModel(application: Application) : AndroidViewModel(application)
         return 0f
     }
 
-    private suspend fun loadScaledBitmap(uri: Uri): Bitmap? = withContext(Dispatchers.IO) {
+    private suspend fun loadScaledBitmap(uri: Uri): Bitmap? = withContext(dispatcherProvider.io) {
         try {
-            val contentResolver = getApplication<Application>().contentResolver
+            val contentResolver = application.contentResolver
             val rotation = getRotationDegrees(uri)
 
             var bitmap: Bitmap? = null
@@ -304,8 +308,8 @@ class AiTutorViewModel(application: Application) : AndroidViewModel(application)
                 val options = BitmapFactory.Options().apply {
                     inJustDecodeBounds = true
                 }
-                contentResolver.openInputStream(uri)?.use { 
-                    BitmapFactory.decodeStream(it, null, options)
+                contentResolver.openInputStream(uri)?.use { inputStream ->
+                    BitmapFactory.decodeStream(inputStream, null, options)
                 }
                 
                 // 2. Calculate sample size
@@ -313,9 +317,9 @@ class AiTutorViewModel(application: Application) : AndroidViewModel(application)
                 options.inJustDecodeBounds = false
                 
                 // 3. Decode with sample size
-                contentResolver.openInputStream(uri)?.use {
+                contentResolver.openInputStream(uri)?.use { inputStream ->
                     // Fix: decodeStream returns Bitmap?, we should assign it
-                    bitmap = BitmapFactory.decodeStream(it, null, options)
+                    bitmap = BitmapFactory.decodeStream(inputStream, null, options)
                 }
             }
 
@@ -365,7 +369,7 @@ class AiTutorViewModel(application: Application) : AndroidViewModel(application)
 
     private fun saveImageToInternalStorage(bitmap: Bitmap): String {
         val filename = "img_${System.currentTimeMillis()}.jpg"
-        val file = java.io.File(getApplication<Application>().filesDir, "chat_images")
+        val file = java.io.File(application.filesDir, "chat_images")
         if (!file.exists()) {
             file.mkdirs()
         }
@@ -400,7 +404,7 @@ class AiTutorViewModel(application: Application) : AndroidViewModel(application)
         _inputText.value = ""
     }
 
-    private suspend fun prepareHistoryForApi(history: List<Message>): List<Message> = withContext(Dispatchers.IO) {
+    private suspend fun prepareHistoryForApi(history: List<Message>): List<Message> = withContext(dispatcherProvider.io) {
         history.map { msg ->
             if (msg.content is List<*>) {
                 val newContent = (msg.content as List<*>).map { item ->
@@ -510,7 +514,14 @@ class AiTutorViewModel(application: Application) : AndroidViewModel(application)
             val rawHistory = context.history.dropLast(1)
             val historyToSend = prepareHistoryForApi(rawHistory)
             
-            repository?.sendMessage(text, historyToSend, imageUrl = base64Image)?.collect { chunk ->
+            repository.sendMessage(
+                apiKey = apiKey,
+                modelName = modelName,
+                prompt = text,
+                history = historyToSend,
+                imageUrl = base64Image,
+                baseUrl = baseUrl
+            ).collect { chunk ->
                 if (chunk.startsWith("Error:")) {
                     _messages.add(Message("system", chunk))
                     if (chunk.contains("API Key 无效或未授权")) {
@@ -584,7 +595,7 @@ class AiTutorViewModel(application: Application) : AndroidViewModel(application)
         _inputText.value = "" // Clear input immediately
         _isLoading.value = true
 
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(dispatcherProvider.io) {
             try {
                 // 2. Heavy Processing (Background)
                 val bitmap = loadScaledBitmap(uri)
@@ -603,7 +614,7 @@ class AiTutorViewModel(application: Application) : AndroidViewModel(application)
                     val stableUiImageUrl = displayUrl ?: base64Image
                     
                     if (repository == null) {
-                        withContext(Dispatchers.Main) {
+                        withContext(dispatcherProvider.main) {
                             _messages.add(Message("system", "尚未配置 API Key，请在弹出的设置中进行配置。"))
                             _isLoading.value = false
                             _showApiSettings.value = true
@@ -611,7 +622,7 @@ class AiTutorViewModel(application: Application) : AndroidViewModel(application)
                         return@launch
                     }
 
-                    withContext(Dispatchers.Main) {
+                    withContext(dispatcherProvider.main) {
                         val index = _messages.indexOf(uiMsg)
                         if (index != -1) {
                             _messages[index] = uiMsg.copy(
@@ -641,8 +652,15 @@ class AiTutorViewModel(application: Application) : AndroidViewModel(application)
                     val rawHistory = context.history.dropLast(1)
                     val historyToSend = prepareHistoryForApi(rawHistory)
                     
-                    repository?.sendMessage(prompt, historyToSend, imageUrl = base64Image)?.collect { chunk ->
-                        withContext(Dispatchers.Main) {
+                    repository.sendMessage(
+                        apiKey = apiKey,
+                        modelName = modelName,
+                        prompt = prompt,
+                        history = historyToSend,
+                        imageUrl = base64Image,
+                        baseUrl = baseUrl
+                    ).collect { chunk ->
+                        withContext(dispatcherProvider.main) {
                             if (chunk.startsWith("Error:")) {
                                 _messages.add(Message("system", chunk))
                                 if (chunk.contains("API Key 无效或未授权")) {
@@ -662,14 +680,14 @@ class AiTutorViewModel(application: Application) : AndroidViewModel(application)
                     }
                 } else {
                     // Bitmap load failed
-                    withContext(Dispatchers.Main) {
+                    withContext(dispatcherProvider.main) {
                          _messages.add(Message("system", "Error: Failed to load image."))
                          _isLoading.value = false
                     }
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
-                withContext(Dispatchers.Main) {
+                withContext(dispatcherProvider.main) {
                     _messages.add(Message("system", "Error processing image: ${e.message}"))
                     _isLoading.value = false
                 }

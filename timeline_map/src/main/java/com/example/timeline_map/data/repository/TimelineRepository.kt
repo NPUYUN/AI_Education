@@ -12,12 +12,24 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import retrofit2.HttpException
 import java.util.UUID
+import javax.inject.Inject
+import javax.inject.Singleton
+import com.example.common.config.AppConstants
+import com.example.common.dispatchers.DispatcherProvider
 
-class TimelineRepository {
-    suspend fun generateEvents(query: String, apiKey: String): Result<List<HistoricalEvent>> {
-        return withContext(Dispatchers.IO) {
+@Singleton
+class TimelineRepository @Inject constructor(
+    private val dispatcherProvider: DispatcherProvider
+) {
+    suspend fun generateEvents(
+        query: String,
+        apiKey: String,
+        model: String = AppConstants.DEFAULT_MODEL_NAME,
+        baseUrl: String = AppConstants.BASE_URL
+    ): Result<List<HistoricalEvent>> {
+        return withContext(dispatcherProvider.io) {
             try {
-                val service = RetrofitClient.create(apiKey).create(QwenService::class.java)
+                val service = RetrofitClient.create(apiKey, baseUrl).create(QwenService::class.java)
                 val prompt = """
                     你是历史事件整理助手。请根据问题生成事件列表。
                     输出严格 JSON 数组，每个元素包含：
@@ -27,7 +39,7 @@ class TimelineRepository {
                 """.trimIndent()
 
                 val request = ChatRequest(
-                    model = "qwen-turbo",
+                    model = model,
                     messages = listOf(Message("user", prompt)),
                     parameters = Parameters("message")
                 )
@@ -105,11 +117,32 @@ class TimelineRepository {
     }
 
     private fun extractJsonArray(text: String): String? {
-        val cleaned = text.replace("```json", "").replace("```", "").trim()
-        val start = cleaned.indexOf('[')
-        val end = cleaned.lastIndexOf(']')
-        if (start == -1 || end == -1 || end <= start) return null
-        return cleaned.substring(start, end + 1)
+        val start = text.indexOf('[')
+        val end = text.lastIndexOf(']')
+        if (start != -1 && end != -1 && end > start) {
+            return text.substring(start, end + 1)
+        }
+        
+        // Fallback: Check if it's wrapped in a JSON object
+        val objStart = text.indexOf('{')
+        val objEnd = text.lastIndexOf('}')
+        if (objStart != -1 && objEnd != -1 && objEnd > objStart) {
+            try {
+                val jsonStr = text.substring(objStart, objEnd + 1)
+                val element = JsonParser.parseString(jsonStr)
+                if (element.isJsonObject) {
+                    val obj = element.asJsonObject
+                    for (entry in obj.entrySet()) {
+                        if (entry.value.isJsonArray) {
+                            return entry.value.toString()
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                // Ignore parsing errors and return null
+            }
+        }
+        return null
     }
 
     private fun parseEvents(json: String): List<HistoricalEvent> {

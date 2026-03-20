@@ -9,9 +9,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.example.ai_education.ui.theme.Ai_EducationTheme
-import com.example.ai_tutor.presentation.navigation.AppNavigation
-import com.example.ai_tutor.presentation.SplashScreen
+import com.example.ai_education.presentation.navigation.AppNavigation
+import com.example.ai_education.presentation.SplashScreen
 
+import dagger.hilt.android.AndroidEntryPoint
+
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

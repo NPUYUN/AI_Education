@@ -1,4 +1,4 @@
-package com.example.ai_tutor.presentation.navigation
+package com.example.ai_education.presentation.navigation
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -12,23 +12,24 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.ai_tutor.presentation.ChatScreen
-import com.example.ai_tutor.presentation.auth.AuthViewModel
-import com.example.ai_tutor.presentation.auth.LoginScreen
-import com.example.ai_tutor.presentation.auth.RegisterScreen
-import com.example.ai_tutor.presentation.screens.*
+import com.example.ai_education.presentation.auth.AuthViewModel
+import com.example.ai_education.presentation.auth.LoginScreen
+import com.example.ai_education.presentation.auth.RegisterScreen
+import com.example.ai_education.presentation.screens.*
 import com.example.common.presentation.camera.CameraScreen
 import com.example.common.presentation.camera.ImagePreviewScreen
 import androidx.lifecycle.viewmodel.compose.viewModel
 
 import android.net.Uri
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import com.example.ai_tutor.presentation.AiTutorViewModel
 
 @Composable
 fun AppNavigation(
-    authViewModel: AuthViewModel = viewModel(),
-    aiTutorViewModel: AiTutorViewModel = viewModel()
+    authViewModel: AuthViewModel = hiltViewModel(),
+    aiTutorViewModel: AiTutorViewModel = hiltViewModel()
 ) {
     val navController = rememberNavController()
     val isLoggedIn = authViewModel.isLoggedIn.value
@@ -88,3 +89,4 @@ fun AppNavigation(
         }
     }
 }
+

@@ -1,18 +1,21 @@
-package com.example.ai_tutor.presentation.auth
+package com.example.ai_education.presentation.auth
 
-import android.app.Application
 import androidx.compose.runtime.mutableStateOf
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.ai_tutor.data.local.AiTutorDatabase
-import com.example.ai_tutor.data.local.entity.UserEntity
+import com.example.common.data.local.auth.AuthDatabase
+import com.example.common.data.local.auth.UserDao
+import com.example.common.data.local.auth.UserEntity
 import com.example.common.database.PreferencesManager
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class AuthViewModel(application: Application) : AndroidViewModel(application) {
-    private val db = AiTutorDatabase.getDatabase(application)
-    private val userDao = db.userDao()
-    private val prefs = PreferencesManager(application)
+@HiltViewModel
+class AuthViewModel @Inject constructor(
+    private val userDao: UserDao,
+    private val prefs: PreferencesManager
+) : ViewModel() {
 
     val username = mutableStateOf("")
     val password = mutableStateOf("")
@@ -77,3 +80,4 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 }
+
