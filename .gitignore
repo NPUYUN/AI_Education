@@ -93,6 +93,8 @@ Thumbs.db
 .kotlin/
 
 # Project specific
+build_output/
+build_output*.txt
 video_summarizer/build_trash/
 video_summarizer/src/main/assets/sherpa-onnx-paraformer-zh-*
 video_summarizer/src/main/assets/*.tar.bz2

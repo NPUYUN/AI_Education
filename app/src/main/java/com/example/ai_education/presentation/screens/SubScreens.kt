@@ -4,7 +4,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.navigation.NavController
+import androidx.compose.material.icons.filled.Timeline
+import androidx.compose.material.icons.filled.VideoLibrary
+import androidx.compose.material.icons.automirrored.filled.Article
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -29,20 +32,96 @@ fun GeometryScreen() {
 }
 
 @Composable
-fun TimelineScreen() {
-    TimelineMapScreen()
+fun TimelineScreen(navController: NavController) {
+    TimelineMapScreen(onNavigateBack = { navController.popBackStack() })
 }
 
 @androidx.media3.common.util.UnstableApi
 @Composable
-fun VideoSummaryScreen(viewModel: VideoDownloadViewModel) {
-    VideoDownloadScreen(viewModel = viewModel)
+fun VideoSummaryScreen(viewModel: VideoDownloadViewModel, navController: NavController) {
+    SubScreenScaffold(title = "视频总结", onBack = { navController.popBackStack() }) {
+        VideoDownloadScreen(viewModel = viewModel)
+    }
 }
 
 @Composable
-fun ReviewScreen() {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text("Review (Coming Soon)")
+fun SummaryMenuScreen(navController: NavController) {
+    val context = LocalContext.current
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Spacer(modifier = Modifier.height(32.dp))
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(120.dp)
+                .clickable { navController.navigate("video") },
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxSize().padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Default.VideoLibrary, contentDescription = "视频总结", modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.primary)
+                Spacer(modifier = Modifier.width(24.dp))
+                Text("视频总结", style = MaterialTheme.typography.titleLarge)
+            }
+        }
+        
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(120.dp)
+                .clickable { android.widget.Toast.makeText(context, "文本总结等其他形式即将上线", android.widget.Toast.LENGTH_SHORT).show() },
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxSize().padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.AutoMirrored.Filled.Article, contentDescription = "文本总结", modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.primary)
+                Spacer(modifier = Modifier.width(24.dp))
+                Text("文本总结", style = MaterialTheme.typography.titleLarge)
+            }
+        }
+    }
+}
+
+@Composable
+fun ReviewScreen(navController: NavController) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Spacer(modifier = Modifier.height(32.dp))
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(120.dp)
+                .clickable { navController.navigate("timeline") },
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxSize().padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Default.Timeline, 
+                    contentDescription = "时间轴地图", 
+                    modifier = Modifier.size(64.dp), 
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.width(24.dp))
+                Text("时间轴地图", style = MaterialTheme.typography.titleLarge)
+            }
+        }
     }
 }
 

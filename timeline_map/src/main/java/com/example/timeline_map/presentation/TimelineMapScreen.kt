@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -81,6 +82,11 @@ fun TimelineMapScreen(
         topBar = {
             TopAppBar(
                 title = { Text("时间轴地图") },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                    }
+                },
                 actions = {
                     IconButton(onClick = { viewModel.setApiSettingsVisible(true) }) {
                         Icon(Icons.Default.Settings, contentDescription = "设置")

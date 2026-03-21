@@ -53,13 +53,12 @@ fun MainScreen(
     val sessions by viewModel.sessions.collectAsState(initial = emptyList())
     
     // Bottom Navigation Items
-    // Order: Geometry, Timeline, AI Tutor (Middle), Video, Review
+    // Order: AI Tutor, Geometry, Summary, Review
     val items = listOf(
-        Triple("geometry", Icons.Default.Edit, "几何解题"),
-        Triple("timeline", Icons.Default.Timeline, "时间轴地图"),
-        Triple("home", Icons.Default.Face, "AI 辅导"), // Using Face or SmartToy for AI
-        Triple("video", Icons.Default.VideoLibrary, "视频总结"),
-        Triple("review", Icons.Default.RateReview, "复习") // Using RateReview for Review
+        Triple("home", Icons.Default.Face, "AI辅导"),
+        Triple("geometry", Icons.Default.Edit, "解题"),
+        Triple("summary", Icons.Default.Summarize, "总结"),
+        Triple("review", Icons.Default.RateReview, "复习")
     )
 
     ModalNavigationDrawer(
@@ -249,7 +248,7 @@ fun MainScreen(
                             Text(label)
                         },
                         navigationIcon = {
-                            if (currentRoute == "home" || currentRoute == "profile") {
+                            if (items.any { it.first == currentRoute } || currentRoute == "profile") {
                                 IconButton(onClick = { scope.launch { drawerState.open() } }) {
                                     Icon(Icons.Default.Menu, contentDescription = "Menu")
                                 }
@@ -298,7 +297,7 @@ fun MainScreen(
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = navBackStackEntry?.destination?.route
 
-                if (currentRoute != "profile") {
+                if (items.any { it.first == currentRoute }) {
                     NavigationBar(
                         containerColor = MaterialTheme.colorScheme.surface,
                         contentColor = MaterialTheme.colorScheme.onSurfaceVariant
@@ -348,8 +347,6 @@ fun MainScreen(
                 startDestination = "home", // AI Tutor is middle, but usually start destination.
                 modifier = Modifier.padding(innerPadding)
             ) {
-                composable("geometry") { GeometryScreen() }
-                composable("timeline") { TimelineScreen() }
                 composable("home") {
                     ChatScreen(
                         viewModel = viewModel,
@@ -357,8 +354,11 @@ fun MainScreen(
                         modifier = Modifier.fillMaxSize()
                     ) 
                 }
-                composable("video") { VideoSummaryScreen(videoViewModel) }
-                composable("review") { ReviewScreen() }
+                composable("geometry") { GeometryScreen() }
+                composable("summary") { SummaryMenuScreen(navController) }
+                composable("review") { ReviewScreen(navController) }
+                composable("timeline") { TimelineScreen(navController) }
+                composable("video") { VideoSummaryScreen(videoViewModel, navController) }
                 composable("profile") { ProfileScreen() }
             }
         }
