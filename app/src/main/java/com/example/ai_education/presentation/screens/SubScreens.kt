@@ -18,9 +18,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.platform.LocalContext
 import com.example.common.database.PreferencesManager
 import kotlinx.coroutines.launch
-import com.example.timeline_map.presentation.TimelineMapScreen
-import com.example.video_summarizer.presentation.VideoDownloadViewModel
-import com.example.video_summarizer.presentation.screens.VideoDownloadScreen
+import com.example.ai_tutor.presentation.TimelineMapScreen
+import com.example.summarizer.presentation.VideoDownloadViewModel
+import com.example.summarizer.presentation.screens.VideoDownloadScreen
 
 import com.example.common.presentation.components.GlobalApiSettingsDialog
 
@@ -32,8 +32,11 @@ fun GeometryScreen() {
 }
 
 @Composable
-fun TimelineScreen(navController: NavController) {
-    TimelineMapScreen(onNavigateBack = { navController.popBackStack() })
+fun TimelineScreen(navController: NavController, query: String? = null) {
+    TimelineMapScreen(
+        initialQuery = query,
+        onNavigateBack = { navController.popBackStack() }
+    )
 }
 
 @androidx.media3.common.util.UnstableApi
@@ -91,39 +94,7 @@ fun SummaryMenuScreen(navController: NavController) {
     }
 }
 
-@Composable
-fun ReviewScreen(navController: NavController) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Spacer(modifier = Modifier.height(32.dp))
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(120.dp)
-                .clickable { navController.navigate("timeline") },
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxSize().padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    Icons.Default.Timeline, 
-                    contentDescription = "时间轴地图", 
-                    modifier = Modifier.size(64.dp), 
-                    tint = MaterialTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.width(24.dp))
-                Text("时间轴地图", style = MaterialTheme.typography.titleLarge)
-            }
-        }
-    }
-}
+
 
 @Composable
 fun SettingsScreen(onBack: () -> Unit) {

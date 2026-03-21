@@ -1,5 +1,5 @@
 plugins {
-    alias(libs.plugins.android.application)
+    alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.hilt)
@@ -7,24 +7,13 @@ plugins {
 }
 
 android {
-    namespace = "com.example.ai_education"
+    namespace = "com.example.summarizer"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.example.ai_education"
         minSdk = 24
-        targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
-
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        
-        ndk {
-            // 只保留主流架构，减少 APK 和构建占用空间
-            abiFilters.add("arm64-v8a")
-            // 如果需要支持较老设备或 32 位模拟器，可以取消下面这行的注释
-            // abiFilters.add("armeabi-v7a")
-        }
+        consumerProguardFiles("consumer-rules.pro")
     }
 
     buildTypes {
@@ -43,13 +32,8 @@ android {
     buildFeatures {
         compose = true
     }
-
-    packaging {
-        jniLibs {
-            useLegacyPackaging = true
-            pickFirsts.add("lib/**/libc++_shared.so")
-            pickFirsts.add("lib/**/libffmpeg.so")
-        }
+    lint {
+        disable.add("CoroutineCreationDuringComposition")
     }
 }
 
@@ -60,12 +44,10 @@ kotlin {
 }
 
 dependencies {
-    // Feature Modules
     implementation(project(":common"))
-    implementation(project(":ai_tutor"))
-    implementation(project(":solver"))
-    implementation(project(":summarizer"))
-    implementation(project(":review"))
+
+    // Compress
+    implementation(libs.commons.compress)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -76,12 +58,23 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
-    
+    implementation(libs.androidx.compose.material.icons.extended)
+
     // Navigation
     implementation(libs.androidx.navigation.compose)
 
-    // Media3
-    implementation(libs.androidx.media3.common)
+    // Video Processing
+    implementation(libs.ffmpeg.kit.min)
+    implementation(libs.youtubedl.android)
+    implementation(libs.youtubedl.android.ffmpeg)
+    implementation(libs.androidx.media3.exoplayer)
+    implementation(libs.androidx.media3.ui)
+
+    // Coroutines
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+
+    // DataStore for preferences
+    implementation(libs.androidx.datastore.preferences)
 
     // Hilt
     implementation(libs.hilt.android)
@@ -96,3 +89,5 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 }
+
+apply(from = "sherpa_setup.gradle")

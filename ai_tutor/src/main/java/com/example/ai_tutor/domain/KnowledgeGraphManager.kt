@@ -1,9 +1,12 @@
 package com.example.ai_tutor.domain
 
+import com.example.ai_tutor.data.model.HistoricalEvent
+
 interface KnowledgeGraphManager {
     suspend fun getKnowledgePoint(id: String): KnowledgePoint?
     suspend fun findRelatedPoints(id: String): List<KnowledgePoint>
     suspend fun searchKnowledge(query: String): List<KnowledgePoint>
+    fun linkEvents(events: List<HistoricalEvent>): List<HistoricalEvent>
 }
 
 // Mock implementation for now
@@ -22,5 +25,14 @@ class MockKnowledgeGraphManager : KnowledgeGraphManager {
     
     override suspend fun searchKnowledge(query: String): List<KnowledgePoint> {
         return mockDb.values.filter { it.name.contains(query, ignoreCase = true) }
+    }
+    
+    override fun linkEvents(events: List<HistoricalEvent>): List<HistoricalEvent> {
+        return events.mapIndexed { index, event ->
+            val linked = mutableListOf<String>()
+            if (index > 0) linked.add(events[index - 1].id)
+            if (index < events.size - 1) linked.add(events[index + 1].id)
+            event.copy(linkedEventIds = linked)
+        }
     }
 }

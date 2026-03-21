@@ -1,5 +1,5 @@
 plugins {
-    alias(libs.plugins.android.application)
+    alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.hilt)
@@ -7,24 +7,14 @@ plugins {
 }
 
 android {
-    namespace = "com.example.ai_education"
-    compileSdk = 35
+    namespace = "com.example.review"
+    compileSdk = 35 // Consistent with common
 
     defaultConfig {
-        applicationId = "com.example.ai_education"
         minSdk = 24
-        targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        
-        ndk {
-            // 只保留主流架构，减少 APK 和构建占用空间
-            abiFilters.add("arm64-v8a")
-            // 如果需要支持较老设备或 32 位模拟器，可以取消下面这行的注释
-            // abiFilters.add("armeabi-v7a")
-        }
+        consumerProguardFiles("consumer-rules.pro")
     }
 
     buildTypes {
@@ -43,14 +33,6 @@ android {
     buildFeatures {
         compose = true
     }
-
-    packaging {
-        jniLibs {
-            useLegacyPackaging = true
-            pickFirsts.add("lib/**/libc++_shared.so")
-            pickFirsts.add("lib/**/libffmpeg.so")
-        }
-    }
 }
 
 kotlin {
@@ -60,28 +42,30 @@ kotlin {
 }
 
 dependencies {
-    // Feature Modules
     implementation(project(":common"))
-    implementation(project(":ai_tutor"))
-    implementation(project(":solver"))
-    implementation(project(":summarizer"))
-    implementation(project(":review"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
-    implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
-    
-    // Navigation
-    implementation(libs.androidx.navigation.compose)
 
-    // Media3
-    implementation(libs.androidx.media3.common)
+    // CameraX
+    implementation(libs.androidx.camera.core)
+    implementation(libs.androidx.camera.camera2)
+    implementation(libs.androidx.camera.lifecycle)
+    implementation(libs.androidx.camera.view)
+    implementation(libs.guava.android)
+
+    // ML Kit
+    implementation(libs.play.services.mlkit.text.recognition)
+
+    // OpenGL/Graphics (Native libs would be added here or via CMake, for now basic setup)
+
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
 
     // Hilt
     implementation(libs.hilt.android)

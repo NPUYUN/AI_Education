@@ -49,6 +49,7 @@ import com.example.common.presentation.components.GlobalApiSettingsDialog
 fun ChatScreen(
     viewModel: AiTutorViewModel = hiltViewModel(),
     onCameraClick: () -> Unit = {},
+    onNavigateToTimeline: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -127,7 +128,17 @@ fun ChatScreen(
                 ChatInputArea(
                     text = uiState.inputText,
                     onTextChanged = { viewModel.onInputChanged(it) },
-                    onSend = { viewModel.sendMessage() },
+                    onSend = { 
+                        val inputText = uiState.inputText.trim()
+                        val timelineMatch = Regex("生成(.+)的时间轴地图").find(inputText)
+                        if (timelineMatch != null) {
+                            val topic = timelineMatch.groupValues[1]
+                            onNavigateToTimeline(topic)
+                            viewModel.onInputChanged("")
+                        } else {
+                            viewModel.sendMessage()
+                        }
+                    },
                     isLoading = uiState.isLoading,
                     onVoiceStart = {
                         viewModel.startVoiceRecording()

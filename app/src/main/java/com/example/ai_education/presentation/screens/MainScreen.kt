@@ -31,9 +31,10 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.example.video_summarizer.presentation.VideoDownloadViewModel
+import com.example.summarizer.presentation.VideoDownloadViewModel
 import com.example.ai_tutor.presentation.AiTutorViewModel
 import com.example.ai_tutor.presentation.ChatScreen
+import com.example.review.presentation.ReviewScreen
 import kotlinx.coroutines.launch
 
 @androidx.media3.common.util.UnstableApi
@@ -351,13 +352,25 @@ fun MainScreen(
                     ChatScreen(
                         viewModel = viewModel,
                         onCameraClick = onNavigateToCamera,
+                        onNavigateToTimeline = { query ->
+                            navController.navigate("timeline?query=${android.net.Uri.encode(query)}")
+                        },
                         modifier = Modifier.fillMaxSize()
                     ) 
                 }
                 composable("geometry") { GeometryScreen() }
                 composable("summary") { SummaryMenuScreen(navController) }
-                composable("review") { ReviewScreen(navController) }
-                composable("timeline") { TimelineScreen(navController) }
+                composable("review") { ReviewScreen() }
+                composable(
+                    route = "timeline?query={query}",
+                    arguments = listOf(androidx.navigation.navArgument("query") { 
+                        type = androidx.navigation.NavType.StringType
+                        nullable = true
+                    })
+                ) { backStackEntry ->
+                    val query = backStackEntry.arguments?.getString("query")
+                    TimelineScreen(navController, query)
+                }
                 composable("video") { VideoSummaryScreen(videoViewModel, navController) }
                 composable("profile") { ProfileScreen() }
             }

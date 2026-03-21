@@ -29,7 +29,7 @@ dependencyResolutionManagement {
 rootProject.name = "Ai_Education"
 include(":app")
 include(":common")
-include(":geometry_solver")
-include(":timeline_map")
-include(":video_summarizer")
 include(":ai_tutor")
+include(":solver")
+include(":summarizer")
+include(":review")

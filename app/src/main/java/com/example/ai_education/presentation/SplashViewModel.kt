@@ -3,7 +3,7 @@ package com.example.ai_education.presentation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.common.manager.VoskModelManager
-import com.example.video_summarizer.data.downloader.ModelDownloader
+import com.example.summarizer.data.downloader.ModelDownloader
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,8 +23,8 @@ class SplashViewModel @Inject constructor(
     private val _sherpaError = MutableStateFlow<String?>(null)
     val sherpaError: StateFlow<String?> = _sherpaError.asStateFlow()
 
-    private val _sherpaProgress = MutableStateFlow<com.example.video_summarizer.data.downloader.DownloadProgress?>(null)
-    val sherpaProgress: StateFlow<com.example.video_summarizer.data.downloader.DownloadProgress?> = _sherpaProgress.asStateFlow()
+    private val _sherpaProgress = MutableStateFlow<com.example.summarizer.data.downloader.DownloadProgress?>(null)
+    val sherpaProgress: StateFlow<com.example.summarizer.data.downloader.DownloadProgress?> = _sherpaProgress.asStateFlow()
 
     init {
         voskModelManager.initModel()
