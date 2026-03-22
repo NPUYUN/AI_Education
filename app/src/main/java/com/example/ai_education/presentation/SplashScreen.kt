@@ -69,33 +69,44 @@ fun SplashScreen(
             
             Spacer(modifier = Modifier.height(48.dp))
 
-            // Vosk Model Card
-            ModelStatusCard(
-                title = "语音唤醒模型",
-                status = when (val state = voskState) {
+            val currentTaskTitle = if (voskState !is VoskModelManager.InitState.Ready) {
+                "正在加载: 语音唤醒模型"
+            } else if (!sherpaReady) {
+                "正在加载: 语音识别模型"
+            } else {
+                "加载完成"
+            }
+
+            val currentTaskStatus = if (voskState !is VoskModelManager.InitState.Ready) {
+                when (val state = voskState) {
                     is VoskModelManager.InitState.Idle -> ModelStatus.Preparing
                     is VoskModelManager.InitState.Downloading -> ModelStatus.Downloading(state.progress)
                     is VoskModelManager.InitState.Loading -> ModelStatus.Processing
-                    is VoskModelManager.InitState.Ready -> ModelStatus.Ready
                     is VoskModelManager.InitState.Error -> ModelStatus.Error(state.message)
-                },
-                onRetry = { viewModel.retryVosk() }
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Sherpa Model Card
-            ModelStatusCard(
-                title = "语音识别模型",
-                status = if (sherpaReady) ModelStatus.Ready
+                    else -> ModelStatus.Preparing
+                }
+            } else {
+                if (sherpaReady) ModelStatus.Ready
                 else if (sherpaError != null) ModelStatus.Error(sherpaError!!)
                 else {
                     val progress = sherpaProgress
                     if (progress == null || progress.status == DownloadStatus.PREPARING) ModelStatus.Preparing
                     else if (progress.status == DownloadStatus.DOWNLOADING) ModelStatus.Downloading(progress.progress / 100f)
                     else ModelStatus.Processing
-                },
-                onRetry = { viewModel.initSherpaModel() }
+                }
+            }
+
+            val onRetry = if (voskState !is VoskModelManager.InitState.Ready) {
+                { viewModel.retryVosk() }
+            } else {
+                { viewModel.initSherpaModel() }
+            }
+
+            // Single unified progress card
+            ModelStatusProgress(
+                title = currentTaskTitle,
+                status = currentTaskStatus,
+                onRetry = onRetry
             )
 
             Spacer(modifier = Modifier.height(48.dp))
@@ -121,94 +132,89 @@ sealed class ModelStatus {
 }
 
 @Composable
-fun ModelStatusCard(
+fun ModelStatusProgress(
     title: String,
     status: ModelStatus,
     onRetry: () -> Unit
 ) {
-    Card(
+    Column(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.weight(1f)
-                )
-                
-                when (status) {
-                    is ModelStatus.Ready -> {
-                        Icon(
-                            imageVector = Icons.Default.CheckCircle,
-                            contentDescription = "Ready",
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                    is ModelStatus.Error -> {
-                        Icon(
-                            imageVector = Icons.Default.Error,
-                            contentDescription = "Error",
-                            tint = MaterialTheme.colorScheme.error
-                        )
-                    }
-                    else -> {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            strokeWidth = 2.dp
-                        )
-                    }
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+
+            when (status) {
+                is ModelStatus.Ready -> {
+                    Icon(
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = "Ready",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+                is ModelStatus.Error -> {
+                    Icon(
+                        imageVector = Icons.Default.Error,
+                        contentDescription = "Error",
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                }
+                is ModelStatus.Downloading -> {
+                    Text("${(status.progress * 100).toInt()}%", style = MaterialTheme.typography.bodyMedium)
+                }
+                else -> {
+                    // Show indeterminate state text
+                    Text(
+                        text = if (status is ModelStatus.Preparing) "准备中..." else "处理中...",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
+        }
 
-            if (status !is ModelStatus.Ready) {
-                Spacer(modifier = Modifier.height(12.dp))
-                when (status) {
-                    is ModelStatus.Preparing -> Text("准备中...", style = MaterialTheme.typography.bodyMedium)
-                    is ModelStatus.Processing -> Text("正在处理...", style = MaterialTheme.typography.bodyMedium)
-                    is ModelStatus.Downloading -> {
-                        val animatedProgress by animateFloatAsState(targetValue = status.progress)
-                        Column {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text("下载中...", style = MaterialTheme.typography.bodySmall)
-                                Text("${(status.progress * 100).toInt()}%", style = MaterialTheme.typography.bodySmall)
-                            }
-                            Spacer(modifier = Modifier.height(4.dp))
-                            LinearProgressIndicator(
-                                progress = { animatedProgress },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(6.dp)
-                                    .clip(RoundedCornerShape(3.dp)),
-                            )
-                        }
-                    }
-                    is ModelStatus.Error -> {
-                        Column(modifier = Modifier.fillMaxWidth()) {
-                            Text(
-                                text = "失败: ${status.message}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.error
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Button(onClick = onRetry, modifier = Modifier.align(Alignment.End)) {
-                                Text("重试")
-                            }
-                        }
-                    }
-                    else -> {}
-                }
+        Spacer(modifier = Modifier.height(12.dp))
+
+        if (status is ModelStatus.Error) {
+            Text(
+                text = "失败: ${status.message}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.align(Alignment.Start)
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Button(onClick = onRetry, modifier = Modifier.align(Alignment.End)) {
+                Text("重试")
+            }
+        } else {
+            val animatedProgress by animateFloatAsState(
+                targetValue = if (status is ModelStatus.Downloading) status.progress else if (status is ModelStatus.Ready) 1f else 0f,
+                label = "progress_animation"
+            )
+            
+            if (status is ModelStatus.Downloading || status is ModelStatus.Ready) {
+                LinearProgressIndicator(
+                    progress = { animatedProgress },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(8.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                )
+            } else {
+                LinearProgressIndicator(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(8.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                )
             }
         }
     }

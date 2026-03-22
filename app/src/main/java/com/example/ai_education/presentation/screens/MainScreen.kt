@@ -32,9 +32,11 @@ import androidx.navigation.compose.rememberNavController
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.summarizer.presentation.VideoDownloadViewModel
+import com.example.summarizer.presentation.screens.SummaryMenuScreen
 import com.example.ai_tutor.presentation.AiTutorViewModel
 import com.example.ai_tutor.presentation.ChatScreen
 import com.example.review.presentation.ReviewScreen
+import com.example.solver.presentation.SolverScreen
 import kotlinx.coroutines.launch
 
 @androidx.media3.common.util.UnstableApi
@@ -54,10 +56,10 @@ fun MainScreen(
     val sessions by viewModel.sessions.collectAsState(initial = emptyList())
     
     // Bottom Navigation Items
-    // Order: AI Tutor, Geometry, Summary, Review
+    // Order: AI Tutor, Solver, Summary, Review
     val items = listOf(
         Triple("home", Icons.Default.Face, "AI辅导"),
-        Triple("geometry", Icons.Default.Edit, "解题"),
+        Triple("solver", Icons.Default.Edit, "解题"),
         Triple("summary", Icons.Default.Summarize, "总结"),
         Triple("review", Icons.Default.RateReview, "复习")
     )
@@ -358,8 +360,14 @@ fun MainScreen(
                         modifier = Modifier.fillMaxSize()
                     ) 
                 }
-                composable("geometry") { GeometryScreen() }
-                composable("summary") { SummaryMenuScreen(navController) }
+                composable("solver") { SolverScreen() }
+                composable("summary") { 
+                    SummaryMenuScreen(
+                        onNavigateToVideoSummary = { navController.navigate("video") },
+                        onNavigateToTextSummary = { android.widget.Toast.makeText(context, "文本总结即将上线", android.widget.Toast.LENGTH_SHORT).show() },
+                        onNavigateToChatSummary = { android.widget.Toast.makeText(context, "对话总结即将上线", android.widget.Toast.LENGTH_SHORT).show() }
+                    ) 
+                }
                 composable("review") { ReviewScreen() }
                 composable(
                     route = "timeline?query={query}",
