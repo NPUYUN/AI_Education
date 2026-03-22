@@ -11,7 +11,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
-import com.example.solver.ui.theme.Ai_EducationTheme
+import com.example.solver.core.ui.theme.Ai_EducationTheme
 
 import dagger.hilt.android.AndroidEntryPoint
 

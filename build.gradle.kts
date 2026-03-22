@@ -15,3 +15,12 @@ plugins {
     alias(libs.plugins.google.devtools.ksp) apply false
     alias(libs.plugins.hilt) apply false
 }
+
+subprojects {
+    afterEvaluate {
+        if (plugins.hasPlugin("com.android.application") || plugins.hasPlugin("com.android.library")) {
+            apply(from = "${rootProject.projectDir}/jacoco.gradle.kts")
+        }
+    }
+}
+

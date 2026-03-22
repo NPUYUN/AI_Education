@@ -11,7 +11,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.example.ai_tutor.presentation.ChatScreen
+import com.example.ai_tutor.multimodal_chat.presentation.screens.ChatScreen
 import com.example.ai_education.presentation.auth.AuthViewModel
 import com.example.ai_education.presentation.auth.LoginScreen
 import com.example.ai_education.presentation.auth.RegisterScreen
@@ -24,7 +24,7 @@ import android.net.Uri
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
-import com.example.ai_tutor.presentation.AiTutorViewModel
+import com.example.ai_tutor.multimodal_chat.presentation.viewmodels.AiTutorViewModel
 
 @Composable
 fun AppNavigation(

@@ -14,9 +14,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
 import com.example.common.database.PreferencesManager
 import kotlinx.coroutines.launch
-import com.example.ai_tutor.presentation.TimelineMapScreen
-import com.example.summarizer.presentation.VideoDownloadViewModel
-import com.example.summarizer.presentation.screens.VideoDownloadScreen
+import com.example.ai_tutor.timeline_map.presentation.screens.TimelineMapScreen
+import com.example.summarizer.video_summarizer.presentation.viewmodels.VideoDownloadViewModel
+import com.example.summarizer.video_summarizer.presentation.screens.VideoDownloadScreen
 import com.example.common.presentation.components.GlobalApiSettingsDialog
 
 @Composable

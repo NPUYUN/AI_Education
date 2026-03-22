@@ -7,8 +7,8 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Scaffold
 import androidx.compose.ui.Modifier
-import com.example.ai_tutor.ui.theme.Ai_EducationTheme
-import com.example.ai_tutor.presentation.TimelineMapScreen
+import com.example.ai_tutor.core.ui.theme.Ai_EducationTheme
+import com.example.ai_tutor.timeline_map.presentation.screens.TimelineMapScreen
 
 import dagger.hilt.android.AndroidEntryPoint
 

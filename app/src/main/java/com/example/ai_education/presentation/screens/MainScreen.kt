@@ -31,12 +31,12 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.example.summarizer.presentation.VideoDownloadViewModel
-import com.example.summarizer.presentation.screens.SummaryMenuScreen
-import com.example.ai_tutor.presentation.AiTutorViewModel
-import com.example.ai_tutor.presentation.ChatScreen
-import com.example.review.presentation.ReviewScreen
-import com.example.solver.presentation.SolverScreen
+import com.example.summarizer.video_summarizer.presentation.viewmodels.VideoDownloadViewModel
+import com.example.summarizer.core.presentation.screens.SummaryMenuScreen
+import com.example.ai_tutor.multimodal_chat.presentation.viewmodels.AiTutorViewModel
+import com.example.ai_tutor.multimodal_chat.presentation.screens.ChatScreen
+import com.example.review.planner.presentation.screens.ReviewScreen
+import com.example.solver.comprehensive.presentation.screens.SolverScreen
 import kotlinx.coroutines.launch
 
 @androidx.media3.common.util.UnstableApi

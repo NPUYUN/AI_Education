@@ -10,9 +10,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.example.summarizer.presentation.VideoDownloadViewModel
-import com.example.summarizer.presentation.screens.VideoDownloadScreen
-import com.example.summarizer.ui.theme.Ai_EducationTheme
+import com.example.summarizer.video_summarizer.presentation.viewmodels.VideoDownloadViewModel
+import com.example.summarizer.video_summarizer.presentation.screens.VideoDownloadScreen
+import com.example.summarizer.core.ui.theme.Ai_EducationTheme
 
 import dagger.hilt.android.AndroidEntryPoint
 

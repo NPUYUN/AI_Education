@@ -18,9 +18,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.common.dispatchers.DefaultDispatcherProvider
 import com.example.common.manager.VoskModelManager
-import com.example.summarizer.data.downloader.ModelDownloader
-import com.example.summarizer.data.downloader.DownloadProgress
-import com.example.summarizer.data.downloader.DownloadStatus
+import com.example.summarizer.video_summarizer.services.ModelDownloader
+import com.example.summarizer.video_summarizer.services.DownloadProgress
+import com.example.summarizer.video_summarizer.services.DownloadStatus
 import kotlinx.coroutines.delay
 
 @Composable
