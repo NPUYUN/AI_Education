@@ -13,9 +13,9 @@
             <option value="$PROJECT_DIR$/ai_tutor" />
             <option value="$PROJECT_DIR$/app" />
             <option value="$PROJECT_DIR$/common" />
-            <option value="$PROJECT_DIR$/geometry_solver" />
-            <option value="$PROJECT_DIR$/timeline_map" />
-            <option value="$PROJECT_DIR$/video_summarizer" />
+            <option value="$PROJECT_DIR$/review" />
+            <option value="$PROJECT_DIR$/solver" />
+            <option value="$PROJECT_DIR$/summarizer" />
           </set>
         </option>
       </GradleProjectSettings>

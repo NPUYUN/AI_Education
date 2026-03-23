@@ -109,6 +109,10 @@ androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx"
 # Compress
 commons-compress = { group = "org.apache.commons", name = "commons-compress", version = "1.26.0" }
 
+# Document Parsing
+pdfbox-android = { group = "com.tom-roush", name = "pdfbox-android", version = "2.0.27.0" }
+jsoup = { group = "org.jsoup", name = "jsoup", version = "1.17.2" }
+
 # Hilt
 hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
 hilt-compiler = { group = "com.google.dagger", name = "hilt-compiler", version.ref = "hilt" }

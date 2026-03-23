@@ -6,6 +6,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Article
 import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material.icons.filled.ChatBubble
+import androidx.compose.material.icons.filled.Audiotrack
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -18,6 +19,7 @@ import androidx.compose.ui.unit.dp
 fun SummaryMenuScreen(
     onNavigateToVideoSummary: () -> Unit,
     onNavigateToTextSummary: () -> Unit,
+    onNavigateToAudioSummary: () -> Unit,
     onNavigateToChatSummary: () -> Unit
 ) {
     Scaffold(
@@ -47,6 +49,12 @@ fun SummaryMenuScreen(
                 title = "文本总结",
                 icon = { Icon(Icons.AutoMirrored.Filled.Article, contentDescription = "文本总结", modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.primary) },
                 onClick = onNavigateToTextSummary
+            )
+
+            SummaryOptionCard(
+                title = "音频总结",
+                icon = { Icon(Icons.Default.Audiotrack, contentDescription = "音频总结", modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.primary) },
+                onClick = onNavigateToAudioSummary
             )
 
             SummaryOptionCard(

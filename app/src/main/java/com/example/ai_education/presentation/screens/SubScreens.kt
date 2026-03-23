@@ -36,6 +36,20 @@ fun VideoSummaryScreen(viewModel: VideoDownloadViewModel, navController: NavCont
 }
 
 @Composable
+fun TextSummaryScreenWrapper(viewModel: com.example.summarizer.text_summarizer.presentation.viewmodels.TextSummaryViewModel, navController: NavController) {
+    SubScreenScaffold(title = "文本总结", onBack = { navController.popBackStack() }) {
+        com.example.summarizer.text_summarizer.presentation.screens.TextSummaryScreen(viewModel = viewModel)
+    }
+}
+
+@Composable
+fun AudioSummaryScreenWrapper(viewModel: com.example.summarizer.audio_summarizer.presentation.viewmodels.AudioSummaryViewModel, navController: NavController) {
+    SubScreenScaffold(title = "音频总结", onBack = { navController.popBackStack() }) {
+        com.example.summarizer.audio_summarizer.presentation.screens.AudioSummaryScreen(viewModel = viewModel)
+    }
+}
+
+@Composable
 fun SettingsScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()

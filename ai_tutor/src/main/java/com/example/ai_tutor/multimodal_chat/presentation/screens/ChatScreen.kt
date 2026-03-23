@@ -125,6 +125,13 @@ fun ChatScreen(
                             listState.animateScrollToItem(uiState.messages.size - 1)
                         }
                     }
+
+                    val imeBottom = WindowInsets.ime.getBottom(androidx.compose.ui.platform.LocalDensity.current)
+                    LaunchedEffect(imeBottom) {
+                        if (imeBottom > 0 && uiState.messages.isNotEmpty()) {
+                            listState.animateScrollToItem(uiState.messages.size - 1)
+                        }
+                    }
                 }
 
                 ChatInputArea(

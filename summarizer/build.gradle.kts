@@ -73,6 +73,13 @@ dependencies {
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 
+    // Markdown
+    implementation(libs.compose.markdown)
+
+    // Document Parsing
+    implementation(libs.pdfbox.android)
+    implementation(libs.jsoup)
+
     // DataStore for preferences
     implementation(libs.androidx.datastore.preferences)
 

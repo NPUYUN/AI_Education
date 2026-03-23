@@ -37,6 +37,8 @@ import com.example.ai_tutor.multimodal_chat.presentation.viewmodels.AiTutorViewM
 import com.example.ai_tutor.multimodal_chat.presentation.screens.ChatScreen
 import com.example.review.planner.presentation.screens.ReviewScreen
 import com.example.solver.comprehensive.presentation.screens.SolverScreen
+import com.example.summarizer.text_summarizer.presentation.viewmodels.TextSummaryViewModel
+import com.example.summarizer.audio_summarizer.presentation.viewmodels.AudioSummaryViewModel
 import kotlinx.coroutines.launch
 
 @androidx.media3.common.util.UnstableApi
@@ -54,6 +56,8 @@ fun MainScreen(
     val scope = rememberCoroutineScope()
     val context = androidx.compose.ui.platform.LocalContext.current
     val sessions by viewModel.sessions.collectAsState(initial = emptyList())
+    val textSummaryViewModel: TextSummaryViewModel = hiltViewModel()
+    val audioSummaryViewModel: AudioSummaryViewModel = hiltViewModel()
     
     // Bottom Navigation Items
     // Order: AI Tutor, Solver, Summary, Review
@@ -348,7 +352,10 @@ fun MainScreen(
             NavHost(
                 navController = navController,
                 startDestination = "home", // AI Tutor is middle, but usually start destination.
-                modifier = Modifier.padding(innerPadding)
+                modifier = Modifier
+                    .padding(innerPadding)
+                    .consumeWindowInsets(innerPadding)
+                    .imePadding()
             ) {
                 composable("home") {
                     ChatScreen(
@@ -364,7 +371,8 @@ fun MainScreen(
                 composable("summary") { 
                     SummaryMenuScreen(
                         onNavigateToVideoSummary = { navController.navigate("video") },
-                        onNavigateToTextSummary = { android.widget.Toast.makeText(context, "文本总结即将上线", android.widget.Toast.LENGTH_SHORT).show() },
+                        onNavigateToTextSummary = { navController.navigate("text_summary") },
+                        onNavigateToAudioSummary = { navController.navigate("audio_summary") },
                         onNavigateToChatSummary = { android.widget.Toast.makeText(context, "对话总结即将上线", android.widget.Toast.LENGTH_SHORT).show() }
                     ) 
                 }
@@ -380,6 +388,8 @@ fun MainScreen(
                     TimelineScreen(navController, query)
                 }
                 composable("video") { VideoSummaryScreen(videoViewModel, navController) }
+                composable("text_summary") { TextSummaryScreenWrapper(textSummaryViewModel, navController) }
+                composable("audio_summary") { AudioSummaryScreenWrapper(audioSummaryViewModel, navController) }
                 composable("profile") { ProfileScreen() }
             }
         }
