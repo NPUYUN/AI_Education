@@ -13,10 +13,10 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.ai_tutor.learning_record.services.AiTutorDatabase
-import com.example.ai_tutor.learning_record.services.ChatDao
-import com.example.ai_tutor.learning_record.models.ChatSessionEntity
-import com.example.ai_tutor.learning_record.models.MessageEntity
+import com.example.common.database.ChatDatabase
+import com.example.common.database.dao.ChatDao
+import com.example.common.database.models.ChatSessionEntity
+import com.example.common.database.models.MessageEntity
 import com.example.common.network.llm.ContentItem
 import com.example.common.network.llm.ImageUrl
 import com.example.common.network.llm.ChatMessage as Message
@@ -47,7 +47,8 @@ data class AiTutorUiState(
     val inputText: String = "",
     val isLoading: Boolean = false,
     val showApiSettings: Boolean = false,
-    val isVoiceMode: Boolean = false
+    val isVoiceMode: Boolean = false,
+    val errorMessage: String? = null
 )
 
 @HiltViewModel
@@ -221,6 +222,13 @@ class AiTutorViewModel @Inject constructor(
     
     // ...
     
+    fun clearErrorMessage() {
+        _uiState.update { it.copy(errorMessage = null) }
+    }
+
+    private fun handleError(message: String) {
+        _uiState.update { it.copy(errorMessage = message, isLoading = false) }
+    }
     fun onInputChanged(text: String) {
         _uiState.update { it.copy(inputText = text, isVoiceMode = false) }
     }
@@ -738,14 +746,7 @@ class AiTutorViewModel @Inject constructor(
                     }
                 }
             } catch (e: Exception) {
-                withContext(dispatcherProvider.main) {
-                    _uiState.update { state ->
-                        state.copy(
-                            messages = state.messages + Message("system", "Error: ${e.message}"),
-                            isLoading = false
-                        )
-                    }
-                }
+                handleError("Network Error: ${e.message ?: "Unknown error occurred"}")
             }
         }
     }

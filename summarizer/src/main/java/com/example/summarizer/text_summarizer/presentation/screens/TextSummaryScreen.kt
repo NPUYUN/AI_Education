@@ -1,5 +1,10 @@
 package com.example.summarizer.text_summarizer.presentation.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -18,7 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import com.example.summarizer.text_summarizer.presentation.viewmodels.TextSummaryViewModel
-import dev.jeziellago.compose.markdowntext.MarkdownText
+import com.example.common.ui.components.SafeMarkdownText
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -105,22 +110,32 @@ fun TextSummaryScreen(
         }
 
         // Error Message
-        uiState.error?.let { errorMsg ->
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    text = errorMsg,
-                    color = MaterialTheme.colorScheme.onErrorContainer,
-                    modifier = Modifier.padding(16.dp),
-                    style = MaterialTheme.typography.bodyMedium
-                )
+        AnimatedVisibility(
+            visible = uiState.error != null,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically()
+        ) {
+            uiState.error?.let { errorMsg ->
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = errorMsg,
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        modifier = Modifier.padding(16.dp),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
             }
         }
 
         // Result Area
-        if (uiState.summaryResult.isNotBlank()) {
+        AnimatedVisibility(
+            visible = uiState.summaryResult.isNotBlank(),
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically()
+        ) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
@@ -136,7 +151,7 @@ fun TextSummaryScreen(
                     )
                     HorizontalDivider(modifier = Modifier.padding(bottom = 12.dp))
                     
-                    MarkdownText(
+                    SafeMarkdownText(
                         markdown = uiState.summaryResult,
                         style = MaterialTheme.typography.bodyLarge.copy(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -145,6 +160,8 @@ fun TextSummaryScreen(
                     )
                 }
             }
+        }
+        if (uiState.summaryResult.isNotBlank()) {
             Spacer(modifier = Modifier.height(32.dp))
         }
     }

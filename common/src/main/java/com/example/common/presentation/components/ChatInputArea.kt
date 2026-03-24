@@ -25,6 +25,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.ui.draw.clip
 
 @OptIn(ExperimentalComposeUiApi::class)
@@ -57,7 +58,8 @@ fun ChatInputArea(
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .padding(16.dp),
+            .padding(16.dp)
+            .animateContentSize(),
         shape = RoundedCornerShape(32.dp),
         color = MaterialTheme.colorScheme.surfaceContainerHigh
     ) {

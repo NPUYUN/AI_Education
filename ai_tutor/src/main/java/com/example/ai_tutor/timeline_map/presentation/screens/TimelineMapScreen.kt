@@ -40,6 +40,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
+import org.osmdroid.util.BoundingBox
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
 import java.io.File
@@ -48,6 +49,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.collectAsState
 import org.osmdroid.views.overlay.TilesOverlay
 import com.example.common.presentation.components.GlobalApiSettingsDialog
+import androidx.compose.material.icons.filled.Info
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -58,6 +60,7 @@ fun TimelineMapScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+    var showDetails by remember { mutableStateOf(false) }
 
     LaunchedEffect(initialQuery) {
         if (!initialQuery.isNullOrBlank()) {
@@ -116,9 +119,73 @@ fun TimelineMapScreen(
                 MapSection(
                     events = events,
                     selectedId = selectedId,
-                    onSelect = { viewModel.selectEvent(it) },
+                    onSelect = { id ->
+                        viewModel.selectEvent(id)
+                        showDetails = true
+                    },
                     modifier = Modifier.fillMaxSize()
                 )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // 时间轴（在地图下方）
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(
+                            text = "时间轴",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            items(events) { e ->
+                                AssistChip(
+                                    onClick = { viewModel.selectEvent(e.id) },
+                                    label = { Text(e.time) },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.Info,
+                                            contentDescription = null
+                                        )
+                                    },
+                                    colors = AssistChipDefaults.assistChipColors(
+                                        containerColor = if (e.id == selectedId) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer,
+                                        labelColor = if (e.id == selectedId) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                )
+                            }
+                        }
+                    }
+                }
+
+                if (showDetails && selectedId != null) {
+                    val selected = events.find { it.id == selectedId }
+                    if (selected != null) {
+                        AlertDialog(
+                            onDismissRequest = { showDetails = false },
+                            title = { Text("事件详情") },
+                            text = {
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Text("时间：${selected.time}", style = MaterialTheme.typography.bodyMedium)
+                                    Text("地点：${selected.location}", style = MaterialTheme.typography.bodyMedium)
+                                    Text("人物：${selected.people.joinToString("、")}", style = MaterialTheme.typography.bodyMedium)
+                                    Text(selected.description, style = MaterialTheme.typography.bodyLarge)
+                                }
+                            },
+                            confirmButton = {
+                                TextButton(onClick = { showDetails = false }) {
+                                    Text("返回")
+                                }
+                            }
+                        )
+                    }
+                }
             }
         }
     }
@@ -142,6 +209,26 @@ private fun MapSection(
             val selected = events.find { it.id == selectedId } ?: events.firstOrNull()
             if (selected != null) {
                 view.controller.setCenter(GeoPoint(selected.latitude, selected.longitude))
+            }
+            // 根据事件范围调整视野：国家级/世界级
+            val latitudes = events.map { it.latitude }
+            val longitudes = events.map { it.longitude }
+            if (latitudes.isNotEmpty() && longitudes.isNotEmpty()) {
+                val minLat = latitudes.minOrNull() ?: selected?.latitude ?: 0.0
+                val maxLat = latitudes.maxOrNull() ?: selected?.latitude ?: 0.0
+                val minLon = longitudes.minOrNull() ?: selected?.longitude ?: 0.0
+                val maxLon = longitudes.maxOrNull() ?: selected?.longitude ?: 0.0
+                val latSpan = maxLat - minLat
+                val lonSpan = maxLon - minLon
+                if (latSpan > 50 || lonSpan > 100) {
+                    // 跨越大范围，视为世界性
+                    view.controller.setZoom(2.5)
+                    view.controller.setCenter(GeoPoint((minLat + maxLat) / 2.0, (minLon + maxLon) / 2.0))
+                } else {
+                    // 使用边界框更贴近国家或区域级别
+                    val bbox = BoundingBox(maxLat, maxLon, minLat, minLon)
+                    view.zoomToBoundingBox(bbox, true)
+                }
             }
         }
     )

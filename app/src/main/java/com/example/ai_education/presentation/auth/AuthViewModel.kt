@@ -46,6 +46,7 @@ class AuthViewModel @Inject constructor(
             val user = userDao.getUser(uid)
             if (user != null && user.passwordHash == pwd) { // In real app, hash pwd
                 prefs.saveString("current_user_id", user.id)
+                prefs.saveString("user_nickname", user.nickname)
                 onSuccess()
             } else {
                 error.value = "Invalid credentials"
@@ -66,9 +67,11 @@ class AuthViewModel @Inject constructor(
                 error.value = "User already exists"
                 return@launch
             }
-            val newUser = UserEntity(uid, if (nick.isBlank()) uid else nick, pwd)
+            val finalNick = if (nick.isBlank()) uid else nick
+            val newUser = UserEntity(uid, finalNick, pwd)
             userDao.insertUser(newUser)
             prefs.saveString("current_user_id", newUser.id)
+            prefs.saveString("user_nickname", finalNick)
             onSuccess()
         }
     }

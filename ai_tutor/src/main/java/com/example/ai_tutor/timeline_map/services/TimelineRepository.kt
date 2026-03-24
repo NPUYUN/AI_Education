@@ -30,13 +30,7 @@ class TimelineRepository @Inject constructor(
         return withContext(dispatcherProvider.io) {
             try {
                 val service = RetrofitClient.create(apiKey, baseUrl).create(OpenAiService::class.java)
-                val prompt = """
-                    你是历史事件整理助手。请根据问题生成事件列表。
-                    输出严格 JSON 数组，每个元素包含：
-                    time(字符串), location(字符串), description(字符串), people(字符串数组), latitude(数字), longitude(数字)。
-                    不要输出其它文字或markdown。
-                    问题：$query
-                """.trimIndent()
+                val prompt = AppConstants.TIMELINE_EVENTS_PROMPT_PREFIX + query
 
                 val request = ChatRequest(
                     model = model,

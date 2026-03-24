@@ -25,6 +25,11 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.animateContentSize
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -36,7 +41,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.common.network.llm.ChatMessage as Message
 import com.example.common.network.llm.ContentItem
-import dev.jeziellago.compose.markdowntext.MarkdownText
+import com.example.common.ui.components.SafeMarkdownText
 import kotlinx.coroutines.launch
 import android.graphics.ImageDecoder
 import android.os.Build
@@ -57,6 +62,17 @@ fun ChatScreen(
     val context = LocalContext.current
     val listState = rememberLazyListState()
     val uiState by viewModel.uiState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(uiState.errorMessage) {
+        uiState.errorMessage?.let { errorMsg ->
+            snackbarHostState.showSnackbar(
+                message = errorMsg,
+                duration = SnackbarDuration.Short
+            )
+            viewModel.clearErrorMessage()
+        }
+    }
 
     // Removed VoiceInputManager (using Native Recorder in ViewModel)
 
@@ -106,40 +122,59 @@ fun ChatScreen(
                 modifier = Modifier.weight(1f)
             )
         } else {
-            LazyColumn(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
-                state = listState,
-                        reverseLayout = false,
-                        contentPadding = PaddingValues(bottom = 16.dp)
-                    ) {
-                        items(uiState.messages) { message ->
+            Box(modifier = Modifier.weight(1f)) {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    state = listState,
+                    reverseLayout = false,
+                    contentPadding = PaddingValues(bottom = 16.dp)
+                ) {
+                    items(uiState.messages) { message ->
+                        var isVisible by remember { mutableStateOf(false) }
+                        LaunchedEffect(message) { isVisible = true }
+                        androidx.compose.animation.AnimatedVisibility(
+                            visible = isVisible,
+                            enter = fadeIn(animationSpec = tween(300)) + slideInVertically(animationSpec = tween(300)) { it / 2 }
+                        ) {
                             MessageItem(message)
-                            Spacer(modifier = Modifier.height(16.dp))
                         }
+                        Spacer(modifier = Modifier.height(16.dp))
                     }
-
-                    LaunchedEffect(uiState.messages.size) {
-                        if (uiState.messages.isNotEmpty()) {
-                            listState.animateScrollToItem(uiState.messages.size - 1)
-                        }
-                    }
-
-                    val imeBottom = WindowInsets.ime.getBottom(androidx.compose.ui.platform.LocalDensity.current)
-                    LaunchedEffect(imeBottom) {
-                        if (imeBottom > 0 && uiState.messages.isNotEmpty()) {
-                            listState.animateScrollToItem(uiState.messages.size - 1)
+                    if (uiState.isLoading) {
+                        item {
+                            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                CircularProgressIndicator(modifier = Modifier.padding(16.dp))
+                            }
                         }
                     }
                 }
+
+                LaunchedEffect(uiState.messages.size) {
+                    if (uiState.messages.isNotEmpty()) {
+                        listState.animateScrollToItem(uiState.messages.size - 1)
+                    }
+                }
+
+                val imeBottom = WindowInsets.ime.getBottom(androidx.compose.ui.platform.LocalDensity.current)
+                LaunchedEffect(imeBottom) {
+                    if (imeBottom > 0 && uiState.messages.isNotEmpty()) {
+                        listState.animateScrollToItem(uiState.messages.size - 1)
+                    }
+                }
+
+                SnackbarHost(
+                    hostState = snackbarHostState,
+                    modifier = Modifier.align(Alignment.TopCenter).padding(top = 16.dp)
+                )
+            }
+        }
 
                 ChatInputArea(
                     text = uiState.inputText,
                     onTextChanged = { viewModel.onInputChanged(it) },
                     onSend = { 
                         val inputText = uiState.inputText.trim()
-                        val timelineMatch = Regex("生成(.+)的时间轴地图").find(inputText)
+                        val timelineMatch = Regex("生成(.+)的时间轴(地图|图)?").find(inputText)
                         if (timelineMatch != null) {
                             val topic = timelineMatch.groupValues[1]
                             onNavigateToTimeline(topic)
@@ -356,7 +391,7 @@ fun AssistantMessage(markdown: String) {
             .padding(vertical = 8.dp)
             .background(Color.Transparent)
     ) {
-        MarkdownText(
+        SafeMarkdownText(
             markdown = markdown,
             style = MaterialTheme.typography.bodyLarge.copy(
                 color = MaterialTheme.colorScheme.onBackground,

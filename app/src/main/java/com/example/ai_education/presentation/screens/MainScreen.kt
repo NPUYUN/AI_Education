@@ -23,6 +23,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
+import java.io.File
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
@@ -39,6 +42,10 @@ import com.example.review.planner.presentation.screens.ReviewScreen
 import com.example.solver.comprehensive.presentation.screens.SolverScreen
 import com.example.summarizer.text_summarizer.presentation.viewmodels.TextSummaryViewModel
 import com.example.summarizer.audio_summarizer.presentation.viewmodels.AudioSummaryViewModel
+import com.example.summarizer.dialogue_summarizer.presentation.screens.DialogueSummaryScreen
+import com.example.summarizer.dialogue_summarizer.presentation.viewmodels.DialogueSummaryViewModel
+import com.example.summarizer.knowledge_cards.presentation.screens.KnowledgeCardScreen
+import com.example.summarizer.knowledge_cards.presentation.viewmodels.KnowledgeCardViewModel
 import kotlinx.coroutines.launch
 
 @androidx.media3.common.util.UnstableApi
@@ -55,6 +62,10 @@ fun MainScreen(
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val context = androidx.compose.ui.platform.LocalContext.current
+    val preferencesManager = remember { com.example.common.database.PreferencesManager(context) }
+    val savedNickname by preferencesManager.getString("user_nickname", "用户昵称").collectAsState(initial = "用户昵称")
+    val savedAvatar by preferencesManager.getString("user_avatar", "").collectAsState(initial = "")
+
     val sessions by viewModel.sessions.collectAsState(initial = emptyList())
     val textSummaryViewModel: TextSummaryViewModel = hiltViewModel()
     val audioSummaryViewModel: AudioSummaryViewModel = hiltViewModel()
@@ -127,13 +138,29 @@ fun MainScreen(
                             modifier = Modifier.size(48.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
-                                Icon(Icons.Default.Person, contentDescription = "Avatar", tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                                if (savedAvatar.isNotEmpty() && File(savedAvatar).exists()) {
+                                    AsyncImage(
+                                        model = coil.request.ImageRequest.Builder(context)
+                                            .data(File(savedAvatar))
+                                            .crossfade(true)
+                                            .transformations(coil.transform.CircleCropTransformation())
+                                            .build(),
+                                        contentDescription = "Avatar",
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.fillMaxSize().clip(CircleShape)
+                                    )
+                                } else {
+                                    Icon(Icons.Default.Person, contentDescription = "Avatar", tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                                }
                             }
                         }
                         Spacer(modifier = Modifier.width(16.dp))
                         Text(
-                            text = "用户昵称", 
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                            text = savedNickname.ifBlank { "用户昵称" }, 
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                         )
                     }
 
@@ -367,16 +394,23 @@ fun MainScreen(
                         modifier = Modifier.fillMaxSize()
                     ) 
                 }
-                composable("solver") { SolverScreen() }
+                composable("solver") { 
+                    val solverViewModel: com.example.solver.comprehensive.presentation.viewmodels.SolverViewModel = hiltViewModel()
+                    SolverScreen(solverViewModel) 
+                }
                 composable("summary") { 
                     SummaryMenuScreen(
                         onNavigateToVideoSummary = { navController.navigate("video") },
                         onNavigateToTextSummary = { navController.navigate("text_summary") },
                         onNavigateToAudioSummary = { navController.navigate("audio_summary") },
-                        onNavigateToChatSummary = { android.widget.Toast.makeText(context, "对话总结即将上线", android.widget.Toast.LENGTH_SHORT).show() }
+                        onNavigateToChatSummary = { navController.navigate("dialogue_summary") },
+                        onNavigateToKnowledgeCards = { navController.navigate("knowledge_cards") }
                     ) 
                 }
-                composable("review") { ReviewScreen() }
+                composable("review") { 
+                    val reviewViewModel: com.example.review.planner.presentation.viewmodels.ReviewViewModel = hiltViewModel()
+                    ReviewScreen(reviewViewModel) 
+                }
                 composable(
                     route = "timeline?query={query}",
                     arguments = listOf(androidx.navigation.navArgument("query") { 
@@ -390,9 +424,33 @@ fun MainScreen(
                 composable("video") { VideoSummaryScreen(videoViewModel, navController) }
                 composable("text_summary") { TextSummaryScreenWrapper(textSummaryViewModel, navController) }
                 composable("audio_summary") { AudioSummaryScreenWrapper(audioSummaryViewModel, navController) }
+                composable("dialogue_summary") { DialogueSummaryScreenWrapper(navController) }
+                composable("knowledge_cards") { KnowledgeCardScreenWrapper(navController) }
                 composable("profile") { ProfileScreen() }
             }
         }
     }
+}
+
+@Composable
+fun KnowledgeCardScreenWrapper(
+    navController: androidx.navigation.NavHostController,
+    viewModel: KnowledgeCardViewModel = hiltViewModel()
+) {
+    KnowledgeCardScreen(
+        viewModel = viewModel,
+        onNavigateBack = { navController.popBackStack() }
+    )
+}
+
+@Composable
+fun DialogueSummaryScreenWrapper(
+    navController: androidx.navigation.NavHostController,
+    viewModel: DialogueSummaryViewModel = hiltViewModel()
+) {
+    DialogueSummaryScreen(
+        viewModel = viewModel,
+        onNavigateBack = { navController.popBackStack() }
+    )
 }
 

@@ -25,17 +25,7 @@ class AudioSummaryRepository @Inject constructor(
             val request = ChatRequest(
                 model = modelName,
                 messages = listOf(
-                    ChatMessage(
-                        role = "system",
-                        content = "你是一个专业的音频/语音总结助手。请对用户提供的语音转写文本进行深度解析和层次化总结。\n" +
-                                "由于是语音转写，可能存在少许错别字或口语化表达，请在理解时自动修正或忽略。\n" +
-                                "总结必须包含以下结构：\n" +
-                                "1. 核心主旨：用一段话概括音频的核心内容。\n" +
-                                "2. 关键信息：分点列出音频中提到的核心要点或结论。\n" +
-                                "3. 详细内容：补充关键的支持性细节、例子或讨论。\n" +
-                                "4. 行动项/建议（可选）：如果音频中提到了需要执行的任务或建议，请列出。\n" +
-                                "请使用清晰的Markdown格式输出，可以适当使用加粗和列表。"
-                    ),
+                    ChatMessage(role = "system", content = com.example.common.config.AppConstants.AUDIO_SUMMARY_SYSTEM_PROMPT),
                     ChatMessage(
                         role = "user",
                         content = "请对以下语音转写文本进行总结：\n\n$transcript"

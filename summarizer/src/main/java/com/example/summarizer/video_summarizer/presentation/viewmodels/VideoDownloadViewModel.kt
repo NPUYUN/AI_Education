@@ -94,6 +94,8 @@ class VideoDownloadViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(VideoDownloadUiState())
     val uiState: StateFlow<VideoDownloadUiState> = _uiState.asStateFlow()
 
+    private val cancelledTasks = mutableSetOf<String>()
+
     init {
         // Verify cross-app user data access
         viewModelScope.launch(dispatcherProvider.main) {
@@ -207,7 +209,7 @@ class VideoDownloadViewModel @Inject constructor(
         }
     }
 
-   private fun startDownload(taskId: String, url: String) {
+    private fun startDownload(taskId: String, url: String) {
         viewModelScope.launch(dispatcherProvider.io) {
             updateTaskProgress(taskId) { DownloadProgress(status = DownloadStatus.DOWNLOADING) }
 
@@ -221,8 +223,13 @@ class VideoDownloadViewModel @Inject constructor(
                     startVideoSummary(taskId, filePath)
                 },
                 onFailure = { error ->
-                    updateTaskProgress(taskId) { DownloadProgress(status = DownloadStatus.FAILED) }
-                    showError(humanizeDownloadError(error))
+                    if (cancelledTasks.contains(taskId)) {
+                        cancelledTasks.remove(taskId)
+                        updateTaskProgress(taskId) { DownloadProgress(status = DownloadStatus.CANCELLED) }
+                    } else {
+                        updateTaskProgress(taskId) { DownloadProgress(status = DownloadStatus.FAILED) }
+                        showError(humanizeDownloadError(error))
+                    }
                 }
             )
         }
@@ -232,6 +239,7 @@ class VideoDownloadViewModel @Inject constructor(
         if (taskId == "model_download_task") {
             return // Not supported for model download yet
         }
+        cancelledTasks.add(taskId)
         downloader.cancelDownload()
         updateTaskProgress(taskId) { DownloadProgress(status = DownloadStatus.CANCELLED) }
     }

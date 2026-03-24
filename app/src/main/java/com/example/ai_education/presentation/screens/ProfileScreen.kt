@@ -1,6 +1,10 @@
 package com.example.ai_education.presentation.screens
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -11,15 +15,20 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 import androidx.compose.ui.platform.LocalContext
+import coil.compose.AsyncImage
 import com.example.common.database.PreferencesManager
 import kotlinx.coroutines.launch
+import java.io.File
+import java.io.FileOutputStream
 
 @Composable
 fun ProfileScreen() {
@@ -29,10 +38,31 @@ fun ProfileScreen() {
     
     val savedNickname by preferencesManager.getString("user_nickname", "用户昵称").collectAsState(initial = "用户昵称")
     val savedSignature by preferencesManager.getString("user_signature", "这里是个性签名...").collectAsState(initial = "这里是个性签名...")
+    val savedAvatar by preferencesManager.getString("user_avatar", "").collectAsState(initial = "")
 
     var showEditDialog by remember { mutableStateOf(false) }
-    var nickname by remember { mutableStateOf("") }
-    var signature by remember { mutableStateOf("") }
+    var nickname by remember(savedNickname) { mutableStateOf(savedNickname) }
+    var signature by remember(savedSignature) { mutableStateOf(savedSignature) }
+
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            scope.launch {
+                try {
+                    val inputStream = context.contentResolver.openInputStream(it)
+                    val avatarFile = File(context.filesDir, "avatar_${System.currentTimeMillis()}.jpg")
+                    val outputStream = FileOutputStream(avatarFile)
+                    inputStream?.copyTo(outputStream)
+                    inputStream?.close()
+                    outputStream.close()
+                    preferencesManager.saveString("user_avatar", avatarFile.absolutePath)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+        }
+    }
 
     // Initialize dialog state when opened
     LaunchedEffect(showEditDialog) {
@@ -100,17 +130,33 @@ fun ProfileScreen() {
             ) {
                 // Avatar
                 Surface(
-                    modifier = Modifier.size(80.dp),
+                    modifier = Modifier
+                        .size(80.dp)
+                        .clip(CircleShape)
+                        .clickable { imagePickerLauncher.launch("image/*") },
                     shape = CircleShape,
                     color = MaterialTheme.colorScheme.primaryContainer
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = "Avatar",
-                            modifier = Modifier.size(40.dp),
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
+                        if (savedAvatar.isNotEmpty() && File(savedAvatar).exists()) {
+                            AsyncImage(
+                                model = coil.request.ImageRequest.Builder(context)
+                                    .data(File(savedAvatar))
+                                    .crossfade(true)
+                                    .transformations(coil.transform.CircleCropTransformation())
+                                    .build(),
+                                contentDescription = "Avatar",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize().clip(CircleShape)
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = "Avatar",
+                                modifier = Modifier.size(40.dp),
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
                     }
                 }
 

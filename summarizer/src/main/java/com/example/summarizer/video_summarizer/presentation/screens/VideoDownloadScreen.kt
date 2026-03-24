@@ -1,8 +1,14 @@
 package com.example.summarizer.video_summarizer.presentation.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.material.icons.Icons
@@ -44,7 +50,7 @@ import com.example.summarizer.video_summarizer.presentation.viewmodels.SummarySt
 import com.example.summarizer.video_summarizer.presentation.viewmodels.VideoDownloadViewModel
 
 @androidx.media3.common.util.UnstableApi
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun VideoDownloadScreen(
     viewModel: VideoDownloadViewModel
@@ -123,20 +129,36 @@ fun VideoDownloadScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            uiState.error?.let { error ->
-                ErrorCard(
-                    message = error,
-                    onDismiss = viewModel::clearError
-                )
-                Spacer(modifier = Modifier.height(16.dp))
+            AnimatedVisibility(
+                visible = uiState.error != null,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+            ) {
+                uiState.error?.let { error ->
+                    Column {
+                        ErrorCard(
+                            message = error,
+                            onDismiss = viewModel::clearError
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+                }
             }
 
-            uiState.successMessage?.let { message ->
-                SuccessCard(
-                    message = message,
-                    onDismiss = viewModel::clearSuccess
-                )
-                Spacer(modifier = Modifier.height(16.dp))
+            AnimatedVisibility(
+                visible = uiState.successMessage != null,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+            ) {
+                uiState.successMessage?.let { message ->
+                    Column {
+                        SuccessCard(
+                            message = message,
+                            onDismiss = viewModel::clearSuccess
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+                }
             }
 
             if (downloadTasks.isNotEmpty()) {
@@ -150,9 +172,13 @@ fun VideoDownloadScreen(
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(downloadTasks) { task ->
+                    items(
+                        items = downloadTasks,
+                        key = { it.id }
+                    ) { task ->
                         DownloadTaskCard(
                             task = task,
+                            modifier = Modifier.animateItemPlacement(),
                             onCancel = { viewModel.cancelDownload(task.id) },
                             onRemove = { viewModel.removeTask(task.id) },
                             onPlay = {
@@ -407,6 +433,7 @@ fun LocalVideoInputCard(
 @Composable
 fun DownloadTaskCard(
     task: DownloadTask,
+    modifier: Modifier = Modifier,
     onCancel: () -> Unit,
     onRemove: () -> Unit,
     onPlay: () -> Unit,
@@ -414,7 +441,7 @@ fun DownloadTaskCard(
     onSummarize: () -> Unit
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(
@@ -475,29 +502,35 @@ fun DownloadTaskCard(
                 }
             }
 
-            if (task.summary.status != SummaryStatus.IDLE) {
-                Spacer(modifier = Modifier.height(12.dp))
-                SummaryStatusBadge(status = task.summary.status)
-                task.summary.error?.let { error ->
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = error,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error
-                    )
-                }
-                if (task.summary.summary.isNotBlank()) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "摘要",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = task.summary.summary,
-                        style = MaterialTheme.typography.bodySmall
-                    )
+            AnimatedVisibility(
+                visible = task.summary.status != SummaryStatus.IDLE,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+            ) {
+                Column {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    SummaryStatusBadge(status = task.summary.status)
+                    task.summary.error?.let { error ->
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = error,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                    if (task.summary.summary.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "摘要",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = task.summary.summary,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
                 }
             }
 

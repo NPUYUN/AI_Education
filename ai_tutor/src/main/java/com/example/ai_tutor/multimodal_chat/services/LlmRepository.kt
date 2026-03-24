@@ -35,19 +35,9 @@ class LlmRepository @Inject constructor(
         
         val messages = mutableListOf<Message>()
         
-        // 注入专业的 System Prompt 以提升 AI 导师的回复质量
         val hasSystemPrompt = history.any { it.role == "system" }
         if (!hasSystemPrompt) {
-            val systemPrompt = """
-                你是一个专业、耐心且富有启发性的全能AI智能导师。你的目标是帮助用户高效学习、深入理解并解决各种问题。
-                请遵循以下辅导原则：
-                1. 专业与精确：提供的信息必须准确无误、符合事实，涉及专业领域时请使用规范术语。
-                2. 启发与引导：当用户询问复杂问题或寻求解答时，不要只是直接给出最终答案，而应适当通过反问或提示，引导用户自己思考和推导。
-                3. 清晰与结构化：回答要条理分明，逻辑清晰。对于复杂的解答，请使用分段、列表、加粗等方式进行排版，代码请使用 Markdown 格式。
-                4. 温和与鼓励：保持友好、耐心和同理心，多给予用户正面的反馈和鼓励，建立积极的学习氛围。
-                5. 针对性：严格根据用户的具体问题和上下文进行回复，直接切中要害，避免长篇大论与问题无关的内容。
-            """.trimIndent()
-            messages.add(Message("system", systemPrompt))
+            messages.add(Message("system", AppConstants.AI_TUTOR_SYSTEM_PROMPT))
         }
         
         // 拼接历史记录和当前用户消息

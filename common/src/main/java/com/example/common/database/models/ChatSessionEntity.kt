@@ -1,4 +1,4 @@
-package com.example.ai_tutor.learning_record.models
+package com.example.common.database.models
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey

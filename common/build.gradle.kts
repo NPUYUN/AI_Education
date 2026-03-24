@@ -92,6 +92,9 @@ dependencies {
     // Coil
     api(libs.coil.compose)
 
+    // Markdown
+    api(libs.compose.markdown)
+
     // Hilt
     api(libs.hilt.android)
     ksp(libs.hilt.compiler)

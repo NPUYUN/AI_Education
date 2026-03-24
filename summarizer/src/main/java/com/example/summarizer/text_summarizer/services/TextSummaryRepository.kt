@@ -25,16 +25,7 @@ class TextSummaryRepository @Inject constructor(
             val request = ChatRequest(
                 model = modelName,
                 messages = listOf(
-                    ChatMessage(
-                        role = "system",
-                        content = "你是一个专业的文本总结助手。请对用户提供的文本进行深度解析和层次化总结。\n" +
-                                "总结必须包含以下结构：\n" +
-                                "1. 概述：用一段话概括核心内容。\n" +
-                                "2. 要点：分点列出文本的核心要点。\n" +
-                                "3. 细节：补充关键的支持性细节。\n" +
-                                "4. 关键词：提取3-5个核心术语或概念。\n" +
-                                "请使用清晰的Markdown格式输出，可以适当使用加粗和列表。"
-                    ),
+                    ChatMessage(role = "system", content = com.example.common.config.AppConstants.TEXT_SUMMARY_SYSTEM_PROMPT),
                     ChatMessage(
                         role = "user",
                         content = "请对以下文本进行总结：\n\n$text"

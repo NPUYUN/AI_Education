@@ -1,12 +1,12 @@
-package com.example.ai_tutor.learning_record.services
+package com.example.common.database.dao
 
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
-import com.example.ai_tutor.learning_record.models.ChatSessionEntity
-import com.example.ai_tutor.learning_record.models.MessageEntity
+import com.example.common.database.models.ChatSessionEntity
+import com.example.common.database.models.MessageEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao
