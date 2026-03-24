@@ -10,17 +10,20 @@ import com.example.common.database.models.ChatSessionEntity
 import com.example.common.database.models.KnowledgeCardEntity
 import com.example.common.database.models.MessageEntity
 import com.example.common.database.models.ErrorBookEntity
+import com.example.common.database.models.SolveHistoryEntity
 import com.example.common.database.dao.ErrorBookDao
+import com.example.common.database.dao.SolveHistoryDao
 
 @Database(
-    entities = [ChatSessionEntity::class, MessageEntity::class, KnowledgeCardEntity::class, ErrorBookEntity::class],
-    version = 4,
+    entities = [ChatSessionEntity::class, MessageEntity::class, KnowledgeCardEntity::class, ErrorBookEntity::class, SolveHistoryEntity::class],
+    version = 5,
     exportSchema = false
 )
 abstract class ChatDatabase : RoomDatabase() {
     abstract fun chatDao(): ChatDao
     abstract fun knowledgeCardDao(): KnowledgeCardDao
     abstract fun errorBookDao(): ErrorBookDao
+    abstract fun solveHistoryDao(): SolveHistoryDao
 
     companion object {
         @Volatile

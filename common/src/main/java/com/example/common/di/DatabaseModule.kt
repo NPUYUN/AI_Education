@@ -8,6 +8,7 @@ import com.example.common.database.ChatDatabase
 import com.example.common.database.dao.ChatDao
 import com.example.common.database.dao.KnowledgeCardDao
 import com.example.common.database.dao.ErrorBookDao
+import com.example.common.database.dao.SolveHistoryDao
 import com.example.common.database.PreferencesManager
 import com.example.common.manager.VoskVoiceManager
 import com.example.common.dispatchers.DispatcherProvider
@@ -67,6 +68,12 @@ object CommonModule {
     @Singleton
     fun provideErrorBookDao(database: ChatDatabase): ErrorBookDao {
         return database.errorBookDao()
+    }
+    
+    @Provides
+    @Singleton
+    fun provideSolveHistoryDao(database: ChatDatabase): SolveHistoryDao {
+        return database.solveHistoryDao()
     }
 
     @Provides

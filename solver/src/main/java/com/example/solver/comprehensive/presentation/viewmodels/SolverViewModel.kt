@@ -10,6 +10,8 @@ import com.example.common.config.AppConstants
 import com.example.common.config.GlobalConfigRepository
 import com.example.common.database.dao.ErrorBookDao
 import com.example.common.database.models.ErrorBookEntity
+import com.example.common.database.dao.SolveHistoryDao
+import com.example.common.database.models.SolveHistoryEntity
 import com.example.solver.comprehensive.services.SolverRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -39,11 +41,17 @@ class SolverViewModel @Inject constructor(
     private val repository: SolverRepository,
     private val globalConfigRepository: GlobalConfigRepository,
     private val errorBookDao: ErrorBookDao,
+    private val solveHistoryDao: SolveHistoryDao,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SolverUiState())
     val uiState: StateFlow<SolverUiState> = _uiState.asStateFlow()
+    
+    private var lastHistoryId: Long? = null
+    
+    val recentHistory = solveHistoryDao.getRecent(8)
+    val allHistory = solveHistoryDao.getAll()
 
     fun setTab(index: Int) {
         _uiState.value = _uiState.value.copy(
@@ -57,11 +65,13 @@ class SolverViewModel @Inject constructor(
     }
 
     fun updateQuestionText(text: String) {
-        _uiState.value = _uiState.value.copy(questionText = text, error = null, isAddedToErrorBook = false)
+        val newTab = classify(text)
+        _uiState.value = _uiState.value.copy(questionText = text, selectedTab = newTab, error = null, isAddedToErrorBook = false)
     }
 
     fun setImageUri(uri: Uri?) {
-        _uiState.value = _uiState.value.copy(imageUri = uri, error = null, isAddedToErrorBook = false)
+        val newTab = classify(_uiState.value.questionText)
+        _uiState.value = _uiState.value.copy(imageUri = uri, selectedTab = newTab, error = null, isAddedToErrorBook = false)
     }
 
     fun clearError() {
@@ -82,6 +92,9 @@ class SolverViewModel @Inject constructor(
                     correctSolution = state.solutionResult
                 )
                 errorBookDao.insertErrorRecord(entity)
+                lastHistoryId?.let { id ->
+                    solveHistoryDao.markInErrorBook(id)
+                }
                 _uiState.value = _uiState.value.copy(isAddedToErrorBook = true)
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(error = "保存到错题本失败: ${e.message}")
@@ -107,6 +120,8 @@ class SolverViewModel @Inject constructor(
                 val baseUrl = globalConfigRepository.getAiTutorBaseUrl().firstOrNull()
                     ?: AppConstants.BASE_URL
 
+                val autoTab = classify(state.questionText)
+                _uiState.value = _uiState.value.copy(selectedTab = autoTab)
                 val systemPrompt = when (state.selectedTab) {
                     0 -> AppConstants.SOLVER_GEOMETRY_SYSTEM_PROMPT
                     1 -> AppConstants.SOLVER_ALGEBRA_SYSTEM_PROMPT
@@ -128,10 +143,27 @@ class SolverViewModel @Inject constructor(
                 )
 
                 if (result.isSuccess) {
+                    val solution = result.getOrNull() ?: ""
                     _uiState.value = _uiState.value.copy(
                         isSolving = false,
-                        solutionResult = result.getOrNull() ?: ""
+                        solutionResult = solution
                     )
+                    val subject = when (_uiState.value.selectedTab) {
+                        0 -> "几何"
+                        1 -> "代数"
+                        else -> "综合"
+                    }
+                    val history = SolveHistoryEntity(
+                        subject = subject,
+                        questionContent = if (_uiState.value.questionText.isNotBlank()) _uiState.value.questionText else "图片题目（暂无文字描述）",
+                        imageUri = _uiState.value.imageUri?.toString(),
+                        solution = solution
+                    )
+                    try {
+                        lastHistoryId = solveHistoryDao.insert(history)
+                    } catch (_: Exception) {
+                        // ignore history save errors
+                    }
                 } else {
                     val exception = result.exceptionOrNull()
                     val errorMsg = when (exception) {
@@ -155,6 +187,17 @@ class SolverViewModel @Inject constructor(
                     error = errorMsg
                 )
             }
+        }
+    }
+    
+    private fun classify(text: String): Int {
+        val t = text.lowercase()
+        val geometryKeywords = listOf("角", "三角", "圆", "半径", "周长", "面积", "几何", "垂线", "相似", "勾股", "坐标", "图形")
+        val algebraKeywords = listOf("方程", "一次", "二次", "函数", "求值", "解", "x", "y", "代数", "不等式", "因式分解", "化简")
+        return when {
+            geometryKeywords.any { t.contains(it) } -> 0
+            algebraKeywords.any { t.contains(it) } -> 1
+            else -> 2
         }
     }
 

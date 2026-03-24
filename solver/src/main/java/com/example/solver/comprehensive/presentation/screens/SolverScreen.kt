@@ -1,22 +1,31 @@
 package com.example.solver.comprehensive.presentation.screens
 
+import android.content.ContentValues
+import android.graphics.Bitmap
 import android.net.Uri
+import android.provider.MediaStore
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.example.common.ui.components.SafeMarkdownText
+import com.example.common.utils.DateFormatUtils
+import com.example.common.database.models.SolveHistoryEntity
 import com.example.solver.comprehensive.presentation.viewmodels.SolverViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -25,13 +34,32 @@ fun SolverScreen(
     viewModel: SolverViewModel
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val tabs = listOf("几何解题", "代数解题", "综合解题")
+    val context = LocalContext.current
     var showErrorBookDialog by remember { mutableStateOf(false) }
+    var showAllHistory by remember { mutableStateOf(false) }
+    var selectedHistory: SolveHistoryEntity? by remember { mutableStateOf(null) }
+    val recentHistory by viewModel.recentHistory.collectAsState(initial = emptyList())
+    val allHistory by viewModel.allHistory.collectAsState(initial = emptyList())
 
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         viewModel.setImageUri(uri)
+        if (uri != null) {
+            viewModel.solveProblem()
+        }
+    }
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicturePreview()
+    ) { bitmap: Bitmap? ->
+        if (bitmap != null) {
+            val uri = saveBitmapToMediaStore(context, bitmap)
+            viewModel.setImageUri(uri)
+            if (uri != null) {
+                viewModel.solveProblem()
+            }
+        }
     }
 
     Scaffold(
@@ -46,16 +74,6 @@ fun SolverScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            TabRow(selectedTabIndex = uiState.selectedTab) {
-                tabs.forEachIndexed { index, title ->
-                    Tab(
-                        selected = uiState.selectedTab == index,
-                        onClick = { viewModel.setTab(index) },
-                        text = { Text(title) }
-                    )
-                }
-            }
-
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -85,15 +103,52 @@ fun SolverScreen(
                     }
                 }
 
-                // Input Area
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    ElevatedCard(
+                        modifier = Modifier.weight(1f),
+                        onClick = { cameraLauncher.launch(null) }
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(Icons.Default.PhotoCamera, contentDescription = "拍照解题", modifier = Modifier.size(32.dp))
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text("拍照解题")
+                        }
+                    }
+                    ElevatedCard(
+                        modifier = Modifier.weight(1f),
+                        onClick = { imagePickerLauncher.launch("image/*") }
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(Icons.Default.Image, contentDescription = "上传题目", modifier = Modifier.size(32.dp))
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text("上传题目")
+                        }
+                    }
+                }
+                
                 OutlinedTextField(
                     value = uiState.questionText,
-                    onValueChange = { viewModel.updateQuestionText(it) },
-                    label = { Text("输入题目描述 (可选)") },
+                    onValueChange = { 
+                        viewModel.updateQuestionText(it)
+                    },
+                    label = { Text("题目补充描述（可选）") },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(min = 120.dp, max = 200.dp),
-                    maxLines = 10
+                        .heightIn(min = 80.dp, max = 160.dp),
+                    maxLines = 8
                 )
 
                 // Image Preview
@@ -119,23 +174,6 @@ fun SolverScreen(
                     }
                 }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = { imagePickerLauncher.launch("image/*") },
-                        modifier = Modifier.weight(1f),
-                        enabled = !uiState.isSolving
-                    ) {
-                        Icon(Icons.Default.Image, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("相册选图")
-                    }
-                    
-                    // TODO: Could integrate with CameraScreen in the future. For now, picking image is sufficient.
-                }
-
                 Button(
                     onClick = { viewModel.solveProblem() },
                     modifier = Modifier.fillMaxWidth(),
@@ -150,7 +188,7 @@ fun SolverScreen(
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("正在解析中...")
                     } else {
-                        Text("开始解题")
+                        Text("开始解题（自动识别题型：${when (uiState.selectedTab) { 0 -> "几何"; 1 -> "代数"; else -> "综合" } }）")
                     }
                 }
 
@@ -186,11 +224,93 @@ fun SolverScreen(
                         }
                     }
                 }
+                
+                Text(
+                    text = "历史解题",
+                    style = MaterialTheme.typography.titleMedium
+                )
+                if (!showAllHistory) {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(recentHistory) { item ->
+                            ElevatedCard(
+                                onClick = { selectedHistory = item },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(12.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text("${item.subject}｜${DateFormatUtils.format(item.timestamp)}")
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(item.questionContent.take(30))
+                                    }
+                                    if (item.isInErrorBook) {
+                                        AssistChip(onClick = {}, label = { Text("已入错题本") })
+                                    }
+                                }
+                            }
+                        }
+                        item {
+                            OutlinedButton(
+                                onClick = { showAllHistory = true },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(Icons.Default.MoreHoriz, contentDescription = null)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("查看更多")
+                            }
+                        }
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(allHistory) { item ->
+                            ElevatedCard(
+                                onClick = { selectedHistory = item },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(12.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text("${item.subject}｜${DateFormatUtils.format(item.timestamp)}")
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(item.questionContent)
+                                    }
+                                    if (item.isInErrorBook) {
+                                        AssistChip(onClick = {}, label = { Text("已入错题本") })
+                                    }
+                                }
+                            }
+                        }
+                        item {
+                            OutlinedButton(
+                                onClick = { showAllHistory = false },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("收起")
+                            }
+                        }
+                    }
+                }
             }
         }
         
         if (showErrorBookDialog) {
-            var subject by remember { mutableStateOf(tabs[uiState.selectedTab].replace("解题", "")) }
+            var subject by remember { mutableStateOf(when (uiState.selectedTab) { 0 -> "几何"; 1 -> "代数"; else -> "综合" }) }
             var errorReason by remember { mutableStateOf("") }
             
             AlertDialog(
@@ -228,5 +348,60 @@ fun SolverScreen(
                 }
             )
         }
+        
+        selectedHistory?.let { item ->
+            AlertDialog(
+                onDismissRequest = { selectedHistory = null },
+                title = { Text("解题详情") },
+                text = {
+                    Column {
+                        Text("${item.subject}｜${DateFormatUtils.format(item.timestamp)}")
+                        Spacer(modifier = Modifier.height(8.dp))
+                        if (item.imageUri != null) {
+                            AsyncImage(
+                                model = item.imageUri,
+                                contentDescription = "题目图片",
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(180.dp)
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
+                        Text("题目：")
+                        Text(item.questionContent)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        HorizontalDivider()
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text("解析：")
+                        SafeMarkdownText(
+                            markdown = item.solution
+                        )
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { selectedHistory = null }) {
+                        Text("关闭")
+                    }
+                }
+            )
+        }
+    }
+}
+
+private fun saveBitmapToMediaStore(context: android.content.Context, bitmap: Bitmap): Uri? {
+    return try {
+        val contentValues = ContentValues().apply {
+            put(MediaStore.Images.Media.DISPLAY_NAME, "solver_${System.currentTimeMillis()}.jpg")
+            put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+        }
+        val uri = context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+        if (uri != null) {
+            context.contentResolver.openOutputStream(uri)?.use { output ->
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 90, output)
+            }
+        }
+        uri
+    } catch (_: Exception) {
+        null
     }
 }

@@ -21,6 +21,7 @@ class SolverViewModelTest {
     private lateinit var mockRepository: SolverRepository
     private lateinit var mockGlobalConfigRepository: GlobalConfigRepository
     private lateinit var mockErrorBookDao: com.example.common.database.dao.ErrorBookDao
+    private lateinit var mockSolveHistoryDao: com.example.common.database.dao.SolveHistoryDao
     private lateinit var mockContext: Context
 
     private val testDispatcher = StandardTestDispatcher()
@@ -31,13 +32,16 @@ class SolverViewModelTest {
         mockRepository = mock()
         mockGlobalConfigRepository = mock()
         mockErrorBookDao = mock()
+        mockSolveHistoryDao = mock()
         mockContext = mock()
 
         whenever(mockGlobalConfigRepository.getAiTutorApiKey()).thenReturn(flowOf("test_key"))
         whenever(mockGlobalConfigRepository.getAiTutorModelName()).thenReturn(flowOf("test_model"))
         whenever(mockGlobalConfigRepository.getAiTutorBaseUrl()).thenReturn(flowOf("test_url"))
 
-        viewModel = SolverViewModel(mockRepository, mockGlobalConfigRepository, mockErrorBookDao, mockContext)
+        whenever(mockSolveHistoryDao.getRecent(any())).thenReturn(flowOf(emptyList()))
+        whenever(mockSolveHistoryDao.getAll()).thenReturn(flowOf(emptyList()))
+        viewModel = SolverViewModel(mockRepository, mockGlobalConfigRepository, mockErrorBookDao, mockSolveHistoryDao, mockContext)
     }
 
     @After
