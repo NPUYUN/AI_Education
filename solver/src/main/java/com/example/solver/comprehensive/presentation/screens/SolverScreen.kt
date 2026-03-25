@@ -2,11 +2,9 @@ package com.example.solver.comprehensive.presentation.screens
 
 import androidx.compose.material3.HorizontalDivider
 import android.Manifest
-import android.content.ContentValues
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.net.Uri
-import android.provider.MediaStore
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -88,54 +86,6 @@ fun SolverScreen(
         }
     }
 
-    var tempImageUri by remember { mutableStateOf<Uri?>(null) }
-
-    val takePictureLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.TakePicture()
-    ) { success ->
-        if (success) {
-            tempImageUri?.let { uri ->
-                val cropOptions = CropImageContractOptions(
-                    uri = uri,
-                    cropImageOptions = CropImageOptions(
-                        imageSourceIncludeCamera = false,
-                        imageSourceIncludeGallery = false,
-                        guidelines = com.canhub.cropper.CropImageView.Guidelines.ON
-                    )
-                )
-                cropImageLauncher.launch(cropOptions)
-            }
-        } else {
-            tempImageUri?.let { uri ->
-                try {
-                    context.contentResolver.delete(uri, null, null)
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
-            }
-            tempImageUri = null
-        }
-    }
-
-    val launchCameraForCrop = {
-        try {
-            val contentValues = ContentValues().apply {
-                put(MediaStore.Images.Media.DISPLAY_NAME, "solver_${System.currentTimeMillis()}.jpg")
-                put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
-            }
-            val uri = context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
-            tempImageUri = uri
-            if (uri != null) {
-                takePictureLauncher.launch(uri)
-            } else {
-                Toast.makeText(context, "无法创建图片文件", Toast.LENGTH_SHORT).show()
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-            Toast.makeText(context, "启动相机失败: ${e.message}", Toast.LENGTH_SHORT).show()
-        }
-    }
-
     var hasCameraPermission by remember {
         mutableStateOf(
             ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
@@ -147,7 +97,7 @@ fun SolverScreen(
     ) { isGranted ->
         hasCameraPermission = isGranted
         if (isGranted) {
-            launchCameraForCrop()
+            onCameraClick()
         } else {
             Toast.makeText(context, "需要相机权限才能拍照", Toast.LENGTH_SHORT).show()
         }
@@ -210,7 +160,7 @@ fun SolverScreen(
                         colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
                         onClick = {
                             if (hasCameraPermission) {
-                                launchCameraForCrop()
+                                onCameraClick()
                             } else {
                                 permissionLauncher.launch(Manifest.permission.CAMERA)
                             }

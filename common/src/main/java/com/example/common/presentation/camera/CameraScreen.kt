@@ -43,6 +43,7 @@ import kotlin.coroutines.suspendCoroutine
 
 @Composable
 fun CameraScreen(
+    source: String = "home",
     onImageCaptured: (Uri) -> Unit,
     onClose: () -> Unit
 ) {
@@ -128,8 +129,9 @@ fun CameraScreen(
                 .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
                 .padding(horizontal = 16.dp, vertical = 8.dp)
         ) {
+            val hintText = if (source == "solver") "对准题目，拍下照片进行解题" else "拍画作业生成艺术评论"
             Text(
-                text = "拍画作业生成艺术评论", // Placeholder text
+                text = hintText,
                 color = MaterialTheme.colorScheme.onSurface
             )
         }

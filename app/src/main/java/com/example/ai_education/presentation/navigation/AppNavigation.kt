@@ -94,6 +94,7 @@ fun AppNavigation(
         composable("camera?source={source}", arguments = listOf(navArgument("source") { defaultValue = "home" })) { backStackEntry ->
             val source = backStackEntry.arguments?.getString("source") ?: "home"
             CameraScreen(
+                source = source,
                 onImageCaptured = { uri ->
                     val encodedUri = java.net.URLEncoder.encode(uri.toString(), "UTF-8")
                     navController.navigate("preview/$encodedUri?source=$source")
@@ -112,6 +113,7 @@ fun AppNavigation(
             val source = backStackEntry.arguments?.getString("source") ?: "home"
             ImagePreviewScreen(
                 imageUri = imageUriString,
+                source = source,
                 onActionSelected = { prompt, uri ->
                     if (source == "solver") {
                         navController.getBackStackEntry("main").savedStateHandle.set("solver_image_uri", uri.toString())

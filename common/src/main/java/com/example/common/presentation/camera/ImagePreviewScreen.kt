@@ -59,6 +59,7 @@ import android.graphics.drawable.BitmapDrawable
 @Composable
 fun ImagePreviewScreen(
     imageUri: String,
+    source: String = "home",
     onActionSelected: (String, Uri) -> Unit,
     onClose: () -> Unit
 ) {
@@ -208,54 +209,78 @@ fun ImagePreviewScreen(
                 }
             }
 
-            // Bottom Layout: Chips + Input Area
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.BottomCenter)
-            ) {
-                // Suggestion Chips
-                Row(
+            // Bottom Layout: Conditional based on source
+            if (source == "solver") {
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly
+                        .align(Alignment.BottomCenter)
+                        .padding(16.dp)
                 ) {
-                    val actions = listOf("解答一下", "这是什么", "翻译一下")
-                    
-                    actions.forEach { action ->
-                        Box(
-                            modifier = Modifier
-                                .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(20.dp))
-                                .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.8f), RoundedCornerShape(20.dp))
-                                .clickable { onActionSelected(action, Uri.parse(currentUri)) }
-                                .padding(horizontal = 16.dp, vertical = 8.dp)
-                        ) {
-                            Text(
-                                text = action,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontSize = 14.sp
-                            )
-                        }
+                    Button(
+                        onClick = { onActionSelected("", Uri.parse(currentUri)) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        shape = RoundedCornerShape(28.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        )
+                    ) {
+                        Text("确认并开始解题", fontSize = 18.sp)
                     }
                 }
-                
-                // Chat Input Area
-                ChatInputArea(
-                    text = inputText,
-                    onTextChanged = { inputText = it },
-                    onSend = { 
-                        if (inputText.isNotBlank()) {
-                            onActionSelected(inputText, Uri.parse(currentUri))
+            } else {
+                // Bottom Layout: Chips + Input Area
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .align(Alignment.BottomCenter)
+                ) {
+                    // Suggestion Chips
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        val actions = listOf("解答一下", "这是什么", "翻译一下")
+                        
+                        actions.forEach { action ->
+                            Box(
+                                modifier = Modifier
+                                    .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(20.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.8f), RoundedCornerShape(20.dp))
+                                    .clickable { onActionSelected(action, Uri.parse(currentUri)) }
+                                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                            ) {
+                                Text(
+                                    text = action,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontSize = 14.sp
+                                )
+                            }
                         }
-                    },
-                    isLoading = false,
-                    onVoiceStart = { },
-                    onVoiceEnd = { },
-                    onCameraClick = { },
-                    onGalleryClick = { },
-                    modifier = Modifier.background(Color.Transparent)
-                )
+                    }
+                    
+                    // Chat Input Area
+                    ChatInputArea(
+                        text = inputText,
+                        onTextChanged = { inputText = it },
+                        onSend = { 
+                            if (inputText.isNotBlank()) {
+                                onActionSelected(inputText, Uri.parse(currentUri))
+                            }
+                        },
+                        isLoading = false,
+                        onVoiceStart = { },
+                        onVoiceEnd = { },
+                        onCameraClick = { },
+                        onGalleryClick = { },
+                        modifier = Modifier.background(Color.Transparent)
+                    )
+                }
             }
         }
     }
