@@ -26,7 +26,7 @@ class ModelDownloader(
             "https://ghproxy.net/$BASE_MODEL_URL",
             "https://mirror.ghproxy.com/$BASE_MODEL_URL",
             "https://gh-proxy.com/$BASE_MODEL_URL",
-            BASE_MODEL_URL
+            "https://kkgithub.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-paraformer-zh-2023-09-14.tar.bz2"
         )
     }
 

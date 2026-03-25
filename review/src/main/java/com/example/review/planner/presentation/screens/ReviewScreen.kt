@@ -1,9 +1,14 @@
 package com.example.review.planner.presentation.screens
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -13,6 +18,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.common.ui.components.SafeMarkdownText
@@ -33,7 +39,7 @@ fun ReviewScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("智能复习") }
+                title = { Text("智能复习", fontWeight = FontWeight.Bold) }
             )
         }
     ) { paddingValues ->
@@ -47,15 +53,20 @@ fun ReviewScreen(
                     Tab(
                         selected = uiState.selectedTab == index,
                         onClick = { viewModel.setTab(index) },
-                        text = { Text(title) }
+                        text = { Text(title, fontWeight = if (uiState.selectedTab == index) FontWeight.Bold else FontWeight.Normal) }
                     )
                 }
             }
 
-            if (uiState.error != null) {
+            AnimatedVisibility(
+                visible = uiState.error != null,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+            ) {
                 Card(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-                    modifier = Modifier.fillMaxWidth().padding(16.dp)
+                    modifier = Modifier.fillMaxWidth().padding(16.dp).shadow(2.dp, RoundedCornerShape(12.dp)),
+                    shape = RoundedCornerShape(12.dp)
                 ) {
                     Row(
                         modifier = Modifier.padding(16.dp),
@@ -63,7 +74,7 @@ fun ReviewScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = uiState.error!!,
+                            text = uiState.error ?: "",
                             color = MaterialTheme.colorScheme.onErrorContainer,
                             modifier = Modifier.weight(1f)
                         )
@@ -79,10 +90,26 @@ fun ReviewScreen(
                     .fillMaxSize()
                     .padding(16.dp)
             ) {
-                when (uiState.selectedTab) {
-                    0 -> SmartReviewPlannerView(viewModel, uiState.subjectInput, uiState.isGeneratingPlan, uiState.reviewPlan)
-                    1 -> KnowledgeReinforcementView(viewModel, uiState.knowledgePointInput, uiState.isGeneratingQuiz, uiState.reinforcementQuiz)
-                    2 -> ErrorBookView(viewModel, uiState.errorRecords)
+                AnimatedContent(
+                    targetState = uiState.selectedTab,
+                    transitionSpec = {
+                        (fadeIn(animationSpec = tween(300)) + slideInHorizontally(
+                            initialOffsetX = { fullWidth -> if (targetState > initialState) fullWidth else -fullWidth },
+                            animationSpec = tween(300)
+                        )).togetherWith(
+                            fadeOut(animationSpec = tween(300)) + slideOutHorizontally(
+                                targetOffsetX = { fullWidth -> if (targetState > initialState) -fullWidth else fullWidth },
+                                animationSpec = tween(300)
+                            )
+                        )
+                    },
+                    label = "TabAnimation"
+                ) { targetTab ->
+                    when (targetTab) {
+                        0 -> SmartReviewPlannerView(viewModel, uiState.subjectInput, uiState.isGeneratingPlan, uiState.reviewPlan)
+                        1 -> KnowledgeReinforcementView(viewModel, uiState.knowledgePointInput, uiState.isGeneratingQuiz, uiState.reinforcementQuiz)
+                        2 -> ErrorBookView(viewModel, uiState.errorRecords)
+                    }
                 }
             }
         }
@@ -100,50 +127,72 @@ fun SmartReviewPlannerView(viewModel: ReviewViewModel, subjectInput: String, isG
             onValueChange = { viewModel.updateSubjectInput(it) },
             label = { Text("复习科目 (用逗号分隔)") },
             modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-            enabled = !isGenerating
+            enabled = !isGenerating,
+            shape = RoundedCornerShape(12.dp)
         )
 
-        if (plan.isBlank() && !isGenerating) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-                modifier = Modifier.weight(1f)
-            ) {
-                Text(text = "艾宾浩斯智能复习计划", style = MaterialTheme.typography.titleLarge)
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(text = "根据遗忘曲线自动为您安排最佳复习时间", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(modifier = Modifier.height(32.dp))
-                Button(onClick = { viewModel.generateReviewPlan() }) {
-                    Text("生成今日复习任务")
-                }
-            }
-        } else {
-            Button(
-                onClick = { viewModel.generateReviewPlan() },
-                enabled = !isGenerating,
-                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
-            ) {
-                if (isGenerating) {
-                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("正在生成计划...")
-                } else {
-                    Text("重新生成计划")
-                }
-            }
-
-            if (plan.isNotBlank()) {
-                Card(
-                    modifier = Modifier.fillMaxSize(),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        AnimatedContent(
+            targetState = plan.isBlank() && !isGenerating,
+            label = "PlanContentState"
+        ) { isEmptyState ->
+            if (isEmptyState) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                    modifier = Modifier.fillMaxSize()
                 ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .verticalScroll(rememberScrollState())
-                            .padding(16.dp)
+                    Text(text = "艾宾浩斯智能复习计划", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(text = "根据遗忘曲线自动为您安排最佳复习时间", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(modifier = Modifier.height(32.dp))
+                    Button(
+                        onClick = { viewModel.generateReviewPlan() },
+                        shape = RoundedCornerShape(20.dp),
+                        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp)
                     ) {
-                        SafeMarkdownText(markdown = plan)
+                        Text("生成今日复习任务")
+                    }
+                }
+            } else {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    Button(
+                        onClick = { viewModel.generateReviewPlan() },
+                        enabled = !isGenerating,
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        contentPadding = PaddingValues(vertical = 12.dp)
+                    ) {
+                        if (isGenerating) {
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("正在生成计划...")
+                        } else {
+                            Text("重新生成计划")
+                        }
+                    }
+
+                    AnimatedVisibility(
+                        visible = plan.isNotBlank(),
+                        enter = fadeIn() + expandVertically(),
+                        exit = fadeOut() + shrinkVertically()
+                    ) {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f)
+                                .shadow(2.dp, RoundedCornerShape(16.dp)),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .verticalScroll(rememberScrollState())
+                                    .padding(20.dp)
+                            ) {
+                                SafeMarkdownText(markdown = plan)
+                            }
+                        }
                     }
                 }
             }
@@ -160,9 +209,10 @@ fun KnowledgeReinforcementView(viewModel: ReviewViewModel, input: String, isGene
         OutlinedTextField(
             value = input,
             onValueChange = { viewModel.updateKnowledgePointInput(it) },
-            label = { Text("输入薄弱知识点 (如：二次函数、牛顿第二定律)") },
+            label = { Text("输入薄弱知识点 (如：二次函数)") },
             modifier = Modifier.fillMaxWidth(),
-            singleLine = true
+            singleLine = true,
+            shape = RoundedCornerShape(12.dp)
         )
         
         Spacer(modifier = Modifier.height(16.dp))
@@ -170,7 +220,9 @@ fun KnowledgeReinforcementView(viewModel: ReviewViewModel, input: String, isGene
         Button(
             onClick = { viewModel.generateReinforcementQuiz() },
             enabled = !isGenerating && input.isNotBlank(),
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            contentPadding = PaddingValues(vertical = 12.dp)
         ) {
             if (isGenerating) {
                 CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
@@ -183,16 +235,24 @@ fun KnowledgeReinforcementView(viewModel: ReviewViewModel, input: String, isGene
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        if (quiz.isNotBlank()) {
+        AnimatedVisibility(
+            visible = quiz.isNotBlank(),
+            enter = fadeIn() + slideInVertically { it / 4 },
+            exit = fadeOut() + shrinkVertically()
+        ) {
             Card(
-                modifier = Modifier.fillMaxSize(),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .shadow(2.dp, RoundedCornerShape(16.dp)),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState())
-                        .padding(16.dp)
+                        .padding(20.dp)
                 ) {
                     SafeMarkdownText(markdown = quiz)
                 }
@@ -201,6 +261,7 @@ fun KnowledgeReinforcementView(viewModel: ReviewViewModel, input: String, isGene
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ErrorBookView(viewModel: ReviewViewModel, records: List<ErrorBookEntity>) {
     Column(modifier = Modifier.fillMaxSize()) {
@@ -209,74 +270,90 @@ fun ErrorBookView(viewModel: ReviewViewModel, records: List<ErrorBookEntity>) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("错题本统计：共 ${records.size} 题", style = MaterialTheme.typography.titleMedium)
-            IconButton(onClick = { viewModel.addMockErrorRecord() }) {
-                Icon(Icons.Default.Add, contentDescription = "添加测试数据")
+            Text("错题本统计：共 ${records.size} 题", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            IconButton(
+                onClick = { viewModel.addMockErrorRecord() },
+                modifier = Modifier.background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(12.dp))
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "添加测试数据", tint = MaterialTheme.colorScheme.onPrimaryContainer)
             }
         }
         
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
-        if (records.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("暂无错题记录", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(records) { record ->
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Surface(
-                                    color = MaterialTheme.colorScheme.primaryContainer,
-                                    shape = MaterialTheme.shapes.small
+        AnimatedContent(
+            targetState = records.isEmpty(),
+            label = "ErrorBookContent"
+        ) { isEmpty ->
+            if (isEmpty) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("暂无错题记录", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyLarge)
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(bottom = 16.dp)
+                ) {
+                    items(records, key = { it.id }) { record ->
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .animateItemPlacement()
+                                .shadow(2.dp, RoundedCornerShape(16.dp))
+                                .animateContentSize(),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f))
+                        ) {
+                            Column(modifier = Modifier.padding(20.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text(
-                                        text = record.subject,
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                                    )
+                                    Surface(
+                                        color = MaterialTheme.colorScheme.primaryContainer,
+                                        shape = RoundedCornerShape(8.dp)
+                                    ) {
+                                        Text(
+                                            text = record.subject,
+                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                    IconButton(
+                                        onClick = { viewModel.deleteErrorRecord(record) },
+                                        modifier = Modifier.size(28.dp)
+                                    ) {
+                                        Icon(Icons.Default.Delete, contentDescription = "删除", tint = MaterialTheme.colorScheme.error)
+                                    }
                                 }
-                                IconButton(
-                                    onClick = { viewModel.deleteErrorRecord(record) },
-                                    modifier = Modifier.size(24.dp)
-                                ) {
-                                    Icon(Icons.Default.Delete, contentDescription = "删除", tint = MaterialTheme.colorScheme.error)
-                                }
+                                
+                                Spacer(modifier = Modifier.height(12.dp))
+                                
+                                Text("题目：", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+                                Text(record.questionContent, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                
+                                Spacer(modifier = Modifier.height(8.dp))
+                                
+                                Text("错误原因：", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
+                                Text(record.errorReason, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                
+                                Spacer(modifier = Modifier.height(8.dp))
+                                
+                                Text("正确解析：", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
+                                Text(record.correctSolution, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                
+                                Spacer(modifier = Modifier.height(12.dp))
+                                val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+                                Text(
+                                    text = "收录时间：${sdf.format(Date(record.timestamp))}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                                )
                             }
-                            
-                            Spacer(modifier = Modifier.height(8.dp))
-                            
-                            Text("题目：", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
-                            Text(record.questionContent, style = MaterialTheme.typography.bodyMedium)
-                            
-                            Spacer(modifier = Modifier.height(8.dp))
-                            
-                            Text("错误原因：", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
-                            Text(record.errorReason, style = MaterialTheme.typography.bodyMedium)
-                            
-                            Spacer(modifier = Modifier.height(8.dp))
-                            
-                            Text("正确解析：", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
-                            Text(record.correctSolution, style = MaterialTheme.typography.bodyMedium)
-                            
-                            Spacer(modifier = Modifier.height(8.dp))
-                            val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
-                            Text(
-                                text = "收录时间：${sdf.format(Date(record.timestamp))}",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
                         }
                     }
                 }

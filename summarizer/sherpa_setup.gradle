@@ -29,7 +29,7 @@ task downloadSherpaLibs {
                 'https://gh-proxy.com/https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.10.30/sherpa-onnx-v1.10.30-android.tar.bz2',
                 'https://mirror.ghproxy.com/https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.10.30/sherpa-onnx-v1.10.30-android.tar.bz2',
                 'https://ghproxy.net/https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.10.30/sherpa-onnx-v1.10.30-android.tar.bz2',
-                'https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.10.30/sherpa-onnx-v1.10.30-android.tar.bz2'
+                'https://kkgithub.com/k2-fsa/sherpa-onnx/releases/download/v1.10.30/sherpa-onnx-v1.10.30-android.tar.bz2'
             ]
             boolean success = false
             for (url in urls) {

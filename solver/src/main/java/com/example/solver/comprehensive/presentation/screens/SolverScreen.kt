@@ -1,14 +1,24 @@
 package com.example.solver.comprehensive.presentation.screens
 
+import androidx.compose.material3.HorizontalDivider
+import android.Manifest
 import android.content.ContentValues
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.net.Uri
 import android.provider.MediaStore
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -20,18 +30,26 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.example.common.ui.components.SafeMarkdownText
 import com.example.common.utils.DateFormatUtils
 import com.example.common.database.models.SolveHistoryEntity
 import com.example.solver.comprehensive.presentation.viewmodels.SolverViewModel
+import com.example.solver.geometry_solver.presentation.components.GeometryStepCard
+import com.canhub.cropper.CropImageContract
+import com.canhub.cropper.CropImageContractOptions
+import com.canhub.cropper.CropImageOptions
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SolverScreen(
-    viewModel: SolverViewModel
+    viewModel: SolverViewModel,
+    onCameraClick: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
@@ -41,24 +59,97 @@ fun SolverScreen(
     val recentHistory by viewModel.recentHistory.collectAsState(initial = emptyList())
     val allHistory by viewModel.allHistory.collectAsState(initial = emptyList())
 
-    val imagePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        viewModel.setImageUri(uri)
-        if (uri != null) {
-            viewModel.solveProblem()
+    val cropImageLauncher = rememberLauncherForActivityResult(CropImageContract()) { result ->
+        if (result.isSuccessful) {
+            val uriContent = result.uriContent
+            viewModel.setImageUri(uriContent)
+            if (uriContent != null) {
+                viewModel.solveProblem()
+            }
+        } else {
+            val exception = result.error
+            Toast.makeText(context, "图片裁剪失败", Toast.LENGTH_SHORT).show()
         }
     }
 
-    val cameraLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.TakePicturePreview()
-    ) { bitmap: Bitmap? ->
-        if (bitmap != null) {
-            val uri = saveBitmapToMediaStore(context, bitmap)
-            viewModel.setImageUri(uri)
-            if (uri != null) {
-                viewModel.solveProblem()
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            val cropOptions = CropImageContractOptions(
+                uri = uri,
+                cropImageOptions = CropImageOptions(
+                    imageSourceIncludeCamera = false,
+                    imageSourceIncludeGallery = false,
+                    guidelines = com.canhub.cropper.CropImageView.Guidelines.ON
+                )
+            )
+            cropImageLauncher.launch(cropOptions)
+        }
+    }
+
+    var tempImageUri by remember { mutableStateOf<Uri?>(null) }
+
+    val takePictureLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success) {
+            tempImageUri?.let { uri ->
+                val cropOptions = CropImageContractOptions(
+                    uri = uri,
+                    cropImageOptions = CropImageOptions(
+                        imageSourceIncludeCamera = false,
+                        imageSourceIncludeGallery = false,
+                        guidelines = com.canhub.cropper.CropImageView.Guidelines.ON
+                    )
+                )
+                cropImageLauncher.launch(cropOptions)
             }
+        } else {
+            tempImageUri?.let { uri ->
+                try {
+                    context.contentResolver.delete(uri, null, null)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+            tempImageUri = null
+        }
+    }
+
+    val launchCameraForCrop = {
+        try {
+            val contentValues = ContentValues().apply {
+                put(MediaStore.Images.Media.DISPLAY_NAME, "solver_${System.currentTimeMillis()}.jpg")
+                put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+            }
+            val uri = context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+            tempImageUri = uri
+            if (uri != null) {
+                takePictureLauncher.launch(uri)
+            } else {
+                Toast.makeText(context, "无法创建图片文件", Toast.LENGTH_SHORT).show()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Toast.makeText(context, "启动相机失败: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    var hasCameraPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+        )
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        hasCameraPermission = isGranted
+        if (isGranted) {
+            launchCameraForCrop()
+        } else {
+            Toast.makeText(context, "需要相机权限才能拍照", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -78,13 +169,19 @@ fun SolverScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(16.dp)
-                    .verticalScroll(rememberScrollState()),
+                    .verticalScroll(rememberScrollState())
+                    .animateContentSize(),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                if (uiState.error != null) {
+                AnimatedVisibility(
+                    visible = uiState.error != null,
+                    enter = fadeIn() + expandVertically(),
+                    exit = fadeOut() + shrinkVertically()
+                ) {
                     Card(
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth().shadow(2.dp, RoundedCornerShape(12.dp)),
+                        shape = RoundedCornerShape(12.dp)
                     ) {
                         Row(
                             modifier = Modifier.padding(16.dp),
@@ -92,7 +189,7 @@ fun SolverScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = uiState.error!!,
+                                text = uiState.error ?: "",
                                 color = MaterialTheme.colorScheme.onErrorContainer,
                                 modifier = Modifier.weight(1f)
                             )
@@ -105,36 +202,48 @@ fun SolverScreen(
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     ElevatedCard(
-                        modifier = Modifier.weight(1f),
-                        onClick = { cameraLauncher.launch(null) }
+                        modifier = Modifier.weight(1f).height(120.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+                        onClick = {
+                            if (hasCameraPermission) {
+                                launchCameraForCrop()
+                            } else {
+                                permissionLauncher.launch(Manifest.permission.CAMERA)
+                            }
+                        }
                     ) {
                         Column(
                             modifier = Modifier
-                                .fillMaxWidth()
+                                .fillMaxSize()
                                 .padding(16.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
                         ) {
-                            Icon(Icons.Default.PhotoCamera, contentDescription = "拍照解题", modifier = Modifier.size(32.dp))
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text("拍照解题")
+                            Icon(Icons.Default.PhotoCamera, contentDescription = "拍照解题", modifier = Modifier.size(40.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text("拍照解题", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
                         }
                     }
                     ElevatedCard(
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f).height(120.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
                         onClick = { imagePickerLauncher.launch("image/*") }
                     ) {
                         Column(
                             modifier = Modifier
-                                .fillMaxWidth()
+                                .fillMaxSize()
                                 .padding(16.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
                         ) {
-                            Icon(Icons.Default.Image, contentDescription = "上传题目", modifier = Modifier.size(32.dp))
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text("上传题目")
+                            Icon(Icons.Default.Image, contentDescription = "上传题目", modifier = Modifier.size(40.dp), tint = MaterialTheme.colorScheme.onSecondaryContainer)
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text("上传题目", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSecondaryContainer)
                         }
                     }
                 }
@@ -145,20 +254,23 @@ fun SolverScreen(
                         viewModel.updateQuestionText(it)
                     },
                     label = { Text("题目补充描述（可选）") },
+                    shape = RoundedCornerShape(16.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(min = 80.dp, max = 160.dp),
+                        .heightIn(min = 100.dp, max = 160.dp),
                     maxLines = 8
                 )
 
                 // Image Preview
                 if (uiState.imageUri != null) {
                     Card(
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                     ) {
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.padding(8.dp)
+                            modifier = Modifier.padding(12.dp)
                         ) {
                             AsyncImage(
                                 model = uiState.imageUri,
@@ -166,8 +278,13 @@ fun SolverScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(200.dp)
+                                    .clip(RoundedCornerShape(12.dp)),
+                                contentScale = androidx.compose.ui.layout.ContentScale.Crop
                             )
+                            Spacer(modifier = Modifier.height(8.dp))
                             TextButton(onClick = { viewModel.setImageUri(null) }) {
+                                Icon(Icons.Default.Clear, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
                                 Text("移除图片")
                             }
                         }
@@ -176,7 +293,8 @@ fun SolverScreen(
 
                 Button(
                     onClick = { viewModel.solveProblem() },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    shape = RoundedCornerShape(28.dp),
                     enabled = !uiState.isSolving && (uiState.questionText.isNotBlank() || uiState.imageUri != null)
                 ) {
                     if (uiState.isSolving) {
@@ -192,7 +310,11 @@ fun SolverScreen(
                     }
                 }
 
-                if (uiState.solutionResult.isNotBlank()) {
+                AnimatedVisibility(
+                    visible = uiState.solutionResult.isNotBlank(),
+                    enter = fadeIn() + expandVertically(),
+                    exit = fadeOut() + shrinkVertically()
+                ) {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -213,6 +335,46 @@ fun SolverScreen(
                                 markdown = uiState.solutionResult,
                                 modifier = Modifier.fillMaxWidth()
                             )
+                            if (uiState.selectedTab == 0 && uiState.drawingSteps.isNotEmpty()) {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Text("几何绘图", style = MaterialTheme.typography.titleMedium)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                val prev = mutableListOf<Map<String, Any>>()
+                                uiState.drawingSteps.forEach { step ->
+                                    GeometryStepCard(step, prevShapes = prev.toList(), modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(bottom = 12.dp))
+                                    prev += step.shapes
+                                }
+                            } else if (uiState.selectedTab == 1 && uiState.isFunction && uiState.drawingSteps.isNotEmpty()) {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Text("函数绘图", style = MaterialTheme.typography.titleMedium)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                val prev = mutableListOf<Map<String, Any>>()
+                                uiState.drawingSteps.forEach { step ->
+                                    GeometryStepCard(step, prevShapes = prev.toList(), modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(bottom = 12.dp))
+                                    prev += step.shapes
+                                }
+                            } else if (uiState.selectedTab == 2 && uiState.drawingSteps.isNotEmpty()) {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                val title = when (uiState.comprehensiveType) {
+                                    "物理" -> "物理示意图"
+                                    "化学" -> "化学示意图"
+                                    "生物" -> "生物示意图"
+                                    else -> "综合示意图"
+                                }
+                                Text(title, style = MaterialTheme.typography.titleMedium)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                val prev = mutableListOf<Map<String, Any>>()
+                                uiState.drawingSteps.forEach { step ->
+                                    GeometryStepCard(step, prevShapes = prev.toList(), modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(bottom = 12.dp))
+                                    prev += step.shapes
+                                }
+                            }
                             Spacer(modifier = Modifier.height(16.dp))
                             Button(
                                 onClick = { showErrorBookDialog = true },
@@ -230,11 +392,11 @@ fun SolverScreen(
                     style = MaterialTheme.typography.titleMedium
                 )
                 if (!showAllHistory) {
-                    LazyColumn(
+                    Column(
                         modifier = Modifier.fillMaxWidth(),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(recentHistory) { item ->
+                        recentHistory.forEach { item ->
                             ElevatedCard(
                                 onClick = { selectedHistory = item },
                                 modifier = Modifier.fillMaxWidth()
@@ -257,23 +419,27 @@ fun SolverScreen(
                                 }
                             }
                         }
-                        item {
-                            OutlinedButton(
-                                onClick = { showAllHistory = true },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Icon(Icons.Default.MoreHoriz, contentDescription = null)
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("查看更多")
-                            }
+                        OutlinedButton(
+                            onClick = { showAllHistory = true },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.MoreHoriz, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("查看更多")
                         }
                     }
-                } else {
-                    LazyColumn(
+                }
+                
+                AnimatedVisibility(
+                    visible = uiState.solutionResult.isBlank(),
+                    enter = fadeIn() + expandVertically(),
+                    exit = fadeOut() + shrinkVertically()
+                ) {
+                    Column(
                         modifier = Modifier.fillMaxWidth(),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(allHistory) { item ->
+                        allHistory.forEach { item ->
                             ElevatedCard(
                                 onClick = { selectedHistory = item },
                                 modifier = Modifier.fillMaxWidth()
@@ -296,13 +462,11 @@ fun SolverScreen(
                                 }
                             }
                         }
-                        item {
-                            OutlinedButton(
-                                onClick = { showAllHistory = false },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text("收起")
-                            }
+                        OutlinedButton(
+                            onClick = { showAllHistory = false },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("收起")
                         }
                     }
                 }
@@ -385,23 +549,5 @@ fun SolverScreen(
                 }
             )
         }
-    }
-}
-
-private fun saveBitmapToMediaStore(context: android.content.Context, bitmap: Bitmap): Uri? {
-    return try {
-        val contentValues = ContentValues().apply {
-            put(MediaStore.Images.Media.DISPLAY_NAME, "solver_${System.currentTimeMillis()}.jpg")
-            put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
-        }
-        val uri = context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
-        if (uri != null) {
-            context.contentResolver.openOutputStream(uri)?.use { output ->
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 90, output)
-            }
-        }
-        uri
-    } catch (_: Exception) {
-        null
     }
 }

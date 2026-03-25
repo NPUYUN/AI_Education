@@ -28,6 +28,13 @@ class SolverRepository @Inject constructor(
         base64Image: String?
     ): Result<String> = withContext(dispatcherProvider.io) {
         try {
+            if (apiKey.isBlank()) {
+                return@withContext Result.failure(IllegalArgumentException("API Key 不能为空"))
+            }
+            if (baseUrl.isBlank()) {
+                return@withContext Result.failure(IllegalArgumentException("Base URL 不能为空"))
+            }
+
             val retrofit = Retrofit.Builder()
                 .baseUrl(if (baseUrl.endsWith("/")) baseUrl else "$baseUrl/")
                 .addConverterFactory(GsonConverterFactory.create())
@@ -51,12 +58,14 @@ class SolverRepository @Inject constructor(
             val messages = mutableListOf<ChatMessage>()
             
             // Add system prompt
-            messages.add(
-                ChatMessage(
-                    role = "system",
-                    content = systemPrompt
+            if (systemPrompt.isNotBlank()) {
+                messages.add(
+                    ChatMessage(
+                        role = "system",
+                        content = systemPrompt
+                    )
                 )
-            )
+            }
 
             // Construct user content
             val userContent: Any = if (base64Image != null) {
@@ -65,7 +74,7 @@ class SolverRepository @Inject constructor(
                     ContentItem(type = "image_url", imageUrl = ImageUrl(url = base64Image))
                 )
             } else {
-                questionText
+                questionText.takeIf { it.isNotBlank() } ?: return@withContext Result.failure(IllegalArgumentException("问题内容不能为空"))
             }
 
             messages.add(

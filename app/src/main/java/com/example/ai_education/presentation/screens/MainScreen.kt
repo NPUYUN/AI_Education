@@ -1,5 +1,6 @@
 package com.example.ai_education.presentation.screens
 
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -28,6 +29,10 @@ import coil.compose.AsyncImage
 import java.io.File
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -54,9 +59,10 @@ import kotlinx.coroutines.launch
 fun MainScreen(
     onNavigateToSettings: () -> Unit,
     onLogout: () -> Unit,
-    onNavigateToCamera: () -> Unit,
+    onNavigateToCamera: (String) -> Unit,
     viewModel: AiTutorViewModel,
-    videoViewModel: VideoDownloadViewModel = hiltViewModel()
+    videoViewModel: VideoDownloadViewModel = hiltViewModel(),
+    outerSavedStateHandle: androidx.lifecycle.SavedStateHandle? = null
 ) {
     val navController = rememberNavController()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
@@ -282,12 +288,25 @@ fun MainScreen(
                             Text(label)
                         },
                         navigationIcon = {
-                            if (items.any { it.first == currentRoute } || currentRoute == "profile") {
+                            if (items.any { it.first == currentRoute }) {
                                 IconButton(onClick = { scope.launch { drawerState.open() } }) {
                                     Icon(Icons.Default.Menu, contentDescription = "Menu")
                                 }
                             } else {
-                                IconButton(onClick = { navController.popBackStack() }) {
+                                IconButton(onClick = {
+                                    if (currentRoute == "profile") {
+                                        // Specific requirement: return to AI tutor
+                                        navController.navigate("home") {
+                                            popUpTo(navController.graph.findStartDestination().id) {
+                                                saveState = true
+                                            }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
+                                    } else {
+                                        navController.popBackStack()
+                                    }
+                                }) {
                                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                                 }
                             }
@@ -321,6 +340,12 @@ fun MainScreen(
                                     }
                                 }) {
                                     Icon(Icons.Default.Share, contentDescription = "Share")
+                                }
+                            } else if (currentRoute == "profile") {
+                                IconButton(onClick = {
+                                    onNavigateToSettings()
+                                }) {
+                                    Icon(Icons.Outlined.Settings, contentDescription = "Settings")
                                 }
                             }
                         }
@@ -382,12 +407,52 @@ fun MainScreen(
                 modifier = Modifier
                     .padding(innerPadding)
                     .consumeWindowInsets(innerPadding)
-                    .imePadding()
+                    .imePadding(),
+                enterTransition = {
+                    if (initialState.destination.route in items.map { it.first } && targetState.destination.route in items.map { it.first }) {
+                        fadeIn(animationSpec = tween(300))
+                    } else {
+                        slideIntoContainer(
+                            AnimatedContentTransitionScope.SlideDirection.Left,
+                            animationSpec = tween(300)
+                        ) + fadeIn(animationSpec = tween(300))
+                    }
+                },
+                exitTransition = {
+                    if (initialState.destination.route in items.map { it.first } && targetState.destination.route in items.map { it.first }) {
+                        fadeOut(animationSpec = tween(300))
+                    } else {
+                        slideOutOfContainer(
+                            AnimatedContentTransitionScope.SlideDirection.Left,
+                            animationSpec = tween(300)
+                        ) + fadeOut(animationSpec = tween(300))
+                    }
+                },
+                popEnterTransition = {
+                    if (initialState.destination.route in items.map { it.first } && targetState.destination.route in items.map { it.first }) {
+                        fadeIn(animationSpec = tween(300))
+                    } else {
+                        slideIntoContainer(
+                            AnimatedContentTransitionScope.SlideDirection.Right,
+                            animationSpec = tween(300)
+                        ) + fadeIn(animationSpec = tween(300))
+                    }
+                },
+                popExitTransition = {
+                    if (initialState.destination.route in items.map { it.first } && targetState.destination.route in items.map { it.first }) {
+                        fadeOut(animationSpec = tween(300))
+                    } else {
+                        slideOutOfContainer(
+                            AnimatedContentTransitionScope.SlideDirection.Right,
+                            animationSpec = tween(300)
+                        ) + fadeOut(animationSpec = tween(300))
+                    }
+                }
             ) {
                 composable("home") {
                     ChatScreen(
                         viewModel = viewModel,
-                        onCameraClick = onNavigateToCamera,
+                        onCameraClick = { onNavigateToCamera("home") },
                         onNavigateToTimeline = { query ->
                             navController.navigate("timeline?query=${android.net.Uri.encode(query)}")
                         },
@@ -396,7 +461,22 @@ fun MainScreen(
                 }
                 composable("solver") { 
                     val solverViewModel: com.example.solver.comprehensive.presentation.viewmodels.SolverViewModel = hiltViewModel()
-                    SolverScreen(solverViewModel) 
+                    
+                    // Observe the image URI returned from the outer NavHost (Camera/Preview flow)
+                    val solverImageUri = outerSavedStateHandle?.getStateFlow<String?>("solver_image_uri", null)?.collectAsState()
+                    LaunchedEffect(solverImageUri?.value) {
+                        solverImageUri?.value?.let { uriString ->
+                            solverViewModel.setImageUri(android.net.Uri.parse(uriString))
+                            solverViewModel.solveProblem()
+                            // Clear the saved state so it doesn't trigger again
+                            outerSavedStateHandle?.remove<String>("solver_image_uri")
+                        }
+                    }
+                    
+                    SolverScreen(
+                        viewModel = solverViewModel,
+                        onCameraClick = { onNavigateToCamera("solver") }
+                    ) 
                 }
                 composable("summary") { 
                     SummaryMenuScreen(
@@ -419,9 +499,12 @@ fun MainScreen(
                     })
                 ) { backStackEntry ->
                     val query = backStackEntry.arguments?.getString("query")
-                    TimelineScreen(navController, query)
+                    com.example.ai_tutor.timeline_map.presentation.screens.TimelineMapScreen(
+                        initialQuery = query,
+                        onNavigateBack = { navController.popBackStack() }
+                    )
                 }
-                composable("video") { VideoSummaryScreen(videoViewModel, navController) }
+                composable("video") { com.example.summarizer.video_summarizer.presentation.screens.VideoDownloadScreen(videoViewModel) }
                 composable("text_summary") { TextSummaryScreenWrapper(textSummaryViewModel, navController) }
                 composable("audio_summary") { AudioSummaryScreenWrapper(audioSummaryViewModel, navController) }
                 composable("dialogue_summary") { DialogueSummaryScreenWrapper(navController) }
@@ -430,6 +513,26 @@ fun MainScreen(
             }
         }
     }
+}
+
+@Composable
+fun TextSummaryScreenWrapper(
+    viewModel: TextSummaryViewModel,
+    navController: androidx.navigation.NavHostController
+) {
+    com.example.summarizer.text_summarizer.presentation.screens.TextSummaryScreen(
+        viewModel = viewModel
+    )
+}
+
+@Composable
+fun AudioSummaryScreenWrapper(
+    viewModel: AudioSummaryViewModel,
+    navController: androidx.navigation.NavHostController
+) {
+    com.example.summarizer.audio_summarizer.presentation.screens.AudioSummaryScreen(
+        viewModel = viewModel
+    )
 }
 
 @Composable

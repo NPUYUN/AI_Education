@@ -1,5 +1,6 @@
 package com.example.summarizer.text_summarizer.presentation.screens
 
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -18,6 +19,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -38,11 +41,14 @@ fun TextSummaryScreen(
         uri?.let { viewModel.handleFileUri(it) }
     }
 
+    val screenHeight = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp.dp
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
-            .verticalScroll(rememberScrollState()),
+            .verticalScroll(rememberScrollState())
+            .heightIn(min = screenHeight),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Input Area
@@ -55,6 +61,7 @@ fun TextSummaryScreen(
                 .fillMaxWidth()
                 .heightIn(min = 200.dp, max = 300.dp),
             maxLines = 15,
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
             trailingIcon = {
                 if (uiState.inputText.isNotEmpty()) {
                     IconButton(onClick = { viewModel.updateInputText("") }) {
@@ -118,7 +125,8 @@ fun TextSummaryScreen(
             uiState.error?.let { errorMsg ->
                 Card(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().shadow(2.dp, RoundedCornerShape(12.dp)),
+                    shape = RoundedCornerShape(12.dp)
                 ) {
                     Text(
                         text = errorMsg,
@@ -137,8 +145,9 @@ fun TextSummaryScreen(
             exit = fadeOut() + shrinkVertically()
         ) {
             Card(
-                modifier = Modifier.fillMaxWidth(),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                modifier = Modifier.fillMaxWidth().shadow(2.dp, RoundedCornerShape(16.dp)),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {

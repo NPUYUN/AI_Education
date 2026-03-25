@@ -9,6 +9,11 @@ import android.os.Build
 import android.os.Bundle
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -24,6 +29,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -101,12 +107,34 @@ fun TimelineMapScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            if (loading) {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                Text("正在生成时间轴地图...", modifier = Modifier.align(Alignment.CenterHorizontally))
+            AnimatedVisibility(
+                visible = loading,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("正在生成时间轴地图...", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
-            if (error != null) {
-                Text(error ?: "", color = MaterialTheme.colorScheme.error)
+            
+            AnimatedVisibility(
+                visible = error != null,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+            ) {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(
+                        text = error ?: "",
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
             }
 
             if (showSettings) {
@@ -115,56 +143,65 @@ fun TimelineMapScreen(
                 )
             }
 
-            if (!loading && events.isNotEmpty()) {
-                MapSection(
-                    events = events,
-                    selectedId = selectedId,
-                    onSelect = { id ->
-                        viewModel.selectEvent(id)
-                        showDetails = true
-                    },
-                    modifier = Modifier.fillMaxSize()
-                )
+            AnimatedVisibility(
+                visible = !loading && events.isNotEmpty(),
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically(),
+                modifier = Modifier.weight(1f)
+            ) {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    MapSection(
+                        events = events,
+                        selectedId = selectedId,
+                        onSelect = { id ->
+                            viewModel.selectEvent(id)
+                            showDetails = true
+                        },
+                        modifier = Modifier.weight(1f).fillMaxWidth()
+                    )
 
-                Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
-                // 时间轴（在地图下方）
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-                ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Text(
-                            text = "时间轴",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        LazyRow(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            items(events) { e ->
-                                AssistChip(
-                                    onClick = { viewModel.selectEvent(e.id) },
-                                    label = { Text(e.time) },
-                                    leadingIcon = {
-                                        Icon(
-                                            imageVector = Icons.Default.Info,
-                                            contentDescription = null
+                    // 时间轴（在地图下方）
+                    Card(
+                        modifier = Modifier.fillMaxWidth().shadow(2.dp, RoundedCornerShape(16.dp)),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(
+                                text = "时间轴",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            LazyRow(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                items(events) { e ->
+                                    AssistChip(
+                                        onClick = { viewModel.selectEvent(e.id) },
+                                        label = { Text(e.time) },
+                                        leadingIcon = {
+                                            Icon(
+                                                imageVector = Icons.Default.Info,
+                                                contentDescription = null
+                                            )
+                                        },
+                                        colors = AssistChipDefaults.assistChipColors(
+                                            containerColor = if (e.id == selectedId) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer,
+                                            labelColor = if (e.id == selectedId) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
                                         )
-                                    },
-                                    colors = AssistChipDefaults.assistChipColors(
-                                        containerColor = if (e.id == selectedId) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer,
-                                        labelColor = if (e.id == selectedId) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
                                     )
-                                )
+                                }
                             }
                         }
                     }
                 }
+            }
 
-                if (showDetails && selectedId != null) {
+            if (showDetails && selectedId != null) {
                     val selected = events.find { it.id == selectedId }
                     if (selected != null) {
                         AlertDialog(
@@ -189,7 +226,6 @@ fun TimelineMapScreen(
             }
         }
     }
-}
 
 
 

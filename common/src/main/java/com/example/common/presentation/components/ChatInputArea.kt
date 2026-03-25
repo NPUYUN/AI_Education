@@ -60,8 +60,9 @@ fun ChatInputArea(
             .fillMaxWidth()
             .padding(16.dp)
             .animateContentSize(),
-        shape = RoundedCornerShape(32.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        shadowElevation = 2.dp
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
@@ -70,8 +71,9 @@ fun ChatInputArea(
             // Voice Button with Hold-to-Talk (Custom implementation replacing IconButton)
             Box(
                 modifier = Modifier
-                    .size(48.dp)
-                    .clip(RoundedCornerShape(24.dp))
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(if (isRecording) MaterialTheme.colorScheme.errorContainer else Color.Transparent)
                     .pointerInput(Unit) {
                         detectTapGestures(
                             onTap = {
@@ -113,7 +115,7 @@ fun ChatInputArea(
                 Icon(
                     Icons.Default.Mic, 
                     contentDescription = "Voice", 
-                    tint = if (isRecording) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint = if (isRecording) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -140,7 +142,8 @@ fun ChatInputArea(
                     focusedTextColor = MaterialTheme.colorScheme.onSurface,
                     unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                 ),
-                singleLine = true,
+                singleLine = false,
+                maxLines = 4,
                 enabled = !isRecording
             )
             
@@ -150,10 +153,10 @@ fun ChatInputArea(
                 }
             } else if (!isRecording) {
                 IconButton(onClick = onCameraClick) {
-                    Icon(Icons.Default.CameraAlt, contentDescription = "Camera", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Icon(Icons.Default.CameraAlt, contentDescription = "Camera", tint = MaterialTheme.colorScheme.primary)
                 }
                 IconButton(onClick = onGalleryClick) {
-                    Icon(Icons.Default.Add, contentDescription = "Add", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Icon(Icons.Default.Add, contentDescription = "Add", tint = MaterialTheme.colorScheme.primary)
                 }
             }
         }

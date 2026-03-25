@@ -1,11 +1,21 @@
 package com.example.summarizer.knowledge_cards.presentation.screens
 
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Search
@@ -13,6 +23,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.common.database.models.KnowledgeCardEntity
@@ -37,7 +49,7 @@ fun KnowledgeCardScreen(
                 title = { Text("知识卡片") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 }
             )
@@ -61,16 +73,26 @@ fun KnowledgeCardScreen(
                 modifier = Modifier.fillMaxWidth(),
                 placeholder = { Text("搜索标签...") },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                singleLine = true
+                singleLine = true,
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                )
             )
 
-            if (uiState.error != null) {
+            AnimatedVisibility(
+                visible = uiState.error != null,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+            ) {
                 Card(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().shadow(2.dp, RoundedCornerShape(12.dp)),
+                    shape = RoundedCornerShape(12.dp)
                 ) {
                     Text(
-                        text = uiState.error!!,
+                        text = uiState.error ?: "",
                         color = MaterialTheme.colorScheme.onErrorContainer,
                         modifier = Modifier.padding(16.dp)
                     )
@@ -87,11 +109,20 @@ fun KnowledgeCardScreen(
                     modifier = Modifier.weight(1f)
                 ) {
                     items(uiState.cards, key = { it.id }) { card ->
-                        KnowledgeCardItem(
-                            card = card,
-                            onDelete = { viewModel.deleteCard(card) },
-                            onClick = { expandedCard = card }
-                        )
+                        var isVisible by remember { mutableStateOf(false) }
+                        LaunchedEffect(card) { isVisible = true }
+                        
+                        AnimatedVisibility(
+                            visible = isVisible,
+                            enter = fadeIn(animationSpec = tween(300)) + expandVertically(animationSpec = tween(300)),
+                            exit = fadeOut(animationSpec = tween(300)) + shrinkVertically(animationSpec = tween(300))
+                        ) {
+                            KnowledgeCardItem(
+                                card = card,
+                                onDelete = { viewModel.deleteCard(card) },
+                                onClick = { expandedCard = card }
+                            )
+                        }
                     }
                 }
             }
@@ -128,8 +159,11 @@ fun KnowledgeCardItem(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            .clickable(onClick = onClick)
+            .shadow(2.dp, RoundedCornerShape(16.dp)),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
             modifier = Modifier
@@ -247,14 +281,17 @@ fun CardDetailDialog(
         onDismissRequest = onDismiss,
         title = { Text(card.title) },
         text = {
-            Column(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+            ) {
                 Text(
                     text = "来源: ${card.source} | 标签: ${card.tags}",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
-                Divider(modifier = Modifier.padding(bottom = 8.dp))
+                HorizontalDivider(modifier = Modifier.padding(bottom = 8.dp))
                 // Can use SafeMarkdownText here if content is markdown, falling back to simple Text for now
                 com.example.common.ui.components.SafeMarkdownText(
                     markdown = card.content,

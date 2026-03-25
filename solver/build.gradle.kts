@@ -65,6 +65,12 @@ dependencies {
 
     // OpenGL/Graphics (Native libs would be added here or via CMake, for now basic setup)
 
+    // Android Image Cropper
+    implementation("com.vanniktech:android-image-cropper:4.5.0")
+
+    // Expression Evaluator for math functions
+    implementation("net.objecthunter:exp4j:0.4.8")
+
     implementation(libs.androidx.lifecycle.viewmodel.compose)
 
     // Hilt

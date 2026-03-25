@@ -33,7 +33,10 @@ data class SolverUiState(
     val isSolving: Boolean = false,
     val solutionResult: String = "",
     val error: String? = null,
-    val isAddedToErrorBook: Boolean = false
+    val isAddedToErrorBook: Boolean = false,
+    val drawingSteps: List<com.example.solver.geometry_solver.presentation.components.GeometryDrawingStep> = emptyList(),
+    val isFunction: Boolean = false,
+    val comprehensiveType: String = ""
 )
 
 @HiltViewModel
@@ -66,12 +69,27 @@ class SolverViewModel @Inject constructor(
 
     fun updateQuestionText(text: String) {
         val newTab = classify(text)
-        _uiState.value = _uiState.value.copy(questionText = text, selectedTab = newTab, error = null, isAddedToErrorBook = false)
+        val compType = if (newTab == 2) getComprehensiveType(text) else ""
+        _uiState.value = _uiState.value.copy(
+            questionText = text, 
+            selectedTab = newTab, 
+            error = null, 
+            isAddedToErrorBook = false, 
+            isFunction = isFunctionProblem(text),
+            comprehensiveType = compType
+        )
     }
 
     fun setImageUri(uri: Uri?) {
         val newTab = classify(_uiState.value.questionText)
-        _uiState.value = _uiState.value.copy(imageUri = uri, selectedTab = newTab, error = null, isAddedToErrorBook = false)
+        val compType = if (newTab == 2) getComprehensiveType(_uiState.value.questionText) else ""
+        _uiState.value = _uiState.value.copy(
+            imageUri = uri, 
+            selectedTab = newTab, 
+            error = null, 
+            isAddedToErrorBook = false,
+            comprehensiveType = compType
+        )
     }
 
     fun clearError() {
@@ -121,16 +139,29 @@ class SolverViewModel @Inject constructor(
                     ?: AppConstants.BASE_URL
 
                 val autoTab = classify(state.questionText)
-                _uiState.value = _uiState.value.copy(selectedTab = autoTab)
-                val systemPrompt = when (state.selectedTab) {
+                val compType = if (autoTab == 2) getComprehensiveType(state.questionText) else ""
+                _uiState.value = _uiState.value.copy(selectedTab = autoTab, comprehensiveType = compType)
+                val systemPrompt = when (autoTab) {
                     0 -> AppConstants.SOLVER_GEOMETRY_SYSTEM_PROMPT
                     1 -> AppConstants.SOLVER_ALGEBRA_SYSTEM_PROMPT
-                    else -> AppConstants.SOLVER_COMPREHENSIVE_SYSTEM_PROMPT
+                    else -> when (compType) {
+                        "物理" -> AppConstants.SOLVER_PHYSICS_SYSTEM_PROMPT
+                        "化学" -> AppConstants.SOLVER_CHEMISTRY_SYSTEM_PROMPT
+                        "生物" -> AppConstants.SOLVER_BIOLOGY_SYSTEM_PROMPT
+                        else -> AppConstants.SOLVER_COMPREHENSIVE_SYSTEM_PROMPT
+                    }
                 }
 
                 var base64Image: String? = null
-                state.imageUri?.let { uri ->
-                    base64Image = encodeImage(uri)
+                if (state.imageUri != null) {
+                    base64Image = encodeImage(state.imageUri)
+                    if (base64Image == null) {
+                        _uiState.value = _uiState.value.copy(
+                            isSolving = false,
+                            error = "图片处理失败，请尝试重新选择或拍摄"
+                        )
+                        return@launch
+                    }
                 }
 
                 val result = repository.solveProblem(
@@ -144,9 +175,14 @@ class SolverViewModel @Inject constructor(
 
                 if (result.isSuccess) {
                     val solution = result.getOrNull() ?: ""
+                    val drawings = parseDrawingSteps(solution)
                     _uiState.value = _uiState.value.copy(
                         isSolving = false,
-                        solutionResult = solution
+                        solutionResult = solution,
+                        drawingSteps = drawings,
+                        isFunction = if (_uiState.value.selectedTab == 1) {
+                            isFunctionProblem(_uiState.value.questionText) || solution.contains("函数") || solution.contains("y=") || solution.contains("f(")
+                        } else _uiState.value.isFunction
                     )
                     val subject = when (_uiState.value.selectedTab) {
                         0 -> "几何"
@@ -190,6 +226,20 @@ class SolverViewModel @Inject constructor(
         }
     }
     
+    private fun getComprehensiveType(text: String): String {
+        val t = text.replace("\\s+".toRegex(), "").lowercase()
+        val physicsKeywords = listOf("物理", "力", "速度", "加速度", "质量", "动能", "势能", "电场", "磁场", "电路", "电阻", "电压", "电流", "做功", "功率", "折射", "反射", "透镜", "滑块", "斜面")
+        val chemistryKeywords = listOf("化学", "反应", "溶液", "沉淀", "摩尔", "氧化", "还原", "酸", "碱", "ph", "离子", "原子", "分子", "气体", "催化剂", "实验", "试管", "烧杯", "方程式", "浓度")
+        val biologyKeywords = listOf("生物", "细胞", "基因", "遗传", "光合作用", "呼吸作用", "蛋白质", "氨基酸", "染色体", "进化", "生态", "植物", "动物")
+        
+        return when {
+            physicsKeywords.any { t.contains(it) } -> "物理"
+            chemistryKeywords.any { t.contains(it) } -> "化学"
+            biologyKeywords.any { t.contains(it) } -> "生物"
+            else -> "其他"
+        }
+    }
+
     private fun classify(text: String): Int {
         val t = text.lowercase()
         val geometryKeywords = listOf("角", "三角", "圆", "半径", "周长", "面积", "几何", "垂线", "相似", "勾股", "坐标", "图形")
@@ -199,6 +249,44 @@ class SolverViewModel @Inject constructor(
             algebraKeywords.any { t.contains(it) } -> 1
             else -> 2
         }
+    }
+    
+    private fun isFunctionProblem(text: String): Boolean {
+        val t = text.replace("\\s+".toRegex(), "").lowercase()
+        return t.contains("函数") || t.contains("y=") || t.contains("f(") || t.contains("曲线") || t.contains("图像") || t.contains("单调") || t.contains("极值") || t.contains("导数") || t.contains("抛物线") || t.contains("直线") || t.contains("指数函数") || t.contains("对数函数") || t.contains("三角函数")
+    }
+    
+    private fun parseDrawingSteps(text: String): List<com.example.solver.geometry_solver.presentation.components.GeometryDrawingStep> {
+        try {
+            val startToken = "BEGIN_DRAWING_JSON"
+            val endToken = "END_DRAWING_JSON"
+            val start = text.indexOf(startToken)
+            val end = text.indexOf(endToken)
+            if (start >= 0 && end > start) {
+                val json = text.substring(start + startToken.length, end).trim()
+                val gson = com.google.gson.Gson()
+                val type = com.google.gson.reflect.TypeToken.getParameterized(
+                    List::class.java,
+                    com.example.solver.geometry_solver.presentation.components.GeometryDrawingStep::class.java
+                ).type
+                return gson.fromJson(json, type) ?: emptyList()
+            }
+            val fenceStart = text.indexOf("```json")
+            if (fenceStart >= 0) {
+                val fenceEnd = text.indexOf("```", fenceStart + 7)
+                if (fenceEnd > fenceStart) {
+                    val json = text.substring(fenceStart + 7, fenceEnd).trim()
+                    val gson = com.google.gson.Gson()
+                    val type = com.google.gson.reflect.TypeToken.getParameterized(
+                        List::class.java,
+                        com.example.solver.geometry_solver.presentation.components.GeometryDrawingStep::class.java
+                    ).type
+                    return gson.fromJson(json, type) ?: emptyList()
+                }
+            }
+        } catch (_: Exception) {
+        }
+        return emptyList()
     }
 
     private fun encodeImage(uri: Uri): String? {

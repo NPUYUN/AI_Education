@@ -6,6 +6,8 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Article
 import androidx.compose.material.icons.filled.VideoLibrary
@@ -45,11 +47,15 @@ fun SummaryMenuScreen(
             )
         }
     ) { paddingValues ->
+        val screenHeight = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp.dp
+        
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(16.dp),
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState())
+                .heightIn(min = screenHeight),
             verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -62,7 +68,7 @@ fun SummaryMenuScreen(
             ) {
                 SummaryOptionCard(
                     title = "视频总结",
-                    icon = { Icon(Icons.Default.VideoLibrary, contentDescription = "视频总结", modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.primary) },
+                    icon = { Icon(Icons.Default.VideoLibrary, contentDescription = "视频总结", modifier = Modifier.size(32.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer) },
                     onClick = onNavigateToVideoSummary
                 )
             }
@@ -74,7 +80,7 @@ fun SummaryMenuScreen(
             ) {
                 SummaryOptionCard(
                     title = "文本总结",
-                    icon = { Icon(Icons.AutoMirrored.Filled.Article, contentDescription = "文本总结", modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.primary) },
+                    icon = { Icon(Icons.AutoMirrored.Filled.Article, contentDescription = "文本总结", modifier = Modifier.size(32.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer) },
                     onClick = onNavigateToTextSummary
                 )
             }
@@ -86,7 +92,7 @@ fun SummaryMenuScreen(
             ) {
                 SummaryOptionCard(
                     title = "音频总结",
-                    icon = { Icon(Icons.Default.Audiotrack, contentDescription = "音频总结", modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.primary) },
+                    icon = { Icon(Icons.Default.Audiotrack, contentDescription = "音频总结", modifier = Modifier.size(32.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer) },
                     onClick = onNavigateToAudioSummary
                 )
             }
@@ -98,7 +104,7 @@ fun SummaryMenuScreen(
             ) {
                 SummaryOptionCard(
                     title = "对话总结",
-                    icon = { Icon(Icons.Default.ChatBubble, contentDescription = "对话总结", modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.primary) },
+                    icon = { Icon(Icons.Default.ChatBubble, contentDescription = "对话总结", modifier = Modifier.size(32.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer) },
                     onClick = onNavigateToChatSummary
                 )
             }
@@ -110,7 +116,7 @@ fun SummaryMenuScreen(
             ) {
                 SummaryOptionCard(
                     title = "知识卡片管理",
-                    icon = { Icon(Icons.Default.Style, contentDescription = "知识卡片管理", modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.primary) },
+                    icon = { Icon(Icons.Default.Style, contentDescription = "知识卡片管理", modifier = Modifier.size(32.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer) },
                     onClick = onNavigateToKnowledgeCards
                 )
             }
@@ -120,20 +126,30 @@ fun SummaryMenuScreen(
 
 @Composable
 fun SummaryOptionCard(title: String, icon: @Composable () -> Unit, onClick: () -> Unit) {
-    Card(
+    ElevatedCard(
         modifier = Modifier
             .fillMaxWidth()
-            .height(100.dp)
-            .clickable { onClick() },
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            .height(100.dp),
+        onClick = onClick,
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
         Row(
-            modifier = Modifier.fillMaxSize().padding(16.dp),
+            modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp, vertical = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            icon()
+            Surface(
+                shape = androidx.compose.foundation.shape.CircleShape,
+                color = MaterialTheme.colorScheme.primaryContainer,
+                modifier = Modifier.size(64.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    icon()
+                }
+            }
             Spacer(modifier = Modifier.width(24.dp))
-            Text(title, style = MaterialTheme.typography.titleLarge)
+            Text(title, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

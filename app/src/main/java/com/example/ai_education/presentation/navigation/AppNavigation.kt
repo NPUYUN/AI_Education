@@ -1,5 +1,7 @@
 package com.example.ai_education.presentation.navigation
 
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -36,7 +38,31 @@ fun AppNavigation(
 
     NavHost(
         navController = navController,
-        startDestination = if (isLoggedIn) "main" else "login"
+        startDestination = if (isLoggedIn) "main" else "login",
+        enterTransition = {
+            slideIntoContainer(
+                AnimatedContentTransitionScope.SlideDirection.Left,
+                animationSpec = tween(300)
+            )
+        },
+        exitTransition = {
+            slideOutOfContainer(
+                AnimatedContentTransitionScope.SlideDirection.Left,
+                animationSpec = tween(300)
+            )
+        },
+        popEnterTransition = {
+            slideIntoContainer(
+                AnimatedContentTransitionScope.SlideDirection.Right,
+                animationSpec = tween(300)
+            )
+        },
+        popExitTransition = {
+            slideOutOfContainer(
+                AnimatedContentTransitionScope.SlideDirection.Right,
+                animationSpec = tween(300)
+            )
+        }
     ) {
         composable("login") {
             LoginScreen(
@@ -50,39 +76,50 @@ fun AppNavigation(
                 onNavigateToLogin = { navController.popBackStack() }
             )
         }
-        composable("main") {
+        composable("main") { backStackEntry ->
             MainScreen(
                 onNavigateToSettings = { navController.navigate("settings") },
                 onLogout = { 
                     authViewModel.logout()
                     navController.navigate("login") { popUpTo("main") { inclusive = true } }
                 },
-                onNavigateToCamera = { navController.navigate("camera") },
-                viewModel = aiTutorViewModel
+                onNavigateToCamera = { source -> navController.navigate("camera?source=$source") },
+                viewModel = aiTutorViewModel,
+                outerSavedStateHandle = backStackEntry.savedStateHandle
             )
         }
         composable("settings") {
             SettingsScreen(onBack = { navController.popBackStack() })
         }
-        composable("camera") {
+        composable("camera?source={source}", arguments = listOf(navArgument("source") { defaultValue = "home" })) { backStackEntry ->
+            val source = backStackEntry.arguments?.getString("source") ?: "home"
             CameraScreen(
                 onImageCaptured = { uri ->
                     val encodedUri = java.net.URLEncoder.encode(uri.toString(), "UTF-8")
-                    navController.navigate("preview/$encodedUri")
+                    navController.navigate("preview/$encodedUri?source=$source")
                 },
                 onClose = { navController.popBackStack() }
             )
         }
         composable(
-            "preview/{imageUri}",
-            arguments = listOf(navArgument("imageUri") { type = NavType.StringType })
+            "preview/{imageUri}?source={source}",
+            arguments = listOf(
+                navArgument("imageUri") { type = NavType.StringType },
+                navArgument("source") { defaultValue = "home" }
+            )
         ) { backStackEntry ->
             val imageUriString = backStackEntry.arguments?.getString("imageUri") ?: ""
+            val source = backStackEntry.arguments?.getString("source") ?: "home"
             ImagePreviewScreen(
                 imageUri = imageUriString,
                 onActionSelected = { prompt, uri ->
-                    aiTutorViewModel.sendImageWithPrompt(uri, prompt)
-                    navController.popBackStack("main", inclusive = false)
+                    if (source == "solver") {
+                        navController.getBackStackEntry("main").savedStateHandle.set("solver_image_uri", uri.toString())
+                        navController.popBackStack("main", inclusive = false)
+                    } else {
+                        aiTutorViewModel.sendImageWithPrompt(uri, prompt)
+                        navController.popBackStack("main", inclusive = false)
+                    }
                 },
                 onClose = { navController.popBackStack() }
             )

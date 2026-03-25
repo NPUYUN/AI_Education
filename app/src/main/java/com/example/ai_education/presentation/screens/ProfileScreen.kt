@@ -3,6 +3,10 @@ package com.example.ai_education.presentation.screens
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -43,6 +47,11 @@ fun ProfileScreen() {
     var showEditDialog by remember { mutableStateOf(false) }
     var nickname by remember(savedNickname) { mutableStateOf(savedNickname) }
     var signature by remember(savedSignature) { mutableStateOf(savedSignature) }
+    
+    var isVisible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        isVisible = true
+    }
 
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -115,11 +124,15 @@ fun ProfileScreen() {
             .background(MaterialTheme.colorScheme.background)
             .padding(16.dp)
     ) {
-        // Profile Card (Figure 2 Top Half style)
-        Surface(
+        AnimatedVisibility(
+            visible = isVisible,
+            enter = fadeIn(animationSpec = tween(500)) + slideInVertically(animationSpec = tween(500)) { it / 2 }
+        ) {
+            // Profile Card (Figure 2 Top Half style)
+            Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .shadow(4.dp, RoundedCornerShape(16.dp)),
+                .shadow(2.dp, RoundedCornerShape(16.dp)),
             shape = RoundedCornerShape(16.dp),
             color = MaterialTheme.colorScheme.surfaceContainer
         ) {
@@ -196,6 +209,7 @@ fun ProfileScreen() {
                     Text("编辑资料")
                 }
             }
+        }
         }
     }
 }
