@@ -30,7 +30,8 @@ class TimelineRepository
         ): Result<List<HistoricalEvent>> {
             return withContext(dispatcherProvider.io) {
                 try {
-                    val service = RetrofitClient.create(apiKey, baseUrl).create(OpenAiService::class.java)
+                    // 时间轴地图通常需要生成大量的 JSON 数据（10-15个节点），因此设置更长的超时时间（90秒）
+                    val service = RetrofitClient.create(apiKey, baseUrl, timeoutSeconds = 90L).create(OpenAiService::class.java)
                     val prompt = AppConstants.TIMELINE_EVENTS_PROMPT_PREFIX + query
 
                     val request =
@@ -57,6 +58,10 @@ class TimelineRepository
                     val body = e.response()?.errorBody()?.string()
                     val message = parseErrorMessage(body) ?: "请求失败 ${e.code()}"
                     Result.failure(IllegalStateException(message))
+                } catch (e: java.net.SocketTimeoutException) {
+                    Result.failure(IllegalStateException("网络请求超时，请稍后重试"))
+                } catch (e: java.net.UnknownHostException) {
+                    Result.failure(IllegalStateException("无法连接到服务器，请检查网络设置"))
                 } catch (e: Exception) {
                     Result.failure(e)
                 }

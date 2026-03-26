@@ -28,9 +28,9 @@ class NetworkMonitor(context: Context) {
                 network: Network,
                 networkCapabilities: NetworkCapabilities,
             ) {
-                val isInternet =
-                    networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
-                        networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+                // 在部分国内网络环境或模拟器中，NET_CAPABILITY_VALIDATED 可能会因为无法访问 Google 服务器而为 false
+                // 所以这里放宽条件，只要有 NET_CAPABILITY_INTERNET 即认为有网络
+                val isInternet = networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                 _isConnected.value = isInternet
             }
         }
@@ -46,8 +46,7 @@ class NetworkMonitor(context: Context) {
     private fun checkInitialConnection(): Boolean {
         val activeNetwork = connectivityManager.activeNetwork ?: return false
         val capabilities = connectivityManager.getNetworkCapabilities(activeNetwork) ?: return false
-        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
-            capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
 
     fun stopMonitoring() {

@@ -14,6 +14,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.common.config.AppConstants
 import com.example.common.database.PreferencesManager
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 val COMMON_MODELS =
@@ -40,6 +41,13 @@ fun GlobalApiSettingsDialog(onDismiss: () -> Unit) {
     val scope = rememberCoroutineScope()
     val prefs = remember { PreferencesManager(context) }
 
+    var useGlobalApi by remember { mutableStateOf(false) }
+
+    // Global Settings
+    var globalApiKey by remember { mutableStateOf("") }
+    var globalModel by remember { mutableStateOf("") }
+    var globalBaseUrl by remember { mutableStateOf("") }
+
     // AI Tutor
     var tutorApiKey by remember { mutableStateOf("") }
     var tutorModel by remember { mutableStateOf("") }
@@ -54,6 +62,27 @@ fun GlobalApiSettingsDialog(onDismiss: () -> Unit) {
     var timelineApiKey by remember { mutableStateOf("") }
     var timelineModel by remember { mutableStateOf("") }
     var timelineBaseUrl by remember { mutableStateOf("") }
+
+    LaunchedEffect(Unit) {
+        prefs.getBoolean("use_global_api", false).collect {
+            useGlobalApi = it
+        }
+    }
+    LaunchedEffect(Unit) {
+        prefs.getString("global_api_key", "").collect {
+            globalApiKey = it
+        }
+    }
+    LaunchedEffect(Unit) {
+        prefs.getString("global_model_name", "").collect {
+            globalModel = it.ifBlank { AppConstants.DEFAULT_MODEL_NAME }
+        }
+    }
+    LaunchedEffect(Unit) {
+        prefs.getString("global_base_url", "").collect {
+            globalBaseUrl = it.ifBlank { AppConstants.BASE_URL }
+        }
+    }
 
     LaunchedEffect(Unit) {
         prefs.getString("api_key_ai_tutor", "").collect {
@@ -124,8 +153,26 @@ fun GlobalApiSettingsDialog(onDismiss: () -> Unit) {
                 Text(
                     text = "全局 API 设置",
                     style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.padding(bottom = 16.dp),
+                    modifier = Modifier.padding(bottom = 8.dp),
                 )
+
+                Row(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 16.dp),
+                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(
+                        text = "统一使用全局配置",
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                    Switch(
+                        checked = useGlobalApi,
+                        onCheckedChange = { useGlobalApi = it },
+                    )
+                }
 
                 Column(
                     modifier =
@@ -134,38 +181,54 @@ fun GlobalApiSettingsDialog(onDismiss: () -> Unit) {
                             .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(24.dp),
                 ) {
+                    if (useGlobalApi) {
+                        ApiSettingSection(
+                            title = "全局配置 (所有模块统一使用)",
+                            apiKey = globalApiKey,
+                            onApiKeyChange = { globalApiKey = it },
+                            modelName = globalModel,
+                            onModelNameChange = { globalModel = it },
+                            baseUrl = globalBaseUrl,
+                            onBaseUrlChange = { globalBaseUrl = it },
+                        )
+                        HorizontalDivider()
+                    }
+
                     ApiSettingSection(
                         title = "AI 辅导",
-                        apiKey = tutorApiKey,
+                        apiKey = if (useGlobalApi) globalApiKey else tutorApiKey,
                         onApiKeyChange = { tutorApiKey = it },
-                        modelName = tutorModel,
+                        modelName = if (useGlobalApi) globalModel else tutorModel,
                         onModelNameChange = { tutorModel = it },
-                        baseUrl = tutorBaseUrl,
+                        baseUrl = if (useGlobalApi) globalBaseUrl else tutorBaseUrl,
                         onBaseUrlChange = { tutorBaseUrl = it },
+                        enabled = !useGlobalApi,
                     )
 
                     HorizontalDivider()
 
                     ApiSettingSection(
                         title = "视频总结",
-                        apiKey = videoApiKey,
+                        apiKey = if (useGlobalApi) globalApiKey else videoApiKey,
                         onApiKeyChange = { videoApiKey = it },
-                        modelName = videoModel,
+                        modelName = if (useGlobalApi) globalModel else videoModel,
                         onModelNameChange = { videoModel = it },
-                        baseUrl = videoBaseUrl,
+                        baseUrl = if (useGlobalApi) globalBaseUrl else videoBaseUrl,
                         onBaseUrlChange = { videoBaseUrl = it },
+                        enabled = !useGlobalApi,
                     )
 
                     HorizontalDivider()
 
                     ApiSettingSection(
                         title = "时间轴地图",
-                        apiKey = timelineApiKey,
+                        apiKey = if (useGlobalApi) globalApiKey else timelineApiKey,
                         onApiKeyChange = { timelineApiKey = it },
-                        modelName = timelineModel,
+                        modelName = if (useGlobalApi) globalModel else timelineModel,
                         onModelNameChange = { timelineModel = it },
-                        baseUrl = timelineBaseUrl,
+                        baseUrl = if (useGlobalApi) globalBaseUrl else timelineBaseUrl,
                         onBaseUrlChange = { timelineBaseUrl = it },
+                        enabled = !useGlobalApi,
                     )
                 }
 
@@ -183,6 +246,11 @@ fun GlobalApiSettingsDialog(onDismiss: () -> Unit) {
                     Button(
                         onClick = {
                             scope.launch {
+                                prefs.saveBoolean("use_global_api", useGlobalApi)
+                                prefs.saveString("global_api_key", globalApiKey)
+                                prefs.saveString("global_model_name", globalModel)
+                                prefs.saveString("global_base_url", globalBaseUrl)
+
                                 prefs.saveString("api_key_ai_tutor", tutorApiKey)
                                 prefs.saveString("model_name_ai_tutor", tutorModel)
                                 prefs.saveString("base_url_ai_tutor", tutorBaseUrl)
@@ -196,8 +264,12 @@ fun GlobalApiSettingsDialog(onDismiss: () -> Unit) {
                                 prefs.saveString("base_url_timeline_map", timelineBaseUrl)
 
                                 // Fallback global bailian key
-                                if (tutorApiKey.isNotBlank() && prefs.getString("bailian_api_key", "").equals("")) {
-                                    prefs.saveString("bailian_api_key", tutorApiKey)
+                                val effectiveKeyForFallback = if (useGlobalApi) globalApiKey else tutorApiKey
+                                if (effectiveKeyForFallback.isNotBlank()) {
+                                    val currentBailian = prefs.getString("bailian_api_key", "").first()
+                                    if (currentBailian.isBlank()) {
+                                        prefs.saveString("bailian_api_key", effectiveKeyForFallback)
+                                    }
                                 }
                                 onDismiss()
                             }
@@ -221,6 +293,7 @@ fun ApiSettingSection(
     onModelNameChange: (String) -> Unit,
     baseUrl: String,
     onBaseUrlChange: (String) -> Unit,
+    enabled: Boolean = true,
 ) {
     var expanded by remember { mutableStateOf(false) }
 
@@ -230,25 +303,28 @@ fun ApiSettingSection(
         OutlinedTextField(
             value = apiKey,
             onValueChange = onApiKeyChange,
-            label = { Text("API Key") },
+            label = { Text(if (enabled) "API Key" else "API Key (全局)") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
+            enabled = enabled,
         )
 
         ExposedDropdownMenuBox(
-            expanded = expanded,
-            onExpandedChange = { expanded = !expanded },
+            expanded = if (enabled) expanded else false,
+            onExpandedChange = { if (enabled) expanded = !expanded },
         ) {
             OutlinedTextField(
                 value = modelName,
                 onValueChange = onModelNameChange,
-                label = { Text("模型名称") },
+                label = { Text(if (enabled) "模型名称" else "模型名称 (全局)") },
                 modifier =
                     Modifier
                         .fillMaxWidth()
                         .menuAnchor(),
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
                 singleLine = true,
+                enabled = enabled,
             )
             ExposedDropdownMenu(
                 expanded = expanded,
@@ -270,9 +346,10 @@ fun ApiSettingSection(
         OutlinedTextField(
             value = baseUrl,
             onValueChange = onBaseUrlChange,
-            label = { Text("Base URL") },
+            label = { Text(if (enabled) "Base URL" else "Base URL (全局)") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
+            enabled = enabled,
         )
     }
 }

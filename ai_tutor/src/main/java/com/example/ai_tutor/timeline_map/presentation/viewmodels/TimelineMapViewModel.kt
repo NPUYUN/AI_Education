@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -158,29 +159,39 @@ class TimelineMapViewModel
         }
 
         fun generateTimeline() {
-            val query = _uiState.value.queryText.trim()
-            if (query.isEmpty()) {
-                _uiState.update { it.copy(errorMessage = "请输入历史事件问题") }
-                return
-            }
-            if (!networkMonitor.isConnected.value) {
-                _uiState.update { it.copy(errorMessage = "当前处于无网络环境，无法生成大模型内容。\n将使用本地示例数据展示。") }
-            }
             viewModelScope.launch(dispatcherProvider.main) {
+                val query = _uiState.value.queryText.trim()
+                if (query.isEmpty()) {
+                    _uiState.update { it.copy(errorMessage = "请输入历史事件问题") }
+                    return@launch
+                }
+
+                val currentApiKey = globalConfigRepository.getEffectiveTimelineMapApiKey().first().trim()
+
+                if (!networkMonitor.isConnected.value) {
+                    _uiState.update { it.copy(errorMessage = "当前处于无网络环境，无法生成大模型内容。\n将使用本地示例数据展示。") }
+                }
+
                 _uiState.update {
                     it.copy(
                         isLoading = true,
                         errorMessage = if (!networkMonitor.isConnected.value) "当前处于无网络环境，无法生成大模型内容。\n将使用本地示例数据展示。" else null,
                     )
                 }
+
+                val modelName = globalConfigRepository.getTimelineMapModelName().first()
+                val baseUrl = globalConfigRepository.getTimelineMapBaseUrl().first()
+
                 val result =
-                    if (networkMonitor.isConnected.value) {
+                    if (networkMonitor.isConnected.value && currentApiKey.isNotEmpty()) {
                         repository.generateEvents(
                             query = query,
-                            apiKey = _uiState.value.apiKey.trim(),
-                            model = _uiState.value.modelName,
-                            baseUrl = _uiState.value.baseUrl,
+                            apiKey = currentApiKey,
+                            model = modelName,
+                            baseUrl = baseUrl,
                         )
+                    } else if (currentApiKey.isEmpty() && networkMonitor.isConnected.value) {
+                        Result.failure(Exception("API Key未配置"))
                     } else {
                         Result.failure(Exception("No network connection"))
                     }
@@ -195,7 +206,11 @@ class TimelineMapViewModel
                         errorMessage =
                             if (result.isFailure) {
                                 val reason = result.exceptionOrNull()?.message?.takeIf { it.isNotBlank() } ?: "请求失败"
-                                "已使用内置示例数据（原因：$reason）"
+                                if (currentApiKey.isEmpty()) {
+                                    "未配置API Key，已使用内置示例数据"
+                                } else {
+                                    "已使用内置示例数据（原因：$reason）"
+                                }
                             } else {
                                 null
                             },

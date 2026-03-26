@@ -482,6 +482,26 @@ class AiTutorViewModel
             val image = inputImageState.value
             if (text.isEmpty() && image == null) return
 
+            val timelineMatch = Regex("生成(.+)的时间轴(地图|图)?").find(text)
+            if (timelineMatch != null && image == null) {
+                val topic = timelineMatch.groupValues[1]
+                _uiState.update { it.copy(inputText = "") }
+
+                viewModelScope.launch {
+                    val dbUserMsg = Message("user", text)
+                    context.history.add(dbUserMsg)
+                    saveMessageToDb(dbUserMsg)
+                    _uiState.update { it.copy(messages = it.messages + dbUserMsg) }
+
+                    val aiText = "[TIMELINE_LINK:$topic]"
+                    val dbAiMsg = Message("assistant", aiText)
+                    context.history.add(dbAiMsg)
+                    saveMessageToDb(dbAiMsg)
+                    _uiState.update { it.copy(messages = it.messages + dbAiMsg) }
+                }
+                return
+            }
+
             if (image != null && !isModelImageSupported(modelName)) {
                 _uiState.update { state ->
                     state.copy(

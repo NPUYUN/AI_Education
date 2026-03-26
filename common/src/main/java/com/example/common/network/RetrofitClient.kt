@@ -20,8 +20,9 @@ object RetrofitClient {
     fun create(
         apiKey: String,
         baseUrl: String = AppConstants.BASE_URL,
+        timeoutSeconds: Long = AppConstants.TIMEOUT_SECONDS,
     ): Retrofit {
-        val cacheKey = "${baseUrl}_$apiKey"
+        val cacheKey = "${baseUrl}_${apiKey}_$timeoutSeconds"
 
         var retrofit = clients[cacheKey]
         if (retrofit == null) {
@@ -34,9 +35,9 @@ object RetrofitClient {
                 OkHttpClient.Builder()
                     .addInterceptor(logging)
                     .addInterceptor(AuthInterceptor(apiKey))
-                    .connectTimeout(AppConstants.TIMEOUT_SECONDS, TimeUnit.SECONDS)
-                    .readTimeout(AppConstants.TIMEOUT_SECONDS, TimeUnit.SECONDS)
-                    .writeTimeout(AppConstants.TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                    .connectTimeout(timeoutSeconds, TimeUnit.SECONDS)
+                    .readTimeout(timeoutSeconds, TimeUnit.SECONDS)
+                    .writeTimeout(timeoutSeconds, TimeUnit.SECONDS)
                     .build()
 
             retrofit =

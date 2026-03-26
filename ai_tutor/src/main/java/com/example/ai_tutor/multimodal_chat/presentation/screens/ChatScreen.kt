@@ -123,7 +123,7 @@ fun ChatScreen(
                             visible = isVisible,
                             enter = fadeIn(animationSpec = tween(300)) + slideInVertically(animationSpec = tween(300)) { it / 2 },
                         ) {
-                            MessageItem(message)
+                            MessageItem(message, onNavigateToTimeline)
                         }
                         Spacer(modifier = Modifier.height(16.dp))
                     }
@@ -160,15 +160,7 @@ fun ChatScreen(
             text = uiState.inputText,
             onTextChanged = { viewModel.onInputChanged(it) },
             onSend = {
-                val inputText = uiState.inputText.trim()
-                val timelineMatch = Regex("生成(.+)的时间轴(地图|图)?").find(inputText)
-                if (timelineMatch != null) {
-                    val topic = timelineMatch.groupValues[1]
-                    onNavigateToTimeline(topic)
-                    viewModel.onInputChanged("")
-                } else {
-                    viewModel.sendMessage()
-                }
+                viewModel.sendMessage()
             },
             isLoading = uiState.isLoading,
             onVoiceStart = {
@@ -259,7 +251,46 @@ fun SuggestionChip(
 }
 
 @Composable
-fun MessageItem(message: Message) {
+fun AssistantTimelineBubble(
+    topic: String,
+    onNavigateToTimeline: (String) -> Unit,
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 4.dp, bottomEnd = 20.dp),
+        modifier =
+            Modifier
+                .widthIn(max = 320.dp)
+                .padding(vertical = 8.dp)
+                .semantics(mergeDescendants = true) {
+                    contentDescription = "AI助手生成了关于 $topic 的时间轴地图"
+                },
+        shadowElevation = 1.dp,
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+        ) {
+            Text(
+                text = "已为您准备好关于“$topic”的时间轴地图。",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Button(
+                onClick = { onNavigateToTimeline(topic) },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("查看详情")
+            }
+        }
+    }
+}
+
+@Composable
+fun MessageItem(
+    message: Message,
+    onNavigateToTimeline: (String) -> Unit = {},
+) {
     val isUser = message.role == "user"
 
     Column(
@@ -274,7 +305,12 @@ fun MessageItem(message: Message) {
                 if (isUser) {
                     UserTextBubble(content)
                 } else {
-                    AssistantMessage(content)
+                    if (content.startsWith("[TIMELINE_LINK:")) {
+                        val topic = content.substringAfter("[TIMELINE_LINK:").substringBefore("]")
+                        AssistantTimelineBubble(topic, onNavigateToTimeline)
+                    } else {
+                        AssistantMessage(content)
+                    }
                 }
             }
             is List<*> -> {

@@ -33,14 +33,11 @@ import androidx.lifecycle.LifecycleOwner
 import com.example.ai_tutor.timeline_map.models.HistoricalEvent
 import com.example.ai_tutor.timeline_map.presentation.viewmodels.TimelineMapViewModel
 import com.example.common.presentation.components.GlobalApiSettingsDialog
-import org.osmdroid.config.Configuration
-import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.BoundingBox
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.TilesOverlay
-import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -137,7 +134,6 @@ fun TimelineMapScreen(
                         selectedId = selectedId,
                         onSelect = { id ->
                             viewModel.selectEvent(id)
-                            showDetails = true
                         },
                         modifier =
                             Modifier
@@ -146,6 +142,56 @@ fun TimelineMapScreen(
                                 .shadow(4.dp, RoundedCornerShape(16.dp))
                                 .clip(RoundedCornerShape(16.dp)),
                     )
+
+                    // 简略信息卡片（悬浮在地图和时间轴之间）
+                    AnimatedVisibility(
+                        visible = selectedId != null,
+                        enter = fadeIn() + expandVertically(),
+                        exit = fadeOut() + shrinkVertically(),
+                    ) {
+                        val selected = events.find { it.id == selectedId }
+                        if (selected != null) {
+                            Card(
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 8.dp)
+                                        .shadow(4.dp, RoundedCornerShape(12.dp)),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            ) {
+                                Row(
+                                    modifier =
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = "${selected.time} · ${selected.location}",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                        )
+                                        Text(
+                                            text = selected.description,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            maxLines = 2,
+                                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Button(
+                                        onClick = { showDetails = true },
+                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                                    ) {
+                                        Text("查看详情")
+                                    }
+                                }
+                            }
+                        }
+                    }
 
                     Spacer(modifier = Modifier.height(12.dp))
 
@@ -223,40 +269,65 @@ private fun MapSection(
     modifier: Modifier = Modifier,
 ) {
     val mapView = rememberMapViewWithLifecycle()
-    AndroidView(
-        modifier =
-            modifier.semantics {
-                contentDescription = "历史事件地图，包含 ${events.size} 个事件标记"
-            },
-        factory = { mapView },
-        update = { view ->
-            updateMarkers(view, events, onSelect)
-            val selected = events.find { it.id == selectedId } ?: events.firstOrNull()
-            if (selected != null) {
-                view.controller.setCenter(GeoPoint(selected.latitude, selected.longitude))
-            }
-            // 根据事件范围调整视野：国家级/世界级
-            val latitudes = events.map { it.latitude }
-            val longitudes = events.map { it.longitude }
-            if (latitudes.isNotEmpty() && longitudes.isNotEmpty()) {
-                val minLat = latitudes.minOrNull() ?: selected?.latitude ?: 0.0
-                val maxLat = latitudes.maxOrNull() ?: selected?.latitude ?: 0.0
-                val minLon = longitudes.minOrNull() ?: selected?.longitude ?: 0.0
-                val maxLon = longitudes.maxOrNull() ?: selected?.longitude ?: 0.0
-                val latSpan = maxLat - minLat
-                val lonSpan = maxLon - minLon
-                if (latSpan > 50 || lonSpan > 100) {
-                    // 跨越大范围，视为世界性
-                    view.controller.setZoom(2.5)
-                    view.controller.setCenter(GeoPoint((minLat + maxLat) / 2.0, (minLon + maxLon) / 2.0))
-                } else {
-                    // 使用边界框更贴近国家或区域级别
-                    val bbox = BoundingBox(maxLat, maxLon, minLat, minLon)
-                    view.zoomToBoundingBox(bbox, true)
+    var lastSelectedId by remember { mutableStateOf<String?>(null) }
+    var hasInitializedBounds by remember { mutableStateOf(false) }
+    var isMapLaidOut by remember { mutableStateOf(false) }
+
+    Box(modifier = modifier) {
+        AndroidView(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .semantics {
+                        contentDescription = "历史事件地图，包含 ${events.size} 个事件标记"
+                    },
+            factory = {
+                mapView.apply {
+                    addOnFirstLayoutListener { v, left, top, right, bottom ->
+                        isMapLaidOut = true
+                        // 确保初始状态为世界地图
+                        controller.setZoom(2.0)
+                        controller.setCenter(GeoPoint(0.0, 0.0))
+                    }
                 }
-            }
-        },
-    )
+            },
+            update = { view ->
+                updateMarkers(view, events, onSelect)
+
+                if (selectedId != lastSelectedId && isMapLaidOut) {
+                    lastSelectedId = selectedId
+                    val selected = events.find { it.id == selectedId }
+                    if (selected != null) {
+                        view.controller.animateTo(GeoPoint(selected.latitude, selected.longitude))
+                    }
+                }
+
+                if (!hasInitializedBounds && events.isNotEmpty() && isMapLaidOut) {
+                    hasInitializedBounds = true
+                    // 根据事件范围调整视野：国家级/世界级
+                    val latitudes = events.map { it.latitude }
+                    val longitudes = events.map { it.longitude }
+                    val minLat = latitudes.minOrNull() ?: 0.0
+                    val maxLat = latitudes.maxOrNull() ?: 0.0
+                    val minLon = longitudes.minOrNull() ?: 0.0
+                    val maxLon = longitudes.maxOrNull() ?: 0.0
+                    val latSpan = maxLat - minLat
+                    val lonSpan = maxLon - minLon
+                    if (latSpan > 50 || lonSpan > 100) {
+                        // 跨越大范围，视为世界性
+                        view.controller.setZoom(2.5)
+                        view.controller.animateTo(GeoPoint((minLat + maxLat) / 2.0, (minLon + maxLon) / 2.0))
+                    } else {
+                        // 使用边界框更贴近国家或区域级别
+                        val bbox = BoundingBox(maxLat + 5.0, maxLon + 5.0, minLat - 5.0, minLon - 5.0)
+                        view.zoomToBoundingBox(bbox, true)
+                    }
+                }
+
+                view.invalidate()
+            },
+        )
+    }
 }
 
 private fun updateMarkers(
@@ -272,14 +343,14 @@ private fun updateMarkers(
         val marker = Marker(mapView)
         marker.position = GeoPoint(e.latitude, e.longitude)
         marker.title = "${e.time} ${e.location}"
-        marker.subDescription = e.description
+        // 禁用默认的 InfoWindow，改为 Compose UI 处理
+        marker.infoWindow = null
         if (markerIcon != null) {
             marker.icon = markerIcon
             marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
         }
         marker.setOnMarkerClickListener { _, _ ->
             onSelect(e.id)
-            marker.showInfoWindow()
             true
         }
         mapView.overlays.add(marker)
@@ -295,23 +366,36 @@ private fun rememberMapViewWithLifecycle(): MapView {
 
     val mapView =
         remember {
-            val config = Configuration.getInstance()
-            config.load(context, context.getSharedPreferences("osmdroid", 0))
-            config.userAgentValue = context.packageName
-            val basePath = File(context.cacheDir, "osmdroid")
-            val tilePath = File(basePath, "tiles")
-            if (!basePath.exists()) basePath.mkdirs()
-            if (!tilePath.exists()) tilePath.mkdirs()
-            config.osmdroidBasePath = basePath
-            config.osmdroidTileCache = tilePath
-            config.tileFileSystemCacheMaxBytes = 100L * 1024 * 1024 // 100MB缓存，提升离线和二次加载速度
-            config.tileFileSystemCacheTrimBytes = 80L * 1024 * 1024
-
             MapView(context).apply {
-                setTileSource(TileSourceFactory.MAPNIK)
+                // 使用国内高德地图作为底图源，提升加载速度和稳定性
+                val gaodeTileSource =
+                    object :
+                        org.osmdroid.tileprovider.tilesource.OnlineTileSourceBase(
+                            "GaoDe",
+                            1,
+                            20,
+                            256,
+                            ".png",
+                            arrayOf(
+                                "https://webrd01.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=7&x=",
+                                "https://webrd02.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=7&x=",
+                                "https://webrd03.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=7&x=",
+                                "https://webrd04.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=7&x=",
+                            ),
+                        ) {
+                        override fun getTileURLString(pMapTileIndex: Long): String {
+                            return baseUrl + org.osmdroid.util.MapTileIndex.getX(pMapTileIndex) +
+                                "&y=" + org.osmdroid.util.MapTileIndex.getY(pMapTileIndex) +
+                                "&z=" + org.osmdroid.util.MapTileIndex.getZoom(pMapTileIndex)
+                        }
+                    }
+                setTileSource(gaodeTileSource)
                 setMultiTouchControls(true)
-                zoomController.setVisibility(org.osmdroid.views.CustomZoomButtonsController.Visibility.NEVER)
-                controller.setZoom(5.0)
+                setBuiltInZoomControls(true)
+                zoomController.setVisibility(org.osmdroid.views.CustomZoomButtonsController.Visibility.SHOW_AND_FADEOUT)
+                // 默认加载世界地图视角
+                controller.setZoom(2.0)
+                controller.setCenter(GeoPoint(0.0, 0.0))
                 if (isDark) {
                     overlayManager.tilesOverlay.setColorFilter(TilesOverlay.INVERT_COLORS)
                 }
