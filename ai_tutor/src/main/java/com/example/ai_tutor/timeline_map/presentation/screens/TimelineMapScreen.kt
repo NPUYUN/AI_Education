@@ -19,6 +19,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
@@ -67,7 +68,21 @@ fun TimelineMapScreen(
     val apiKey = uiState.apiKey
     val showSettings = uiState.showApiSettings
 
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(error) {
+        if (error != null) {
+            snackbarHostState.showSnackbar(
+                message = error,
+                duration = SnackbarDuration.Long,
+                actionLabel = "我知道了",
+            )
+            viewModel.clearError()
+        }
+    }
+
     Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text(if (initialQuery != null) "$initialQuery 时间轴" else "时间轴地图") },
@@ -104,24 +119,6 @@ fun TimelineMapScreen(
                 }
             }
 
-            AnimatedVisibility(
-                visible = error != null,
-                enter = fadeIn() + expandVertically(),
-                exit = fadeOut() + shrinkVertically(),
-            ) {
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                ) {
-                    Text(
-                        text = error ?: "",
-                        color = MaterialTheme.colorScheme.onErrorContainer,
-                        modifier = Modifier.padding(16.dp),
-                    )
-                }
-            }
-
             if (showSettings) {
                 GlobalApiSettingsDialog(
                     onDismiss = { viewModel.setApiSettingsVisible(false) },
@@ -142,7 +139,12 @@ fun TimelineMapScreen(
                             viewModel.selectEvent(id)
                             showDetails = true
                         },
-                        modifier = Modifier.weight(1f).fillMaxWidth(),
+                        modifier =
+                            Modifier
+                                .weight(1f)
+                                .fillMaxWidth()
+                                .shadow(4.dp, RoundedCornerShape(16.dp))
+                                .clip(RoundedCornerShape(16.dp)),
                     )
 
                     Spacer(modifier = Modifier.height(12.dp))
@@ -262,12 +264,19 @@ private fun updateMarkers(
     events: List<HistoricalEvent>,
     onSelect: (String) -> Unit,
 ) {
+    val context = mapView.context
+    val markerIcon = androidx.core.content.ContextCompat.getDrawable(context, com.example.common.R.drawable.ic_map_marker)
+
     mapView.overlays.removeAll { it is Marker }
     events.forEach { e ->
         val marker = Marker(mapView)
         marker.position = GeoPoint(e.latitude, e.longitude)
         marker.title = "${e.time} ${e.location}"
         marker.subDescription = e.description
+        if (markerIcon != null) {
+            marker.icon = markerIcon
+            marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+        }
         marker.setOnMarkerClickListener { _, _ ->
             onSelect(e.id)
             marker.showInfoWindow()
@@ -287,6 +296,7 @@ private fun rememberMapViewWithLifecycle(): MapView {
     val mapView =
         remember {
             val config = Configuration.getInstance()
+            config.load(context, context.getSharedPreferences("osmdroid", 0))
             config.userAgentValue = context.packageName
             val basePath = File(context.cacheDir, "osmdroid")
             val tilePath = File(basePath, "tiles")
@@ -296,10 +306,11 @@ private fun rememberMapViewWithLifecycle(): MapView {
             config.osmdroidTileCache = tilePath
             config.tileFileSystemCacheMaxBytes = 100L * 1024 * 1024 // 100MB缓存，提升离线和二次加载速度
             config.tileFileSystemCacheTrimBytes = 80L * 1024 * 1024
-            config.load(context, context.getSharedPreferences("osmdroid", 0))
+
             MapView(context).apply {
                 setTileSource(TileSourceFactory.MAPNIK)
                 setMultiTouchControls(true)
+                zoomController.setVisibility(org.osmdroid.views.CustomZoomButtonsController.Visibility.NEVER)
                 controller.setZoom(5.0)
                 if (isDark) {
                     overlayManager.tilesOverlay.setColorFilter(TilesOverlay.INVERT_COLORS)
