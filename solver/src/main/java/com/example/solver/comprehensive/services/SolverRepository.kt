@@ -9,100 +9,114 @@ import com.example.common.network.llm.OpenAiService
 import kotlinx.coroutines.withContext
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 
-import java.util.concurrent.TimeUnit
-
 @Singleton
-class SolverRepository @Inject constructor(
-    private val dispatcherProvider: DispatcherProvider
-) {
+class SolverRepository
+    @Inject
+    constructor(
+        private val dispatcherProvider: DispatcherProvider,
+    ) {
+        suspend fun solveProblem(
+            apiKey: String,
+            baseUrl: String,
+            modelName: String,
+            systemPrompt: String,
+            questionText: String,
+            base64Image: String?,
+        ): Result<String> =
+            withContext(dispatcherProvider.io) {
+                try {
+                    if (apiKey.isBlank()) {
+                        return@withContext Result.failure(IllegalArgumentException("API Key 不能为空"))
+                    }
+                    if (baseUrl.isBlank()) {
+                        return@withContext Result.failure(IllegalArgumentException("Base URL 不能为空"))
+                    }
 
-    suspend fun solveProblem(
-        apiKey: String,
-        baseUrl: String,
-        modelName: String,
-        systemPrompt: String,
-        questionText: String,
-        base64Image: String?
-    ): Result<String> = withContext(dispatcherProvider.io) {
-        try {
-            if (apiKey.isBlank()) {
-                return@withContext Result.failure(IllegalArgumentException("API Key 不能为空"))
-            }
-            if (baseUrl.isBlank()) {
-                return@withContext Result.failure(IllegalArgumentException("Base URL 不能为空"))
-            }
+                    val retrofit =
+                        Retrofit.Builder()
+                            .baseUrl(if (baseUrl.endsWith("/")) baseUrl else "$baseUrl/")
+                            .addConverterFactory(GsonConverterFactory.create())
+                            .client(
+                                okhttp3.OkHttpClient.Builder()
+                                    .connectTimeout(60, TimeUnit.SECONDS)
+                                    .readTimeout(60, TimeUnit.SECONDS)
+                                    .writeTimeout(60, TimeUnit.SECONDS)
+                                    .addInterceptor { chain ->
+                                        val request =
+                                            chain.request().newBuilder()
+                                                .addHeader("Authorization", "Bearer $apiKey")
+                                                .build()
+                                        chain.proceed(request)
+                                    }
+                                    .build(),
+                            )
+                            .build()
 
-            val retrofit = Retrofit.Builder()
-                .baseUrl(if (baseUrl.endsWith("/")) baseUrl else "$baseUrl/")
-                .addConverterFactory(GsonConverterFactory.create())
-                .client(
-                    okhttp3.OkHttpClient.Builder()
-                        .connectTimeout(60, TimeUnit.SECONDS)
-                        .readTimeout(60, TimeUnit.SECONDS)
-                        .writeTimeout(60, TimeUnit.SECONDS)
-                        .addInterceptor { chain ->
-                            val request = chain.request().newBuilder()
-                                .addHeader("Authorization", "Bearer $apiKey")
-                                .build()
-                            chain.proceed(request)
+                    val service = retrofit.create(OpenAiService::class.java)
+
+                    val messages = mutableListOf<ChatMessage>()
+
+                    // Add system prompt
+                    if (systemPrompt.isNotBlank()) {
+                        messages.add(
+                            ChatMessage(
+                                role = "system",
+                                content = systemPrompt,
+                            ),
+                        )
+                    }
+
+                    // Construct user content
+                    val userContent: Any =
+                        if (base64Image != null) {
+                            listOf(
+                                ContentItem(type = "text", text = questionText.takeIf { it.isNotBlank() } ?: "请解析这道题。"),
+                                ContentItem(type = "image_url", imageUrl = ImageUrl(url = base64Image)),
+                            )
+                        } else {
+                            questionText.takeIf { it.isNotBlank() } ?: return@withContext Result.failure(
+                                IllegalArgumentException("问题内容不能为空"),
+                            )
                         }
-                        .build()
-                )
-                .build()
 
-            val service = retrofit.create(OpenAiService::class.java)
-
-            val messages = mutableListOf<ChatMessage>()
-            
-            // Add system prompt
-            if (systemPrompt.isNotBlank()) {
-                messages.add(
-                    ChatMessage(
-                        role = "system",
-                        content = systemPrompt
+                    messages.add(
+                        ChatMessage(
+                            role = "user",
+                            content = userContent,
+                        ),
                     )
-                )
+
+                    val request =
+                        ChatRequest(
+                            model = modelName,
+                            messages = messages,
+                        )
+
+                    val response = service.chat(request)
+
+                    val content =
+                        response.choices?.firstOrNull()?.message?.content?.toString()
+                            ?: response.output?.choices?.firstOrNull()?.message?.content?.toString()
+                            ?: response.output?.text
+                            ?: ""
+
+                    if (content.isBlank()) {
+                        Result.failure(Exception("解题结果为空"))
+                    } else {
+                        Result.success(content.trim())
+                    }
+                } catch (e: java.net.UnknownHostException) {
+                    Result.failure(Exception("网络似乎断开了，但我仍在您的身边！\n您可以：\n1. 继续查阅本地错题本\n2. 回顾历史学习记录\n3. 等待网络恢复后重试。", e))
+                } catch (e: java.net.ConnectException) {
+                    Result.failure(Exception("网络连接失败，但我仍在您的身边！\n您可以：\n1. 继续查阅本地错题本\n2. 回顾历史学习记录\n3. 等待网络恢复后重试。", e))
+                } catch (e: java.net.SocketTimeoutException) {
+                    Result.failure(Exception("请求超时。网络可能不稳定，请稍后重试。", e))
+                } catch (e: Exception) {
+                    Result.failure(e)
+                }
             }
-
-            // Construct user content
-            val userContent: Any = if (base64Image != null) {
-                listOf(
-                    ContentItem(type = "text", text = questionText.takeIf { it.isNotBlank() } ?: "请解析这道题。"),
-                    ContentItem(type = "image_url", imageUrl = ImageUrl(url = base64Image))
-                )
-            } else {
-                questionText.takeIf { it.isNotBlank() } ?: return@withContext Result.failure(IllegalArgumentException("问题内容不能为空"))
-            }
-
-            messages.add(
-                ChatMessage(
-                    role = "user",
-                    content = userContent
-                )
-            )
-
-            val request = ChatRequest(
-                model = modelName,
-                messages = messages
-            )
-
-            val response = service.chat(request)
-            
-            val content = response.choices?.firstOrNull()?.message?.content?.toString()
-                ?: response.output?.choices?.firstOrNull()?.message?.content?.toString()
-                ?: response.output?.text
-                ?: ""
-
-            if (content.isBlank()) {
-                Result.failure(Exception("解题结果为空"))
-            } else {
-                Result.success(content.trim())
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
     }
-}

@@ -12,5 +12,5 @@ data class SolveHistoryEntity(
     val imageUri: String?, // 可为空
     val solution: String,
     val isInErrorBook: Boolean = false,
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = System.currentTimeMillis(),
 )

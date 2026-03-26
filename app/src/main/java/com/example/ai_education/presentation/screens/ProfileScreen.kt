@@ -21,13 +21,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
-import androidx.compose.ui.platform.LocalContext
 import coil.compose.AsyncImage
 import com.example.common.database.PreferencesManager
 import kotlinx.coroutines.launch
@@ -39,7 +37,7 @@ fun ProfileScreen() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val preferencesManager = remember { PreferencesManager(context) }
-    
+
     val savedNickname by preferencesManager.getString("user_nickname", "用户昵称").collectAsState(initial = "用户昵称")
     val savedSignature by preferencesManager.getString("user_signature", "这里是个性签名...").collectAsState(initial = "这里是个性签名...")
     val savedAvatar by preferencesManager.getString("user_avatar", "").collectAsState(initial = "")
@@ -47,31 +45,32 @@ fun ProfileScreen() {
     var showEditDialog by remember { mutableStateOf(false) }
     var nickname by remember(savedNickname) { mutableStateOf(savedNickname) }
     var signature by remember(savedSignature) { mutableStateOf(savedSignature) }
-    
+
     var isVisible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         isVisible = true
     }
 
-    val imagePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        uri?.let {
-            scope.launch {
-                try {
-                    val inputStream = context.contentResolver.openInputStream(it)
-                    val avatarFile = File(context.filesDir, "avatar_${System.currentTimeMillis()}.jpg")
-                    val outputStream = FileOutputStream(avatarFile)
-                    inputStream?.copyTo(outputStream)
-                    inputStream?.close()
-                    outputStream.close()
-                    preferencesManager.saveString("user_avatar", avatarFile.absolutePath)
-                } catch (e: Exception) {
-                    e.printStackTrace()
+    val imagePickerLauncher =
+        rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.GetContent(),
+        ) { uri: Uri? ->
+            uri?.let {
+                scope.launch {
+                    try {
+                        val inputStream = context.contentResolver.openInputStream(it)
+                        val avatarFile = File(context.filesDir, "avatar_${System.currentTimeMillis()}.jpg")
+                        val outputStream = FileOutputStream(avatarFile)
+                        inputStream?.copyTo(outputStream)
+                        inputStream?.close()
+                        outputStream.close()
+                        preferencesManager.saveString("user_avatar", avatarFile.absolutePath)
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
                 }
             }
         }
-    }
 
     // Initialize dialog state when opened
     LaunchedEffect(showEditDialog) {
@@ -90,22 +89,22 @@ fun ProfileScreen() {
                     OutlinedTextField(
                         value = nickname,
                         onValueChange = { nickname = it },
-                        label = { Text("昵称") }
+                        label = { Text("昵称") },
                     )
                     OutlinedTextField(
                         value = signature,
                         onValueChange = { signature = it },
-                        label = { Text("个性签名") }
+                        label = { Text("个性签名") },
                     )
                 }
             },
             confirmButton = {
-                TextButton(onClick = { 
+                TextButton(onClick = {
                     scope.launch {
                         preferencesManager.saveString("user_nickname", nickname)
                         preferencesManager.saveString("user_signature", signature)
                     }
-                    showEditDialog = false 
+                    showEditDialog = false
                 }) {
                     Text("保存")
                 }
@@ -114,103 +113,109 @@ fun ProfileScreen() {
                 TextButton(onClick = { showEditDialog = false }) {
                     Text("取消")
                 }
-            }
+            },
         )
     }
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(16.dp)
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+                .padding(16.dp),
     ) {
         AnimatedVisibility(
             visible = isVisible,
-            enter = fadeIn(animationSpec = tween(500)) + slideInVertically(animationSpec = tween(500)) { it / 2 }
+            enter = fadeIn(animationSpec = tween(500)) + slideInVertically(animationSpec = tween(500)) { it / 2 },
         ) {
             // Profile Card (Figure 2 Top Half style)
             Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .shadow(2.dp, RoundedCornerShape(16.dp)),
-            shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.surfaceContainer
-        ) {
-            Column(
-                modifier = Modifier.padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .shadow(2.dp, RoundedCornerShape(16.dp)),
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surfaceContainer,
             ) {
-                // Avatar
-                Surface(
-                    modifier = Modifier
-                        .size(80.dp)
-                        .clip(CircleShape)
-                        .clickable { imagePickerLauncher.launch("image/*") },
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primaryContainer
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        if (savedAvatar.isNotEmpty() && File(savedAvatar).exists()) {
-                            AsyncImage(
-                                model = coil.request.ImageRequest.Builder(context)
-                                    .data(File(savedAvatar))
-                                    .crossfade(true)
-                                    .transformations(coil.transform.CircleCropTransformation())
-                                    .build(),
-                                contentDescription = "Avatar",
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize().clip(CircleShape)
-                            )
-                        } else {
-                            Icon(
-                                imageVector = Icons.Default.Person,
-                                contentDescription = "Avatar",
-                                modifier = Modifier.size(40.dp),
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
+                    // Avatar
+                    Surface(
+                        modifier =
+                            Modifier
+                                .size(80.dp)
+                                .clip(CircleShape)
+                                .clickable { imagePickerLauncher.launch("image/*") },
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            if (savedAvatar.isNotEmpty() && File(savedAvatar).exists()) {
+                                AsyncImage(
+                                    model =
+                                        coil.request.ImageRequest.Builder(context)
+                                            .data(File(savedAvatar))
+                                            .crossfade(true)
+                                            .transformations(coil.transform.CircleCropTransformation())
+                                            .build(),
+                                    contentDescription = "Avatar",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize().clip(CircleShape),
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = "Avatar",
+                                    modifier = Modifier.size(40.dp),
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                )
+                            }
                         }
                     }
-                }
 
-                // Nickname & Signature
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = savedNickname,
-                        style = MaterialTheme.typography.titleLarge.copy(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 20.sp
+                    // Nickname & Signature
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = savedNickname,
+                            style =
+                                MaterialTheme.typography.titleLarge.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 20.sp,
+                                ),
                         )
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = savedSignature,
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = savedSignature,
+                            style =
+                                MaterialTheme.typography.bodyMedium.copy(
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                ),
                         )
-                    )
-                }
+                    }
 
-                // Edit Button
-                Button(
-                    onClick = { showEditDialog = true },
-                    shape = RoundedCornerShape(24.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary
-                    ),
-                    modifier = Modifier.fillMaxWidth(0.5f)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("编辑资料")
+                    // Edit Button
+                    Button(
+                        onClick = { showEditDialog = true },
+                        shape = RoundedCornerShape(24.dp),
+                        colors =
+                            ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                            ),
+                        modifier = Modifier.fillMaxWidth(0.5f),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("编辑资料")
+                    }
                 }
             }
         }
-        }
     }
 }
-

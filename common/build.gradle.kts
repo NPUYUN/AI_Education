@@ -1,5 +1,5 @@
-import java.util.Properties
 import java.io.FileInputStream
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.library)
@@ -26,7 +26,20 @@ android {
         }
         val apiKey = properties.getProperty("API_KEY", "")
         buildConfigField("String", "API_KEY", "\"$apiKey\"")
+
+        // externalNativeBuild {
+        //     cmake {
+        //         cppFlags += "-std=c++17"
+        //         arguments += "-DAPI_KEY=$apiKey"
+        //     }
+        // }
     }
+
+    // externalNativeBuild {
+    //     cmake {
+    //         path = file("src/main/cpp/CMakeLists.txt")
+    //     }
+    // }
 
     buildFeatures {
         buildConfig = true
@@ -37,7 +50,7 @@ android {
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
+                "proguard-rules.pro",
             )
         }
     }
@@ -57,7 +70,7 @@ dependencies {
     api(libs.androidx.core.ktx)
     api(libs.androidx.appcompat)
     api(libs.material)
-    
+
     // Room
     api(libs.androidx.room.runtime)
     api(libs.androidx.room.ktx)
@@ -68,6 +81,7 @@ dependencies {
     api(libs.retrofit)
     api(libs.retrofit.converter.gson)
     api(libs.okhttp)
+    api(libs.okhttp.sse)
     api(libs.okhttp.logging)
 
     // Vosk for Offline Speech Recognition
@@ -110,4 +124,7 @@ dependencies {
 
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
 }

@@ -13,15 +13,20 @@ import kotlinx.coroutines.flow.map
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = AppConstants.PREFERENCES_NAME)
 
 class PreferencesManager(private val context: Context) {
-
-    suspend fun saveString(key: String, value: String) {
+    suspend fun saveString(
+        key: String,
+        value: String,
+    ) {
         val dataStoreKey = stringPreferencesKey(key)
         context.dataStore.edit { preferences ->
             preferences[dataStoreKey] = value
         }
     }
 
-    fun getString(key: String, defaultValue: String = ""): Flow<String> {
+    fun getString(
+        key: String,
+        defaultValue: String = "",
+    ): Flow<String> {
         val dataStoreKey = stringPreferencesKey(key)
         return context.dataStore.data.map { preferences ->
             preferences[dataStoreKey] ?: defaultValue

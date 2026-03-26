@@ -10,5 +10,5 @@ data class KnowledgeCardEntity(
     val content: String,
     val tags: String, // Comma separated tags
     val source: String, // e.g., "video", "text", "audio", "dialogue"
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = System.currentTimeMillis(),
 )

@@ -6,7 +6,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class StringUtilsTest {
-
     @Test
     fun `isNullOrEmpty returns true for null`() {
         assertTrue(StringUtils.isNullOrEmpty(null))

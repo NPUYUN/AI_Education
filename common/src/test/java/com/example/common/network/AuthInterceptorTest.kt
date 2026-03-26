@@ -11,19 +11,19 @@ import org.mockito.Mockito.`when`
 import org.mockito.kotlin.any
 
 class AuthInterceptorTest {
-
     @Test
     fun `intercept adds correct headers`() {
         val apiKey = "test-api-key"
         val interceptor = AuthInterceptor(apiKey)
-        
-        val originalRequest = Request.Builder()
-            .url("https://api.example.com")
-            .build()
-            
+
+        val originalRequest =
+            Request.Builder()
+                .url("https://api.example.com")
+                .build()
+
         val chain = mock(Interceptor.Chain::class.java)
         `when`(chain.request()).thenReturn(originalRequest)
-        
+
         // Capture the modified request
         var capturedRequest: Request? = null
         `when`(chain.proceed(any())).thenAnswer { invocation ->
@@ -35,9 +35,9 @@ class AuthInterceptorTest {
                 .message("OK")
                 .build()
         }
-        
+
         interceptor.intercept(chain)
-        
+
         assertEquals("Bearer test-api-key", capturedRequest?.header("Authorization"))
         assertEquals("application/json", capturedRequest?.header("Content-Type"))
     }

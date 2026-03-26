@@ -4,12 +4,10 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Test
-import java.util.Date
 import java.text.SimpleDateFormat
 import java.util.Locale
 
 class DateFormatUtilsTest {
-
     @Test
     fun `format date returns correctly formatted string`() {
         val format = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
@@ -37,7 +35,7 @@ class DateFormatUtilsTest {
         val dateString = "2024-01-01 12:00:00"
         val date = DateFormatUtils.parse(dateString)
         assertNotNull(date)
-        
+
         // Verify format back matches
         val formatted = DateFormatUtils.format(date!!)
         assertEquals(dateString, formatted)

@@ -14,17 +14,20 @@ import org.vosk.android.SpeechService
 
 class VoskVoiceManager(
     private val context: Context,
-    private val voskModelManager: VoskModelManager
+    private val voskModelManager: VoskModelManager,
 ) : RecognitionListener {
-
     private var speechService: SpeechService? = null
     private var model: Model? = null
-    
+
     sealed class VoiceState {
         data class Loading(val message: String) : VoiceState()
+
         object Ready : VoiceState()
+
         object Listening : VoiceState()
+
         data class Result(val text: String) : VoiceState()
+
         data class Error(val error: String) : VoiceState()
     }
 
@@ -37,10 +40,11 @@ class VoskVoiceManager(
                 _voiceState.send(VoiceState.Loading("正在检查语音模型..."))
                 // Using 0.0f and "" as dummy values since we don't display progress in this init path anymore
                 // Ideally init should be called after Splash has loaded the model.
-                model = voskModelManager.getModel { _, msg ->
-                    // scope.launch { _voiceState.send(VoiceState.Loading(msg)) }
-                }
-                
+                model =
+                    voskModelManager.getModel { _, msg ->
+                        // scope.launch { _voiceState.send(VoiceState.Loading(msg)) }
+                    }
+
                 if (model != null) {
                     _voiceState.send(VoiceState.Ready)
                 } else {
@@ -60,7 +64,7 @@ class VoskVoiceManager(
                 return
             }
         }
-        
+
         try {
             if (speechService == null) {
                 val recognizer = Recognizer(model, 16000.0f)
@@ -75,11 +79,11 @@ class VoskVoiceManager(
 
     fun stopListening() {
         speechService?.stop()
-        // Do not nullify speechService here to reuse it? 
+        // Do not nullify speechService here to reuse it?
         // Vosk docs say: service.shutdown() when done completely.
         // stop() is enough to stop recording.
     }
-    
+
     fun shutdown() {
         speechService?.shutdown()
         speechService = null

@@ -1,68 +1,52 @@
 package com.example.ai_tutor.timeline_map.presentation.screens
 
-import com.example.ai_tutor.timeline_map.presentation.viewmodels.TimelineMapViewModel
-import com.example.ai_tutor.timeline_map.presentation.viewmodels.TimelineMapUiState
-import android.Manifest
-import android.content.Intent
-import android.content.pm.PackageManager
-import android.os.Build
-import android.os.Bundle
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.Stop
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
-import com.example.ai_tutor.timeline_map.models.SpeechLanguage
 import com.example.ai_tutor.timeline_map.models.HistoricalEvent
-import androidx.compose.ui.viewinterop.AndroidView
+import com.example.ai_tutor.timeline_map.presentation.viewmodels.TimelineMapViewModel
+import com.example.common.presentation.components.GlobalApiSettingsDialog
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
-import org.osmdroid.util.GeoPoint
 import org.osmdroid.util.BoundingBox
+import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
-import java.io.File
-
-import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.runtime.collectAsState
 import org.osmdroid.views.overlay.TilesOverlay
-import com.example.common.presentation.components.GlobalApiSettingsDialog
-import androidx.compose.material.icons.filled.Info
+import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TimelineMapScreen(
     initialQuery: String? = null,
     viewModel: TimelineMapViewModel = hiltViewModel(),
-    onNavigateBack: () -> Unit = {}
+    onNavigateBack: () -> Unit = {},
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
@@ -96,21 +80,22 @@ fun TimelineMapScreen(
                     IconButton(onClick = { viewModel.setApiSettingsVisible(true) }) {
                         Icon(Icons.Default.Settings, contentDescription = "设置")
                     }
-                }
+                },
             )
-        }
+        },
     ) { padding ->
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             AnimatedVisibility(
                 visible = loading,
                 enter = fadeIn() + expandVertically(),
-                exit = fadeOut() + shrinkVertically()
+                exit = fadeOut() + shrinkVertically(),
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
@@ -118,28 +103,28 @@ fun TimelineMapScreen(
                     Text("正在生成时间轴地图...", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            
+
             AnimatedVisibility(
                 visible = error != null,
                 enter = fadeIn() + expandVertically(),
-                exit = fadeOut() + shrinkVertically()
+                exit = fadeOut() + shrinkVertically(),
             ) {
                 Card(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(12.dp),
                 ) {
                     Text(
                         text = error ?: "",
                         color = MaterialTheme.colorScheme.onErrorContainer,
-                        modifier = Modifier.padding(16.dp)
+                        modifier = Modifier.padding(16.dp),
                     )
                 }
             }
 
             if (showSettings) {
                 GlobalApiSettingsDialog(
-                    onDismiss = { viewModel.setApiSettingsVisible(false) }
+                    onDismiss = { viewModel.setApiSettingsVisible(false) },
                 )
             }
 
@@ -147,7 +132,7 @@ fun TimelineMapScreen(
                 visible = !loading && events.isNotEmpty(),
                 enter = fadeIn() + expandVertically(),
                 exit = fadeOut() + shrinkVertically(),
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
             ) {
                 Column(modifier = Modifier.fillMaxSize()) {
                     MapSection(
@@ -157,7 +142,7 @@ fun TimelineMapScreen(
                             viewModel.selectEvent(id)
                             showDetails = true
                         },
-                        modifier = Modifier.weight(1f).fillMaxWidth()
+                        modifier = Modifier.weight(1f).fillMaxWidth(),
                     )
 
                     Spacer(modifier = Modifier.height(12.dp))
@@ -166,18 +151,18 @@ fun TimelineMapScreen(
                     Card(
                         modifier = Modifier.fillMaxWidth().shadow(2.dp, RoundedCornerShape(16.dp)),
                         shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                     ) {
                         Column(modifier = Modifier.padding(12.dp)) {
                             Text(
                                 text = "时间轴",
                                 style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.primary
+                                color = MaterialTheme.colorScheme.primary,
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             LazyRow(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier.fillMaxWidth(),
                             ) {
                                 items(events) { e ->
                                     AssistChip(
@@ -186,13 +171,14 @@ fun TimelineMapScreen(
                                         leadingIcon = {
                                             Icon(
                                                 imageVector = Icons.Default.Info,
-                                                contentDescription = null
+                                                contentDescription = null,
                                             )
                                         },
-                                        colors = AssistChipDefaults.assistChipColors(
-                                            containerColor = if (e.id == selectedId) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer,
-                                            labelColor = if (e.id == selectedId) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
+                                        colors =
+                                            AssistChipDefaults.assistChipColors(
+                                                containerColor = if (e.id == selectedId) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer,
+                                                labelColor = if (e.id == selectedId) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                                            ),
                                     )
                                 }
                             }
@@ -202,43 +188,44 @@ fun TimelineMapScreen(
             }
 
             if (showDetails && selectedId != null) {
-                    val selected = events.find { it.id == selectedId }
-                    if (selected != null) {
-                        AlertDialog(
-                            onDismissRequest = { showDetails = false },
-                            title = { Text("事件详情") },
-                            text = {
-                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    Text("时间：${selected.time}", style = MaterialTheme.typography.bodyMedium)
-                                    Text("地点：${selected.location}", style = MaterialTheme.typography.bodyMedium)
-                                    Text("人物：${selected.people.joinToString("、")}", style = MaterialTheme.typography.bodyMedium)
-                                    Text(selected.description, style = MaterialTheme.typography.bodyLarge)
-                                }
-                            },
-                            confirmButton = {
-                                TextButton(onClick = { showDetails = false }) {
-                                    Text("返回")
-                                }
+                val selected = events.find { it.id == selectedId }
+                if (selected != null) {
+                    AlertDialog(
+                        onDismissRequest = { showDetails = false },
+                        title = { Text("事件详情") },
+                        text = {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text("时间：${selected.time}", style = MaterialTheme.typography.bodyMedium)
+                                Text("地点：${selected.location}", style = MaterialTheme.typography.bodyMedium)
+                                Text("人物：${selected.people.joinToString("、")}", style = MaterialTheme.typography.bodyMedium)
+                                Text(selected.description, style = MaterialTheme.typography.bodyLarge)
                             }
-                        )
-                    }
+                        },
+                        confirmButton = {
+                            TextButton(onClick = { showDetails = false }) {
+                                Text("返回")
+                            }
+                        },
+                    )
                 }
             }
         }
     }
-
-
+}
 
 @Composable
 private fun MapSection(
     events: List<HistoricalEvent>,
     selectedId: String?,
     onSelect: (String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val mapView = rememberMapViewWithLifecycle()
     AndroidView(
-        modifier = modifier,
+        modifier =
+            modifier.semantics {
+                contentDescription = "历史事件地图，包含 ${events.size} 个事件标记"
+            },
         factory = { mapView },
         update = { view ->
             updateMarkers(view, events, onSelect)
@@ -266,11 +253,15 @@ private fun MapSection(
                     view.zoomToBoundingBox(bbox, true)
                 }
             }
-        }
+        },
     )
 }
 
-private fun updateMarkers(mapView: MapView, events: List<HistoricalEvent>, onSelect: (String) -> Unit) {
+private fun updateMarkers(
+    mapView: MapView,
+    events: List<HistoricalEvent>,
+    onSelect: (String) -> Unit,
+) {
     mapView.overlays.removeAll { it is Marker }
     events.forEach { e ->
         val marker = Marker(mapView)
@@ -292,53 +283,49 @@ private fun rememberMapViewWithLifecycle(): MapView {
     val context = LocalContext.current
     val lifecycleOwner = context as? LifecycleOwner
     val isDark = isSystemInDarkTheme()
-    
-    val mapView = remember {
-        val config = Configuration.getInstance()
-        config.userAgentValue = context.packageName
-        val basePath = File(context.cacheDir, "osmdroid")
-        val tilePath = File(basePath, "tiles")
-        if (!basePath.exists()) basePath.mkdirs()
-        if (!tilePath.exists()) tilePath.mkdirs()
-        config.osmdroidBasePath = basePath
-        config.osmdroidTileCache = tilePath
-        config.tileFileSystemCacheMaxBytes = 100L * 1024 * 1024 // 100MB缓存，提升离线和二次加载速度
-        config.tileFileSystemCacheTrimBytes = 80L * 1024 * 1024
-        config.load(context, context.getSharedPreferences("osmdroid", 0))
-        MapView(context).apply {
-            setTileSource(TileSourceFactory.MAPNIK)
-            setMultiTouchControls(true)
-            controller.setZoom(5.0)
-            if (isDark) {
-                overlayManager.tilesOverlay.setColorFilter(TilesOverlay.INVERT_COLORS)
+
+    val mapView =
+        remember {
+            val config = Configuration.getInstance()
+            config.userAgentValue = context.packageName
+            val basePath = File(context.cacheDir, "osmdroid")
+            val tilePath = File(basePath, "tiles")
+            if (!basePath.exists()) basePath.mkdirs()
+            if (!tilePath.exists()) tilePath.mkdirs()
+            config.osmdroidBasePath = basePath
+            config.osmdroidTileCache = tilePath
+            config.tileFileSystemCacheMaxBytes = 100L * 1024 * 1024 // 100MB缓存，提升离线和二次加载速度
+            config.tileFileSystemCacheTrimBytes = 80L * 1024 * 1024
+            config.load(context, context.getSharedPreferences("osmdroid", 0))
+            MapView(context).apply {
+                setTileSource(TileSourceFactory.MAPNIK)
+                setMultiTouchControls(true)
+                controller.setZoom(5.0)
+                if (isDark) {
+                    overlayManager.tilesOverlay.setColorFilter(TilesOverlay.INVERT_COLORS)
+                }
             }
         }
-    }
 
     DisposableEffect(lifecycleOwner, mapView) {
         if (lifecycleOwner == null) {
             onDispose { }
         } else {
-        val observer = LifecycleEventObserver { _, event ->
-            when (event) {
-                Lifecycle.Event.ON_RESUME -> mapView.onResume()
-                Lifecycle.Event.ON_PAUSE -> mapView.onPause()
-                Lifecycle.Event.ON_DESTROY -> mapView.onDetach()
-                else -> Unit
+            val observer =
+                LifecycleEventObserver { _, event ->
+                    when (event) {
+                        Lifecycle.Event.ON_RESUME -> mapView.onResume()
+                        Lifecycle.Event.ON_PAUSE -> mapView.onPause()
+                        Lifecycle.Event.ON_DESTROY -> mapView.onDetach()
+                        else -> Unit
+                    }
+                }
+            lifecycleOwner.lifecycle.addObserver(observer)
+            onDispose {
+                lifecycleOwner.lifecycle.removeObserver(observer)
             }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-        }
         }
     }
 
     return mapView
 }
-
-
-
-
-
-

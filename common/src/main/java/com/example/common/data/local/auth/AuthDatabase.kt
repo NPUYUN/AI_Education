@@ -8,7 +8,7 @@ import androidx.room.RoomDatabase
 @Database(
     entities = [UserEntity::class],
     version = 1,
-    exportSchema = false
+    exportSchema = false,
 )
 abstract class AuthDatabase : RoomDatabase() {
     abstract fun userDao(): UserDao
@@ -19,13 +19,14 @@ abstract class AuthDatabase : RoomDatabase() {
 
         fun getDatabase(context: Context): AuthDatabase {
             return INSTANCE ?: synchronized(this) {
-                val instance = Room.databaseBuilder(
-                    context.applicationContext,
-                    AuthDatabase::class.java,
-                    "auth_db"
-                )
-                .fallbackToDestructiveMigration(true)
-                 .build()
+                val instance =
+                    Room.databaseBuilder(
+                        context.applicationContext,
+                        AuthDatabase::class.java,
+                        "auth_db",
+                    )
+                        .fallbackToDestructiveMigration(true)
+                        .build()
                 INSTANCE = instance
                 instance
             }

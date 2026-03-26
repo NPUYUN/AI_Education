@@ -1,8 +1,10 @@
 package com.k2fsa.sherpa.onnx
 
 class OfflineStream(var ptr: Long) {
-    fun acceptWaveform(samples: FloatArray, sampleRate: Int) =
-        acceptWaveform(ptr, samples, sampleRate)
+    fun acceptWaveform(
+        samples: FloatArray,
+        sampleRate: Int,
+    ) = acceptWaveform(ptr, samples, sampleRate)
 
     protected fun finalize() {
         if (ptr != 0L) {
@@ -21,7 +23,12 @@ class OfflineStream(var ptr: Long) {
         }
     }
 
-    private external fun acceptWaveform(ptr: Long, samples: FloatArray, sampleRate: Int)
+    private external fun acceptWaveform(
+        ptr: Long,
+        samples: FloatArray,
+        sampleRate: Int,
+    )
+
     private external fun delete(ptr: Long)
 
     companion object {

@@ -3,7 +3,7 @@ package com.example.ai_education.presentation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.common.manager.VoskModelManager
-import com.example.summarizer.video_summarizer.services.ModelDownloader
+import com.example.summarizer.videosummarizer.services.ModelDownloader
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -12,46 +12,47 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class SplashViewModel @Inject constructor(
-    val voskModelManager: VoskModelManager,
-    private val modelDownloader: ModelDownloader
-) : ViewModel() {
+class SplashViewModel
+    @Inject
+    constructor(
+        val voskModelManager: VoskModelManager,
+        private val modelDownloader: ModelDownloader,
+    ) : ViewModel() {
+        private val _sherpaReady = MutableStateFlow(false)
+        val sherpaReady: StateFlow<Boolean> = _sherpaReady.asStateFlow()
 
-    private val _sherpaReady = MutableStateFlow(false)
-    val sherpaReady: StateFlow<Boolean> = _sherpaReady.asStateFlow()
+        private val _sherpaError = MutableStateFlow<String?>(null)
+        val sherpaError: StateFlow<String?> = _sherpaError.asStateFlow()
 
-    private val _sherpaError = MutableStateFlow<String?>(null)
-    val sherpaError: StateFlow<String?> = _sherpaError.asStateFlow()
+        private val _sherpaProgress = MutableStateFlow<com.example.summarizer.videosummarizer.services.DownloadProgress?>(null)
+        val sherpaProgress: StateFlow<com.example.summarizer.videosummarizer.services.DownloadProgress?> = _sherpaProgress.asStateFlow()
 
-    private val _sherpaProgress = MutableStateFlow<com.example.summarizer.video_summarizer.services.DownloadProgress?>(null)
-    val sherpaProgress: StateFlow<com.example.summarizer.video_summarizer.services.DownloadProgress?> = _sherpaProgress.asStateFlow()
+        init {
+            voskModelManager.initModel()
+            initSherpaModel()
+        }
 
-    init {
-        voskModelManager.initModel()
-        initSherpaModel()
-    }
+        fun retryVosk() {
+            voskModelManager.initModel()
+        }
 
-    fun retryVosk() {
-        voskModelManager.initModel()
-    }
-
-    fun initSherpaModel() {
-        _sherpaError.value = null
-        viewModelScope.launch {
-            if (!modelDownloader.isModelReady()) {
-                modelDownloader.downloadAndExtractModel { progress ->
-                    _sherpaProgress.value = progress
-                }.fold(
-                    onSuccess = {
-                        _sherpaReady.value = true
-                    },
-                    onFailure = { error ->
-                        _sherpaError.value = error.message
-                    }
-                )
-            } else {
-                _sherpaReady.value = true
+        fun initSherpaModel() {
+            _sherpaError.value = null
+            viewModelScope.launch {
+                if (!modelDownloader.isModelReady()) {
+                    modelDownloader.downloadAndExtractModel { progress ->
+                        _sherpaProgress.value = progress
+                    }.fold(
+                        onSuccess = {
+                            _sherpaReady.value = true
+                        },
+                        onFailure = { error ->
+                            _sherpaError.value = error.message
+                        },
+                    )
+                } else {
+                    _sherpaReady.value = true
+                }
             }
         }
     }
-}

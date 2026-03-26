@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -33,14 +34,18 @@ import kotlin.math.sin
 data class GeometryDrawingStep(
     val title: String,
     val type: String,
-    val shapes: List<Map<String, Any>>
+    val shapes: List<Map<String, Any>>,
 )
 
 @Composable
-fun GeometryStepCard(step: GeometryDrawingStep, prevShapes: List<Map<String, Any>> = emptyList(), modifier: Modifier = Modifier) {
+fun GeometryStepCard(
+    step: GeometryDrawingStep,
+    prevShapes: List<Map<String, Any>> = emptyList(),
+    modifier: Modifier = Modifier,
+) {
     Card(
         modifier = modifier,
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
     ) {
         Text(step.title)
         var zoom by remember { mutableStateOf(1f) }
@@ -63,22 +68,28 @@ fun GeometryStepCard(step: GeometryDrawingStep, prevShapes: List<Map<String, Any
         val hasAxes = step.shapes.any { (it["kind"] as? String).orEmpty().equals("axes", ignoreCase = true) }
         val axesShape = step.shapes.firstOrNull { (it["kind"] as? String).orEmpty().equals("axes", ignoreCase = true) }
         val shapesToDraw = step.shapes.filterNot { (it["kind"] as? String).orEmpty().equals("axes", ignoreCase = true) }
+
+        val onSurfaceColor = MaterialTheme.colorScheme.onSurface
+        val outlineVariantColor = MaterialTheme.colorScheme.outlineVariant
+        val primaryColor = MaterialTheme.colorScheme.primary
+
         Canvas(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(200.dp)
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .height(300.dp),
         ) {
             val base = min(size.width, size.height) / 20f
             val scale = base * zoom
             val centerX = size.width / 2f
             val centerY = size.height / 2f
             if (hasAxes && axesShape != null) {
-                drawAxesConfig(centerX, centerY, scale, axesShape)
+                drawAxesConfig(centerX, centerY, scale, axesShape, outlineVariantColor)
             } else {
-                drawAxes(centerX, centerY, scale)
+                drawAxes(centerX, centerY, scale, outlineVariantColor)
             }
-            prevShapes.forEach { shape -> drawShape(shape, centerX, centerY, scale, null, step.type, yaw, pitch) }
-            shapesToDraw.forEach { shape -> drawShape(shape, centerX, centerY, scale, null, step.type, yaw, pitch) }
+            prevShapes.forEach { shape -> drawShape(shape, centerX, centerY, scale, onSurfaceColor, primaryColor, step.type, yaw, pitch) }
+            shapesToDraw.forEach { shape -> drawShape(shape, centerX, centerY, scale, onSurfaceColor, primaryColor, step.type, yaw, pitch) }
         }
     }
 }
@@ -88,13 +99,14 @@ private fun DrawScope.drawShape(
     centerX: Float,
     centerY: Float,
     scale: Float,
-    defaultColor: Color?,
+    onSurfaceColor: Color,
+    primaryColor: Color,
     type: String,
     yaw: Float,
-    pitch: Float
+    pitch: Float,
 ) {
     val kind = shape["kind"] as? String ?: return
-    val color = parseColor(shape["color"]) ?: defaultColor ?: Color.Blue
+    val color = parseColor(shape["color"], onSurfaceColor) ?: primaryColor
     val strokeWidth = (shape["strokeWidth"] as? Number)?.toFloat() ?: 2f
     val dashed = (shape["style"] as? String)?.equals("dashed", ignoreCase = true) == true
     try {
@@ -107,6 +119,7 @@ private fun DrawScope.drawShape(
                 if (!label.isNullOrBlank()) drawTextLabel(centerX, centerY, scale, x, y, label, color)
             }
             "polyline" -> {
+                @Suppress("UNCHECKED_CAST")
                 val points = shape["points"] as? List<Map<String, Any>> ?: emptyList()
                 drawPolyline2D(centerX, centerY, scale, points, color, strokeWidth, dashed)
             }
@@ -124,6 +137,7 @@ private fun DrawScope.drawShape(
                 drawCircle2D(centerX, centerY, scale, cx, cy, r, color, strokeWidth, dashed)
             }
             "polygon" -> {
+                @Suppress("UNCHECKED_CAST")
                 val points = shape["points"] as? List<Map<String, Any>> ?: emptyList()
                 drawPolygon2D(centerX, centerY, scale, points, color, strokeWidth, dashed, fill = (shape["fill"] as? Boolean) == true)
             }
@@ -213,7 +227,7 @@ private fun DrawScope.drawShape(
                 drawTangent2D(centerX, centerY, scale, expr, x0, length, color, strokeWidth, dashed)
             }
             "axes" -> {
-                drawAxesConfig(centerX, centerY, scale, shape)
+                drawAxesConfig(centerX, centerY, scale, shape, color)
             }
             "point3D" -> {
                 val x = (shape["x"] as Number).toFloat()
@@ -234,14 +248,16 @@ private fun DrawScope.drawShape(
                 drawLine2D(centerX, centerY, scale, p1.first, p1.second, p2.first, p2.second, color, strokeWidth, dashed)
             }
             "polygon3D" -> {
+                @Suppress("UNCHECKED_CAST")
                 val points = shape["points"] as? List<Map<String, Any>> ?: emptyList()
-                val projected = points.map {
-                    val x = (it["x"] as Number).toFloat()
-                    val y = (it["y"] as Number).toFloat()
-                    val z = (it["z"] as Number).toFloat()
-                    val p = project3D(x, y, z, yaw, pitch)
-                    mapOf("x" to p.first, "y" to p.second)
-                }
+                val projected =
+                    points.map {
+                        val x = (it["x"] as Number).toFloat()
+                        val y = (it["y"] as Number).toFloat()
+                        val z = (it["z"] as Number).toFloat()
+                        val p = project3D(x, y, z, yaw, pitch)
+                        mapOf<String, Any>("x" to p.first, "y" to p.second)
+                    }
                 drawPolygon2D(centerX, centerY, scale, projected, color, strokeWidth, dashed, fill = (shape["fill"] as? Boolean) == true)
             }
         }
@@ -251,26 +267,63 @@ private fun DrawScope.drawShape(
     }
 }
 
-private fun DrawScope.drawPoint2D(cx: Float, cy: Float, s: Float, x: Float, y: Float, color: Color = Color.Red) {
+private fun DrawScope.drawPoint2D(
+    cx: Float,
+    cy: Float,
+    s: Float,
+    x: Float,
+    y: Float,
+    color: Color = Color.Red,
+) {
     val px = cx + x * s
     val py = cy - y * s
     drawCircle(color, radius = 3f, center = Offset(px, py))
 }
 
-private fun DrawScope.drawLine2D(cx: Float, cy: Float, s: Float, x1: Float, y1: Float, x2: Float, y2: Float, color: Color = Color.Blue, strokeWidth: Float = 2f, dashed: Boolean = false) {
+private fun DrawScope.drawLine2D(
+    cx: Float,
+    cy: Float,
+    s: Float,
+    x1: Float,
+    y1: Float,
+    x2: Float,
+    y2: Float,
+    color: Color = Color.Blue,
+    strokeWidth: Float = 2f,
+    dashed: Boolean = false,
+) {
     val p1 = Offset(cx + x1 * s, cy - y1 * s)
     val p2 = Offset(cx + x2 * s, cy - y2 * s)
     val style = if (dashed) Stroke(strokeWidth, pathEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 8f))) else Stroke(strokeWidth)
     drawLine(color, p1, p2, style.width, pathEffect = style.pathEffect)
 }
 
-private fun DrawScope.drawCircle2D(cx: Float, cy: Float, s: Float, x: Float, y: Float, r: Float, color: Color = Color.Green, strokeWidth: Float = 2f, dashed: Boolean = false) {
+private fun DrawScope.drawCircle2D(
+    cx: Float,
+    cy: Float,
+    s: Float,
+    x: Float,
+    y: Float,
+    r: Float,
+    color: Color = Color.Green,
+    strokeWidth: Float = 2f,
+    dashed: Boolean = false,
+) {
     val center = Offset(cx + x * s, cy - y * s)
     val style = if (dashed) Stroke(strokeWidth, pathEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 8f))) else Stroke(strokeWidth)
     drawCircle(color, radius = r * s, center = center, style = style)
 }
 
-private fun DrawScope.drawPolygon2D(cx: Float, cy: Float, s: Float, points: List<Map<String, Any>>, color: Color = Color.Magenta, strokeWidth: Float = 2f, dashed: Boolean = false, fill: Boolean = false) {
+private fun DrawScope.drawPolygon2D(
+    cx: Float,
+    cy: Float,
+    s: Float,
+    points: List<Map<String, Any>>,
+    color: Color = Color.Magenta,
+    strokeWidth: Float = 2f,
+    dashed: Boolean = false,
+    fill: Boolean = false,
+) {
     if (points.isEmpty()) return
     val path = Path()
     points.firstOrNull()?.let {
@@ -292,7 +345,15 @@ private fun DrawScope.drawPolygon2D(cx: Float, cy: Float, s: Float, points: List
     }
 }
 
-private fun DrawScope.drawPolyline2D(cx: Float, cy: Float, s: Float, points: List<Map<String, Any>>, color: Color, strokeWidth: Float, dashed: Boolean) {
+private fun DrawScope.drawPolyline2D(
+    cx: Float,
+    cy: Float,
+    s: Float,
+    points: List<Map<String, Any>>,
+    color: Color,
+    strokeWidth: Float,
+    dashed: Boolean,
+) {
     if (points.size < 2) return
     val path = Path()
     val first = points.first()
@@ -306,7 +367,19 @@ private fun DrawScope.drawPolyline2D(cx: Float, cy: Float, s: Float, points: Lis
     drawPath(path, color, style = style)
 }
 
-private fun DrawScope.drawArc2D(cx: Float, cy: Float, s: Float, x: Float, y: Float, r: Float, startDeg: Float, sweepDeg: Float, color: Color = Color.Cyan, strokeWidth: Float = 2f, dashed: Boolean = false) {
+private fun DrawScope.drawArc2D(
+    cx: Float,
+    cy: Float,
+    s: Float,
+    x: Float,
+    y: Float,
+    r: Float,
+    startDeg: Float,
+    sweepDeg: Float,
+    color: Color = Color.Cyan,
+    strokeWidth: Float = 2f,
+    dashed: Boolean = false,
+) {
     val left = cx + (x - r) * s
     val top = cy - (y + r) * s
     val right = cx + (x + r) * s
@@ -319,11 +392,22 @@ private fun DrawScope.drawArc2D(cx: Float, cy: Float, s: Float, x: Float, y: Flo
         useCenter = false,
         topLeft = Offset(left, top),
         size = androidx.compose.ui.geometry.Size(right - left, bottom - top),
-        style = style
+        style = style,
     )
 }
 
-private fun DrawScope.drawAngleMarker(cx: Float, cy: Float, s: Float, ax: Float, ay: Float, bx: Float, by: Float, cx2: Float, cy2: Float, color: Color = Color.Yellow) {
+private fun DrawScope.drawAngleMarker(
+    cx: Float,
+    cy: Float,
+    s: Float,
+    ax: Float,
+    ay: Float,
+    bx: Float,
+    by: Float,
+    cx2: Float,
+    cy2: Float,
+    color: Color = Color.Yellow,
+) {
     val v1 = Pair(ax - bx, ay - by)
     val v2 = Pair(cx2 - bx, cy2 - by)
     val a1 = atan2(v1.second, v1.first)
@@ -336,7 +420,19 @@ private fun DrawScope.drawAngleMarker(cx: Float, cy: Float, s: Float, ax: Float,
     drawArc2D(cx, cy, s, bx, by, r, start, sweep, color)
 }
 
-private fun DrawScope.drawEllipse2D(cx: Float, cy: Float, s: Float, x: Float, y: Float, rx: Float, ry: Float, rotationDeg: Float, color: Color, strokeWidth: Float, dashed: Boolean) {
+private fun DrawScope.drawEllipse2D(
+    cx: Float,
+    cy: Float,
+    s: Float,
+    x: Float,
+    y: Float,
+    rx: Float,
+    ry: Float,
+    rotationDeg: Float,
+    color: Color,
+    strokeWidth: Float,
+    dashed: Boolean,
+) {
     val center = Offset(cx + x * s, cy - y * s)
     val w = rx * 2 * s
     val h = ry * 2 * s
@@ -346,7 +442,20 @@ private fun DrawScope.drawEllipse2D(cx: Float, cy: Float, s: Float, x: Float, y:
     }
 }
 
-private fun DrawScope.drawRect2D(cx: Float, cy: Float, s: Float, x: Float, y: Float, w: Float, h: Float, rotationDeg: Float, color: Color, strokeWidth: Float, dashed: Boolean, fill: Boolean) {
+private fun DrawScope.drawRect2D(
+    cx: Float,
+    cy: Float,
+    s: Float,
+    x: Float,
+    y: Float,
+    w: Float,
+    h: Float,
+    rotationDeg: Float,
+    color: Color,
+    strokeWidth: Float,
+    dashed: Boolean,
+    fill: Boolean,
+) {
     val center = Offset(cx + x * s, cy - y * s)
     val rw = w * s
     val rh = h * s
@@ -355,12 +464,28 @@ private fun DrawScope.drawRect2D(cx: Float, cy: Float, s: Float, x: Float, y: Fl
         if (fill) {
             drawRect(color, topLeft = Offset(center.x - rw / 2, center.y - rh / 2), size = androidx.compose.ui.geometry.Size(rw, rh))
         } else {
-            drawRect(color, topLeft = Offset(center.x - rw / 2, center.y - rh / 2), size = androidx.compose.ui.geometry.Size(rw, rh), style = style)
+            drawRect(
+                color,
+                topLeft = Offset(center.x - rw / 2, center.y - rh / 2),
+                size = androidx.compose.ui.geometry.Size(rw, rh),
+                style = style,
+            )
         }
     }
 }
 
-private fun DrawScope.drawArrow2D(cx: Float, cy: Float, s: Float, x1: Float, y1: Float, x2: Float, y2: Float, color: Color, strokeWidth: Float, dashed: Boolean) {
+private fun DrawScope.drawArrow2D(
+    cx: Float,
+    cy: Float,
+    s: Float,
+    x1: Float,
+    y1: Float,
+    x2: Float,
+    y2: Float,
+    color: Color,
+    strokeWidth: Float,
+    dashed: Boolean,
+) {
     drawLine2D(cx, cy, s, x1, y1, x2, y2, color, strokeWidth, dashed)
     val p1 = Offset(cx + x1 * s, cy - y1 * s)
     val p2 = Offset(cx + x2 * s, cy - y2 * s)
@@ -375,7 +500,20 @@ private fun DrawScope.drawArrow2D(cx: Float, cy: Float, s: Float, x1: Float, y1:
     drawLine(color, p2, h2, style.width, pathEffect = style.pathEffect)
 }
 
-private fun DrawScope.drawQuadraticBezier2D(cx: Float, cy: Float, s: Float, x0: Float, y0: Float, x1: Float, y1: Float, x2: Float, y2: Float, color: Color, strokeWidth: Float, dashed: Boolean) {
+private fun DrawScope.drawQuadraticBezier2D(
+    cx: Float,
+    cy: Float,
+    s: Float,
+    x0: Float,
+    y0: Float,
+    x1: Float,
+    y1: Float,
+    x2: Float,
+    y2: Float,
+    color: Color,
+    strokeWidth: Float,
+    dashed: Boolean,
+) {
     val path = Path()
     path.moveTo(cx + x0 * s, cy - y0 * s)
     path.quadraticBezierTo(cx + x1 * s, cy - y1 * s, cx + x2 * s, cy - y2 * s)
@@ -383,7 +521,22 @@ private fun DrawScope.drawQuadraticBezier2D(cx: Float, cy: Float, s: Float, x0: 
     drawPath(path, color, style = style)
 }
 
-private fun DrawScope.drawCubicBezier2D(cx: Float, cy: Float, s: Float, x0: Float, y0: Float, x1: Float, y1: Float, x2: Float, y2: Float, x3: Float, y3: Float, color: Color, strokeWidth: Float, dashed: Boolean) {
+private fun DrawScope.drawCubicBezier2D(
+    cx: Float,
+    cy: Float,
+    s: Float,
+    x0: Float,
+    y0: Float,
+    x1: Float,
+    y1: Float,
+    x2: Float,
+    y2: Float,
+    x3: Float,
+    y3: Float,
+    color: Color,
+    strokeWidth: Float,
+    dashed: Boolean,
+) {
     val path = Path()
     path.moveTo(cx + x0 * s, cy - y0 * s)
     path.cubicTo(cx + x1 * s, cy - y1 * s, cx + x2 * s, cy - y2 * s, cx + x3 * s, cy - y3 * s)
@@ -391,7 +544,17 @@ private fun DrawScope.drawCubicBezier2D(cx: Float, cy: Float, s: Float, x0: Floa
     drawPath(path, color, style = style)
 }
 
-private fun DrawScope.drawFunction2D(cx: Float, cy: Float, s: Float, exprStr: String, xMin: Float, xMax: Float, color: Color, strokeWidth: Float, dashed: Boolean) {
+private fun DrawScope.drawFunction2D(
+    cx: Float,
+    cy: Float,
+    s: Float,
+    exprStr: String,
+    xMin: Float,
+    xMax: Float,
+    color: Color,
+    strokeWidth: Float,
+    dashed: Boolean,
+) {
     try {
         val expr = ExpressionBuilder(exprStr).variables("x").build()
         val path = Path()
@@ -420,14 +583,23 @@ private fun DrawScope.drawFunction2D(cx: Float, cy: Float, s: Float, exprStr: St
     }
 }
 
-private fun DrawScope.drawShadedRegion2D(cx: Float, cy: Float, s: Float, expr1Str: String, expr2Str: String?, xMin: Float, xMax: Float, color: Color) {
+private fun DrawScope.drawShadedRegion2D(
+    cx: Float,
+    cy: Float,
+    s: Float,
+    expr1Str: String,
+    expr2Str: String?,
+    xMin: Float,
+    xMax: Float,
+    color: Color,
+) {
     try {
         val expr1 = ExpressionBuilder(expr1Str).variables("x").build()
         val expr2 = expr2Str?.let { ExpressionBuilder(it).variables("x").build() }
         val path = Path()
         val steps = 100
         val step = (xMax - xMin) / steps
-        
+
         // Draw top edge (expr1)
         var first = true
         for (i in 0..steps) {
@@ -441,7 +613,7 @@ private fun DrawScope.drawShadedRegion2D(cx: Float, cy: Float, s: Float, expr1St
                 path.lineTo(cx + x * s, cy - y * s)
             }
         }
-        
+
         // Draw bottom edge (expr2 or y=0)
         if (expr2 != null) {
             for (i in steps downTo 0) {
@@ -454,7 +626,7 @@ private fun DrawScope.drawShadedRegion2D(cx: Float, cy: Float, s: Float, expr1St
             path.lineTo(cx + xMax * s, cy)
             path.lineTo(cx + xMin * s, cy)
         }
-        
+
         path.close()
         drawPath(path, color)
     } catch (e: Exception) {
@@ -462,32 +634,48 @@ private fun DrawScope.drawShadedRegion2D(cx: Float, cy: Float, s: Float, expr1St
     }
 }
 
-private fun DrawScope.drawTangent2D(cx: Float, cy: Float, s: Float, exprStr: String, x0: Float, length: Float, color: Color, strokeWidth: Float, dashed: Boolean) {
+private fun DrawScope.drawTangent2D(
+    cx: Float,
+    cy: Float,
+    s: Float,
+    exprStr: String,
+    x0: Float,
+    length: Float,
+    color: Color,
+    strokeWidth: Float,
+    dashed: Boolean,
+) {
     try {
         val expr = ExpressionBuilder(exprStr).variables("x").build()
         expr.setVariable("x", x0.toDouble())
         val y0 = expr.evaluate().toFloat()
-        
+
         val h = 0.001
         expr.setVariable("x", x0.toDouble() + h)
         val y1 = expr.evaluate()
         expr.setVariable("x", x0.toDouble() - h)
         val y2 = expr.evaluate()
         val m = ((y1 - y2) / (2 * h)).toFloat()
-        
+
         // Tangent line: y - y0 = m * (x - x0) => y = m*(x - x0) + y0
         val xMin = x0 - length / 2
         val xMax = x0 + length / 2
         val yMin = m * (xMin - x0) + y0
         val yMax = m * (xMax - x0) + y0
-        
+
         drawLine2D(cx, cy, s, xMin, yMin, xMax, yMax, color, strokeWidth, dashed)
     } catch (e: Exception) {
         e.printStackTrace()
     }
 }
 
-private fun project3D(x: Float, y: Float, z: Float, yawDeg: Float, pitchDeg: Float): Pair<Float, Float> {
+private fun project3D(
+    x: Float,
+    y: Float,
+    z: Float,
+    yawDeg: Float,
+    pitchDeg: Float,
+): Pair<Float, Float> {
     val yaw = yawDeg * PI.toFloat() / 180f
     val pitch = pitchDeg * PI.toFloat() / 180f
     val x1 = x * cos(yaw) - z * sin(yaw)
@@ -498,48 +686,79 @@ private fun project3D(x: Float, y: Float, z: Float, yawDeg: Float, pitchDeg: Flo
     return Pair(px, py)
 }
 
-private fun DrawScope.drawAxes(cx: Float, cy: Float, s: Float) {
-    drawLine(Color.LightGray, Offset(0f, cy), Offset(size.width, cy), strokeWidth = 1f)
-    drawLine(Color.LightGray, Offset(cx, 0f), Offset(cx, size.height), strokeWidth = 1f)
-    for (i in -9..9) {
+private fun DrawScope.drawAxes(
+    cx: Float,
+    cy: Float,
+    s: Float,
+    color: Color,
+) {
+    drawLine(color, Offset(0f, cy), Offset(size.width, cy), strokeWidth = 1f)
+    drawLine(color, Offset(cx, 0f), Offset(cx, size.height), strokeWidth = 1f)
+    for (i in -20..20) {
         val x = cx + i * s
-        drawLine(Color.LightGray, Offset(x, cy - 4f), Offset(x, cy + 4f), strokeWidth = 1f)
+        drawLine(color.copy(alpha = 0.3f), Offset(x, 0f), Offset(x, size.height), strokeWidth = 1f)
+        drawLine(color, Offset(x, cy - 4f), Offset(x, cy + 4f), strokeWidth = 1f)
         val y = cy - i * s
-        drawLine(Color.LightGray, Offset(cx - 4f, y), Offset(cx + 4f, y), strokeWidth = 1f)
+        drawLine(color.copy(alpha = 0.3f), Offset(0f, y), Offset(size.width, y), strokeWidth = 1f)
+        drawLine(color, Offset(cx - 4f, y), Offset(cx + 4f, y), strokeWidth = 1f)
     }
 }
 
-private fun DrawScope.drawAxesConfig(cx: Float, cy: Float, s: Float, shape: Map<String, Any>) {
+private fun DrawScope.drawAxesConfig(
+    cx: Float,
+    cy: Float,
+    s: Float,
+    shape: Map<String, Any>,
+    color: Color,
+) {
     val xMin = (shape["xMin"] as? Number)?.toInt() ?: -10
     val xMax = (shape["xMax"] as? Number)?.toInt() ?: 10
     val yMin = (shape["yMin"] as? Number)?.toInt() ?: -10
     val yMax = (shape["yMax"] as? Number)?.toInt() ?: 10
     val grid = (shape["grid"] as? Boolean) ?: true
-    drawLine(Color.LightGray, Offset(0f, cy), Offset(size.width, cy), strokeWidth = 1f)
-    drawLine(Color.LightGray, Offset(cx, 0f), Offset(cx, size.height), strokeWidth = 1f)
+    drawLine(color, Offset(0f, cy), Offset(size.width, cy), strokeWidth = 1f)
+    drawLine(color, Offset(cx, 0f), Offset(cx, size.height), strokeWidth = 1f)
     for (i in xMin..xMax) {
         val x = cx + i * s
-        if (grid) drawLine(Color.LightGray.copy(alpha = 0.3f), Offset(x, 0f), Offset(x, size.height), strokeWidth = 1f)
-        drawLine(Color.LightGray, Offset(x, cy - 4f), Offset(x, cy + 4f), strokeWidth = 1f)
+        if (grid) drawLine(color.copy(alpha = 0.3f), Offset(x, 0f), Offset(x, size.height), strokeWidth = 1f)
+        drawLine(color, Offset(x, cy - 4f), Offset(x, cy + 4f), strokeWidth = 1f)
     }
     for (j in yMin..yMax) {
         val y = cy - j * s
-        if (grid) drawLine(Color.LightGray.copy(alpha = 0.3f), Offset(0f, y), Offset(size.width, y), strokeWidth = 1f)
-        drawLine(Color.LightGray, Offset(cx - 4f, y), Offset(cx + 4f, y), strokeWidth = 1f)
+        if (grid) drawLine(color.copy(alpha = 0.3f), Offset(0f, y), Offset(size.width, y), strokeWidth = 1f)
+        drawLine(color, Offset(cx - 4f, y), Offset(cx + 4f, y), strokeWidth = 1f)
     }
 }
 
-private fun DrawScope.drawTextLabel(cx: Float, cy: Float, s: Float, x: Float, y: Float, text: String, color: Color) {
+private fun DrawScope.drawTextLabel(
+    cx: Float,
+    cy: Float,
+    s: Float,
+    x: Float,
+    y: Float,
+    text: String,
+    color: Color,
+) {
     val native = drawContext.canvas.nativeCanvas
-    val paint = android.graphics.Paint().apply {
-        this.color = android.graphics.Color.argb((color.alpha * 255).toInt(), (color.red * 255).toInt(), (color.green * 255).toInt(), (color.blue * 255).toInt())
-        textSize = 28f
-        isAntiAlias = true
-    }
+    val paint =
+        android.graphics.Paint().apply {
+            this.color =
+                android.graphics.Color.argb(
+                    (color.alpha * 255).toInt(),
+                    (color.red * 255).toInt(),
+                    (color.green * 255).toInt(),
+                    (color.blue * 255).toInt(),
+                )
+            textSize = 28f
+            isAntiAlias = true
+        }
     native.drawText(text, cx + x * s + 6f, cy - y * s - 6f, paint)
 }
 
-private fun parseColor(value: Any?): Color? {
+private fun parseColor(
+    value: Any?,
+    onSurfaceColor: Color,
+): Color? {
     val s = value as? String ?: return null
     return try {
         if (s.startsWith("#")) {
@@ -550,12 +769,12 @@ private fun parseColor(value: Any?): Color? {
                 "red" -> Color.Red
                 "green" -> Color.Green
                 "blue" -> Color.Blue
-                "black" -> Color.Black
+                "black" -> onSurfaceColor // Adapt black to current theme's onSurface (white in dark mode)
                 "gray", "grey" -> Color.Gray
                 "yellow" -> Color.Yellow
                 "magenta" -> Color.Magenta
                 "cyan" -> Color.Cyan
-                "white" -> Color.White
+                "white" -> if (onSurfaceColor == Color.White) Color.Black else Color.White // Reverse for dark mode
                 else -> null
             }
         }

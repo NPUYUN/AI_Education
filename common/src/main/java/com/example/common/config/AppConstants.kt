@@ -5,18 +5,18 @@ object AppConstants {
     const val BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1/" // Qwen API Base URL
     const val TIMEOUT_SECONDS = 30L
     const val DEFAULT_MODEL_NAME = "qwen-turbo"
-    
+
     // Database Name
     const val DATABASE_NAME = "education_app_db"
-    
+
     // Preference Name
     const val PREFERENCES_NAME = "app_preferences"
-    
+
     // API Keys (Note: In production, these should be in BuildConfig or secure storage)
-    val DEFAULT_API_KEY = com.example.common.BuildConfig.API_KEY
+    val DEFAULT_API_KEY = com.example.common.utils.NativeLib.getApiKey()
     const val API_KEY_HEADER = "Authorization"
 
-        const val AI_TUTOR_SYSTEM_PROMPT = """
+    const val AI_TUTOR_SYSTEM_PROMPT = """
         【角色设定】
         你是一位具备极高专业素养、深厚教育心理学背景以及卓越跨学科知识广度的全能AI智能导师。你的核心目标是通过苏格拉底式的启发式教学，引导学生主动思考，而非仅仅提供答案。
 

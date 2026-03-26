@@ -11,41 +11,56 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class TextSummaryRepository @Inject constructor(
-    private val dispatcherProvider: DispatcherProvider
-) {
-    suspend fun summarizeText(
-        apiKey: String,
-        text: String,
-        modelName: String,
-        baseUrl: String
-    ): Result<String> = withContext(dispatcherProvider.io) {
-        try {
-            val service = RetrofitClient.create(apiKey, baseUrl).create(OpenAiService::class.java)
-            val request = ChatRequest(
-                model = modelName,
-                messages = listOf(
-                    ChatMessage(role = "system", content = com.example.common.config.AppConstants.TEXT_SUMMARY_SYSTEM_PROMPT),
-                    ChatMessage(
-                        role = "user",
-                        content = "请对以下文本进行总结：\n\n$text"
-                    )
-                ),
-                parameters = ChatParameters()
-            )
-            val response = service.chat(request)
-            val content = response.choices?.firstOrNull()?.message?.content?.toString()
-                ?: response.output?.choices?.firstOrNull()?.message?.content?.toString()
-                ?: response.output?.text
-                ?: ""
+class TextSummaryRepository
+    @Inject
+    constructor(
+        private val dispatcherProvider: DispatcherProvider,
+    ) {
+        suspend fun summarizeText(
+            apiKey: String,
+            text: String,
+            modelName: String,
+            baseUrl: String,
+        ): Result<String> =
+            withContext(dispatcherProvider.io) {
+                try {
+                    val service = RetrofitClient.create(apiKey, baseUrl).create(OpenAiService::class.java)
+                    val request =
+                        ChatRequest(
+                            model = modelName,
+                            messages =
+                                listOf(
+                                    ChatMessage(
+                                        role = "system",
+                                        content = com.example.common.config.AppConstants.TEXT_SUMMARY_SYSTEM_PROMPT,
+                                    ),
+                                    ChatMessage(
+                                        role = "user",
+                                        content = "请对以下文本进行总结：\n\n$text",
+                                    ),
+                                ),
+                            parameters = ChatParameters(),
+                        )
+                    val response = service.chat(request)
+                    val content =
+                        response.choices?.firstOrNull()?.message?.content?.toString()
+                            ?: response.output?.choices?.firstOrNull()?.message?.content?.toString()
+                            ?: response.output?.text
+                            ?: ""
 
-            if (content.isBlank()) {
-                Result.failure(Exception("摘要生成失败，返回内容为空"))
-            } else {
-                Result.success(content.trim())
+                    if (content.isBlank()) {
+                        Result.failure(Exception("摘要生成失败，返回内容为空"))
+                    } else {
+                        Result.success(content.trim())
+                    }
+                } catch (e: java.net.UnknownHostException) {
+                    Result.failure(Exception("网络连接断开，请检查网络后重试。您可以先使用离线总结功能（如果有）或复习本地知识卡片。", e))
+                } catch (e: java.net.ConnectException) {
+                    Result.failure(Exception("网络连接失败，请检查网络后重试。", e))
+                } catch (e: java.net.SocketTimeoutException) {
+                    Result.failure(Exception("请求超时。网络可能不稳定，请稍后重试。", e))
+                } catch (e: Exception) {
+                    Result.failure(e)
+                }
             }
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
     }
-}

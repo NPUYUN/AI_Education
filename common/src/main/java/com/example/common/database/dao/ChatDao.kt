@@ -24,10 +24,17 @@ abstract class ChatDao {
     abstract suspend fun insertMessage(message: MessageEntity)
 
     @Query("UPDATE chat_sessions SET lastMessage = :lastMessage, timestamp = :timestamp WHERE id = :sessionId")
-    abstract suspend fun updateSessionPreview(sessionId: String, lastMessage: String, timestamp: Long)
+    abstract suspend fun updateSessionPreview(
+        sessionId: String,
+        lastMessage: String,
+        timestamp: Long,
+    )
 
     @Query("UPDATE chat_sessions SET title = :title WHERE id = :sessionId")
-    abstract suspend fun updateSessionTitle(sessionId: String, title: String)
+    abstract suspend fun updateSessionTitle(
+        sessionId: String,
+        title: String,
+    )
 
     @Query("DELETE FROM chat_sessions WHERE id = :sessionId")
     abstract suspend fun deleteSession(sessionId: String)

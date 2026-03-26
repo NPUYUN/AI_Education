@@ -28,7 +28,6 @@ data class WaveData(
 
 class WaveReader {
     companion object {
-
         fun readWave(
             assetManager: AssetManager,
             filename: String,
@@ -36,9 +35,7 @@ class WaveReader {
             return readWaveFromAsset(assetManager, filename)
         }
 
-        fun readWave(
-            filename: String,
-        ): WaveData {
+        fun readWave(filename: String): WaveData {
             return readWaveFromFile(filename)
         }
 
@@ -49,9 +46,7 @@ class WaveReader {
         ): WaveData
 
         // Read a mono wave file from disk
-        external fun readWaveFromFile(
-            filename: String,
-        ): WaveData
+        external fun readWaveFromFile(filename: String): WaveData
 
         init {
             System.loadLibrary("sherpa-onnx-jni")

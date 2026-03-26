@@ -9,16 +9,17 @@ class TextToSpeechManager(context: Context) {
     private var isInitialized = false
 
     init {
-        tts = TextToSpeech(context) { status ->
-            if (status == TextToSpeech.SUCCESS) {
-                val result = tts?.setLanguage(Locale.CHINESE)
-                if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
-                    // Handle error or fallback
-                } else {
-                    isInitialized = true
+        tts =
+            TextToSpeech(context) { status ->
+                if (status == TextToSpeech.SUCCESS) {
+                    val result = tts?.setLanguage(Locale.CHINESE)
+                    if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                        // Handle error or fallback
+                    } else {
+                        isInitialized = true
+                    }
                 }
             }
-        }
     }
 
     fun speak(text: String) {

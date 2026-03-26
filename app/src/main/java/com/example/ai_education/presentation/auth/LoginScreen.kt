@@ -5,7 +5,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -14,21 +13,21 @@ import androidx.hilt.navigation.compose.hiltViewModel
 fun LoginScreen(
     onLoginSuccess: () -> Unit,
     onNavigateToRegister: () -> Unit,
-    viewModel: AuthViewModel = hiltViewModel()
+    viewModel: AuthViewModel = hiltViewModel(),
 ) {
     Column(
         modifier = Modifier.fillMaxSize().padding(32.dp),
         verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text("AI Tutor 登录", style = MaterialTheme.typography.headlineMedium)
         Spacer(Modifier.height(32.dp))
-        
+
         OutlinedTextField(
             value = viewModel.username.value,
             onValueChange = { viewModel.username.value = it },
             label = { Text("用户名") },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
         )
         Spacer(Modifier.height(16.dp))
         OutlinedTextField(
@@ -36,17 +35,17 @@ fun LoginScreen(
             onValueChange = { viewModel.password.value = it },
             label = { Text("密码") },
             visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
         )
-        
+
         if (viewModel.error.value != null) {
             Text(viewModel.error.value!!, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 8.dp))
         }
-        
+
         Spacer(Modifier.height(24.dp))
         Button(
             onClick = { viewModel.login(onLoginSuccess) },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
         ) {
             Text("登录")
         }
@@ -56,4 +55,3 @@ fun LoginScreen(
         }
     }
 }
-

@@ -8,14 +8,13 @@ import java.io.File
 import java.io.IOException
 
 class AudioRecorderManager(private val context: Context) {
-
     private var mediaRecorder: MediaRecorder? = null
     private var outputFile: File? = null
 
     fun startRecording(onError: (String) -> Unit) {
         try {
             outputFile = File(context.cacheDir, "voice_input.m4a")
-            
+
             mediaRecorder = createMediaRecorder()
 
             mediaRecorder?.apply {

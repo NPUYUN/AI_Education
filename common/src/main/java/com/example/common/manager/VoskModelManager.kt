@@ -1,14 +1,13 @@
 package com.example.common.manager
 
 import android.content.Context
-import android.util.Log
 import com.example.common.dispatchers.DispatcherProvider
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.vosk.LibVosk
@@ -19,141 +18,152 @@ import java.io.FileOutputStream
 import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
-import dagger.hilt.android.qualifiers.ApplicationContext
 
 @Singleton
-class VoskModelManager @Inject constructor(
-    @ApplicationContext private val context: Context,
-    private val dispatcherProvider: DispatcherProvider
-) {
-    // Use HF Mirror for faster download in China
-    private val MODEL_URL = "https://hf-mirror.com/localstack/vosk-models/resolve/main/vosk-model-small-cn-0.22.zip"
-    private val MODEL_DIR_NAME = "vosk-model-small-cn-0.22"
-    
-    private var loadedModel: Model? = null
-    
-    // Scope for background download that survives UI lifecycle
-    private val scope = CoroutineScope(dispatcherProvider.io + SupervisorJob())
+class VoskModelManager
+    @Inject
+    constructor(
+        @ApplicationContext private val context: Context,
+        private val dispatcherProvider: DispatcherProvider,
+    ) {
+        // Use HF Mirror for faster download in China
+        private val MODEL_URL = "https://hf-mirror.com/localstack/vosk-models/resolve/main/vosk-model-small-cn-0.22.zip"
+        private val MODEL_DIR_NAME = "vosk-model-small-cn-0.22"
 
-    sealed class InitState {
-        object Idle : InitState()
-        data class Downloading(val progress: Float) : InitState()
-        object Loading : InitState()
-        object Ready : InitState()
-        data class Error(val message: String) : InitState()
-    }
+        private var loadedModel: Model? = null
 
-    private val _initState = MutableStateFlow<InitState>(InitState.Idle)
-    val initState = _initState.asStateFlow()
+        // Scope for background download that survives UI lifecycle
+        private val scope = CoroutineScope(dispatcherProvider.io + SupervisorJob())
 
-    fun initModel() {
-        if (_initState.value is InitState.Ready || 
-            _initState.value is InitState.Loading || 
-            _initState.value is InitState.Downloading) {
-            return
+        sealed class InitState {
+            object Idle : InitState()
+
+            data class Downloading(val progress: Float) : InitState()
+
+            object Loading : InitState()
+
+            object Ready : InitState()
+
+            data class Error(val message: String) : InitState()
         }
 
-        scope.launch {
-            try {
-                if (loadedModel != null) {
-                    _initState.value = InitState.Ready
-                    return@launch
-                }
+        private val _initState = MutableStateFlow<InitState>(InitState.Idle)
+        val initState = _initState.asStateFlow()
 
-                val modelDir = File(context.getExternalFilesDir(null), MODEL_DIR_NAME)
-                val successMarker = File(modelDir, "_SUCCESS")
+        fun initModel() {
+            if (_initState.value is InitState.Ready ||
+                _initState.value is InitState.Loading ||
+                _initState.value is InitState.Downloading
+            ) {
+                return
+            }
 
-                if (!modelDir.exists() || !successMarker.exists()) {
-                     // Cleanup
-                    if (modelDir.exists()) modelDir.deleteRecursively()
-
-                    _initState.value = InitState.Downloading(0f)
-                    
-                    downloadAndUnzipModel(modelDir.parentFile!!) { progress ->
-                        _initState.value = InitState.Downloading(progress)
+            scope.launch {
+                try {
+                    if (loadedModel != null) {
+                        _initState.value = InitState.Ready
+                        return@launch
                     }
-                    
-                    if (modelDir.exists()) successMarker.createNewFile()
-                }
 
-                _initState.value = InitState.Loading
-                LibVosk.setLogLevel(LogLevel.INFO)
-                loadedModel = Model(modelDir.absolutePath)
-                _initState.value = InitState.Ready
-                
-            } catch (e: Exception) {
-                e.printStackTrace()
-                // Cleanup on error
-                val modelDir = File(context.getExternalFilesDir(null), MODEL_DIR_NAME)
-                 if (modelDir.exists()) modelDir.deleteRecursively()
-                _initState.value = InitState.Error(e.localizedMessage ?: "Unknown error")
-            }
-        }
-    }
-    
-    // Legacy support / Direct access
-    fun getModel(onProgress: ((Float, String) -> Unit)? = null): Model? {
-        if (loadedModel != null) return loadedModel
-        
-        // If init hasn't started, start it
-        initModel()
-        
-        // Return current state (likely null if just started)
-        return loadedModel
-    }
+                    val modelDir = File(context.getExternalFilesDir(null), MODEL_DIR_NAME)
+                    val successMarker = File(modelDir, "_SUCCESS")
 
-    private fun downloadAndUnzipModel(destDir: File, onDownloadProgress: (Float) -> Unit) {
-        val client = OkHttpClient()
-        val request = Request.Builder().url(MODEL_URL).build()
+                    if (!modelDir.exists() || !successMarker.exists()) {
+                        // Cleanup
+                        if (modelDir.exists()) modelDir.deleteRecursively()
 
-        client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) throw IOException("Failed to download model: $response")
+                        _initState.value = InitState.Downloading(0f)
 
-            val body = response.body ?: throw IOException("Empty response body")
-            val contentLength = body.contentLength()
-            val source = body.source()
-            
-            val zipFile = File(destDir, "model.zip")
-            val fos = FileOutputStream(zipFile)
-            
-            val buffer = ByteArray(8 * 1024)
-            var bytesRead: Int
-            var totalBytesRead: Long = 0
-            
-            while (source.read(buffer).also { bytesRead = it } != -1) {
-                fos.write(buffer, 0, bytesRead)
-                totalBytesRead += bytesRead
-                if (contentLength > 0) {
-                    onDownloadProgress(totalBytesRead.toFloat() / contentLength)
+                        downloadAndUnzipModel(modelDir.parentFile!!) { progress ->
+                            _initState.value = InitState.Downloading(progress)
+                        }
+
+                        if (modelDir.exists()) successMarker.createNewFile()
+                    }
+
+                    _initState.value = InitState.Loading
+                    LibVosk.setLogLevel(LogLevel.INFO)
+                    loadedModel = Model(modelDir.absolutePath)
+                    _initState.value = InitState.Ready
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    // Cleanup on error
+                    val modelDir = File(context.getExternalFilesDir(null), MODEL_DIR_NAME)
+                    if (modelDir.exists()) modelDir.deleteRecursively()
+                    _initState.value = InitState.Error(e.localizedMessage ?: "Unknown error")
                 }
             }
-            fos.close()
+        }
 
-            // Unzip
-            unzip(zipFile, destDir)
-            zipFile.delete()
+        // Legacy support / Direct access
+        fun getModel(onProgress: ((Float, String) -> Unit)? = null): Model? {
+            if (loadedModel != null) return loadedModel
+
+            // If init hasn't started, start it
+            initModel()
+
+            // Return current state (likely null if just started)
+            return loadedModel
         }
-    }
-    
-    private fun unzip(zipFile: File, targetDirectory: File) {
-        val zipInputStream = java.util.zip.ZipInputStream(java.io.FileInputStream(zipFile))
-        var zipEntry = zipInputStream.nextEntry
-        while (zipEntry != null) {
-            val file = File(targetDirectory, zipEntry.name)
-            if (zipEntry.isDirectory) {
-                file.mkdirs()
-            } else {
-                file.parentFile?.mkdirs()
-                val fileOutputStream = FileOutputStream(file)
-                val buffer = ByteArray(1024)
-                var count: Int
-                while (zipInputStream.read(buffer).also { count = it } != -1) {
-                    fileOutputStream.write(buffer, 0, count)
+
+        private fun downloadAndUnzipModel(
+            destDir: File,
+            onDownloadProgress: (Float) -> Unit,
+        ) {
+            val client = OkHttpClient()
+            val request = Request.Builder().url(MODEL_URL).build()
+
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) throw IOException("Failed to download model: $response")
+
+                val body = response.body ?: throw IOException("Empty response body")
+                val contentLength = body.contentLength()
+                val source = body.source()
+
+                val zipFile = File(destDir, "model.zip")
+                val fos = FileOutputStream(zipFile)
+
+                val buffer = ByteArray(8 * 1024)
+                var bytesRead: Int
+                var totalBytesRead: Long = 0
+
+                while (source.read(buffer).also { bytesRead = it } != -1) {
+                    fos.write(buffer, 0, bytesRead)
+                    totalBytesRead += bytesRead
+                    if (contentLength > 0) {
+                        onDownloadProgress(totalBytesRead.toFloat() / contentLength)
+                    }
                 }
-                fileOutputStream.close()
+                fos.close()
+
+                // Unzip
+                unzip(zipFile, destDir)
+                zipFile.delete()
             }
-            zipEntry = zipInputStream.nextEntry
         }
-        zipInputStream.close()
+
+        private fun unzip(
+            zipFile: File,
+            targetDirectory: File,
+        ) {
+            val zipInputStream = java.util.zip.ZipInputStream(java.io.FileInputStream(zipFile))
+            var zipEntry = zipInputStream.nextEntry
+            while (zipEntry != null) {
+                val file = File(targetDirectory, zipEntry.name)
+                if (zipEntry.isDirectory) {
+                    file.mkdirs()
+                } else {
+                    file.parentFile?.mkdirs()
+                    val fileOutputStream = FileOutputStream(file)
+                    val buffer = ByteArray(1024)
+                    var count: Int
+                    while (zipInputStream.read(buffer).also { count = it } != -1) {
+                        fileOutputStream.write(buffer, 0, count)
+                    }
+                    fileOutputStream.close()
+                }
+                zipEntry = zipInputStream.nextEntry
+            }
+            zipInputStream.close()
+        }
     }
-}

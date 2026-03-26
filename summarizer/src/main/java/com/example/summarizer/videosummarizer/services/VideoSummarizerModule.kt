@@ -1,10 +1,7 @@
-package com.example.summarizer.video_summarizer.services
+package com.example.summarizer.videosummarizer.services
 
 import android.content.Context
 import com.example.common.dispatchers.DispatcherProvider
-import com.example.summarizer.video_summarizer.services.ModelDownloader
-import com.example.summarizer.video_summarizer.services.VideoDownloader
-import com.example.summarizer.video_summarizer.services.SherpaAsrManager
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -15,12 +12,11 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object VideoSummarizerModule {
-
     @Provides
     @Singleton
     fun provideVideoDownloader(
         @ApplicationContext context: Context,
-        dispatcherProvider: DispatcherProvider
+        dispatcherProvider: DispatcherProvider,
     ): VideoDownloader {
         return VideoDownloader(context, dispatcherProvider)
     }
@@ -29,7 +25,7 @@ object VideoSummarizerModule {
     @Singleton
     fun provideSherpaAsrManager(
         @ApplicationContext context: Context,
-        dispatcherProvider: DispatcherProvider
+        dispatcherProvider: DispatcherProvider,
     ): SherpaAsrManager {
         return SherpaAsrManager(context, dispatcherProvider)
     }
@@ -38,7 +34,7 @@ object VideoSummarizerModule {
     @Singleton
     fun provideModelDownloader(
         @ApplicationContext context: Context,
-        dispatcherProvider: DispatcherProvider
+        dispatcherProvider: DispatcherProvider,
     ): ModelDownloader {
         return ModelDownloader(context, dispatcherProvider)
     }

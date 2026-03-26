@@ -21,7 +21,7 @@ android {
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
+                "proguard-rules.pro",
             )
         }
     }
@@ -59,20 +59,20 @@ dependencies {
     // Networking (Retrofit/OkHttp inherited from common via api)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.navigation.compose)
-    
+
     // CameraX
     implementation(libs.androidx.camera.core)
     implementation(libs.androidx.camera.camera2)
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.view)
     implementation(libs.guava.android)
-    
+
     // Coil
     implementation(libs.coil.compose)
-    
+
     // ConstraintLayout
     implementation(libs.androidx.constraintlayout.compose)
-    
+
     // Markdown
     implementation(libs.compose.markdown)
 
@@ -90,7 +90,7 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
-    
+
     // Hilt
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)

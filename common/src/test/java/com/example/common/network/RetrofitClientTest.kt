@@ -8,7 +8,6 @@ import org.junit.Before
 import org.junit.Test
 
 class RetrofitClientTest {
-
     @Before
     fun setup() {
         RetrofitClient.clearCache()
@@ -25,7 +24,7 @@ class RetrofitClientTest {
     fun `create caches instances with same key and url`() {
         val retrofit1 = RetrofitClient.create("test-key", "https://api.example.com/")
         val retrofit2 = RetrofitClient.create("test-key", "https://api.example.com/")
-        
+
         assertSame(retrofit1, retrofit2)
     }
 
@@ -33,7 +32,7 @@ class RetrofitClientTest {
     fun `create does not cache instances with different keys`() {
         val retrofit1 = RetrofitClient.create("test-key-1", "https://api.example.com/")
         val retrofit2 = RetrofitClient.create("test-key-2", "https://api.example.com/")
-        
+
         assertNotEquals(retrofit1, retrofit2)
     }
 
@@ -42,7 +41,7 @@ class RetrofitClientTest {
         val retrofit1 = RetrofitClient.create("test-key", "https://api.example.com/")
         RetrofitClient.clearCache()
         val retrofit2 = RetrofitClient.create("test-key", "https://api.example.com/")
-        
+
         assertNotEquals(retrofit1, retrofit2)
     }
 }

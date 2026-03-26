@@ -1,66 +1,69 @@
 
-def downloadFile(String urlString, File destFile) {
-    try {
-        println "Downloading from $urlString to $destFile"
-        new URL(urlString).withInputStream { i ->
-            destFile.withOutputStream { it << i }
-        }
-        if (destFile.exists() && destFile.length() > 1024 * 1024) { // Check if > 1MB
-            return true
-        } else {
-            println "File too small or not exists: ${destFile.length()} bytes"
-            destFile.delete()
-            return false
-        }
-    } catch (Exception e) {
-        println "Failed to download from $urlString: $e"
-        destFile.delete()
-        return false
-    }
-}
+abstract class DownloadSherpaTask extends DefaultTask {
+    @Input
+    List<String> urls = [
+        'https://gh-proxy.com/https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.10.30/sherpa-onnx-v1.10.30-android.tar.bz2',
+        'https://mirror.ghproxy.com/https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.10.30/sherpa-onnx-v1.10.30-android.tar.bz2',
+        'https://ghproxy.net/https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.10.30/sherpa-onnx-v1.10.30-android.tar.bz2',
+        'https://kkgithub.com/k2-fsa/sherpa-onnx/releases/download/v1.10.30/sherpa-onnx-v1.10.30-android.tar.bz2'
+    ]
 
-task downloadSherpaLibs {
-    doLast {
-        def destDir = new File(buildDir, 'downloads')
-        destDir.mkdirs()
-        def f = new File(destDir, 'sherpa-libs.tar.bz2')
-        if (!f.exists()) {
-            def urls = [
-                'https://gh-proxy.com/https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.10.30/sherpa-onnx-v1.10.30-android.tar.bz2',
-                'https://mirror.ghproxy.com/https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.10.30/sherpa-onnx-v1.10.30-android.tar.bz2',
-                'https://ghproxy.net/https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.10.30/sherpa-onnx-v1.10.30-android.tar.bz2',
-                'https://kkgithub.com/k2-fsa/sherpa-onnx/releases/download/v1.10.30/sherpa-onnx-v1.10.30-android.tar.bz2'
-            ]
-            boolean success = false
-            for (url in urls) {
-                println "Attempting download from $url..."
-                if (downloadFile(url, f)) {
+    @OutputFile
+    File destFile
+
+    @TaskAction
+    void download() {
+        if (destFile.exists()) {
+            return
+        }
+        destFile.parentFile.mkdirs()
+        
+        boolean success = false
+        for (String urlString : urls) {
+            println "Attempting download from $urlString..."
+            try {
+                new URL(urlString).withInputStream { i ->
+                    destFile.withOutputStream { it << i }
+                }
+                if (destFile.exists() && destFile.length() > 1024 * 1024) {
                     success = true
                     println "Download successful."
                     break
+                } else {
+                    println "File too small or not exists: ${destFile.length()} bytes"
+                    destFile.delete()
                 }
-            }
-            if (!success) {
-                throw new GradleException("Failed to download sherpa-libs from all mirrors.")
+            } catch (Exception e) {
+                println "Failed to download from $urlString: $e"
+                destFile.delete()
             }
         }
+        if (!success) {
+            throw new GradleException("Failed to download sherpa-libs from all mirrors.")
+        }
     }
+}
+
+tasks.register("downloadSherpaLibs", DownloadSherpaTask) {
+    destFile = new File(layout.buildDirectory.get().asFile, "downloads/sherpa-libs.tar.bz2")
 }
 
 
 task unzipSherpaLibs(dependsOn: downloadSherpaLibs, type: Copy) {
-    def destDir = new File(buildDir, 'downloads')
+    def buildDirPath = layout.buildDirectory.get().asFile.absolutePath
+    def destDir = new File(buildDirPath, 'downloads')
     from tarTree(resources.bzip2(new File(destDir, 'sherpa-libs.tar.bz2')))
-    into new File(buildDir, 'sherpa-libs-extracted')
+    into new File(buildDirPath, 'sherpa-libs-extracted')
 }
 
 task installSherpaLibs(dependsOn: unzipSherpaLibs, type: Copy) {
+    def buildDirPath = layout.buildDirectory.get().asFile.absolutePath
     // Source path depends on the structure inside the tar
     // Based on LS output, it seems to be directly under jniLibs
-    def sourceDir = new File(buildDir, 'sherpa-libs-extracted/jniLibs/arm64-v8a')
+    def sourceDir = new File(buildDirPath, 'sherpa-libs-extracted/jniLibs/arm64-v8a')
     if (!sourceDir.exists()) {
         // Fallback to checking for the versioned folder just in case
-        sourceDir = new File(buildDir, 'sherpa-libs-extracted/sherpa-onnx-v1.10.30-android/jniLibs/arm64-v8a')
+        sourceDir = new File(buildDirPath, 'sherpa-libs-extracted/sherpa-onnx-v1.10.30-android/jniLibs/arm64-v8a')
     }
     
     from sourceDir

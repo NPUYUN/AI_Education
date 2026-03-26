@@ -11,5 +11,5 @@ data class ErrorBookEntity(
     val questionContent: String,
     val errorReason: String,
     val correctSolution: String,
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = System.currentTimeMillis(),
 )

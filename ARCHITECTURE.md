@@ -90,4 +90,14 @@ Compose UI 组件按复用范围和职责划分为三个层级：
 - **单元测试**：
   - 核心逻辑（Repository 业务聚合、ViewModel 状态扭转、工具类解析）必须覆盖单元测试。
   - `common` 模块基础建设的代码覆盖率要求在 90% 以上。
-- **UI 测试 / Compose 测试**：针对关键用户路径（如输入框防抖、导航跳转）可选择性添加。 
+- **UI 测试 / Compose 测试**：针对关键用户路径（如输入框防抖、导航跳转）可选择性添加。
+
+## 7. 安全与离线策略规范
+
+1. **API Key 安全存储**：
+   - 严禁在代码中硬编码明文 API Key。
+   - 采用 Android NDK (C/C++) 层存储并使用 XOR 等简单加密方式混淆 Key，通过 JNI 接口 (`NativeLib`) 提供给上层。
+   - 必须提供编译期的 Fallback 机制（如 `BuildConfig`），以防止由于本地 NDK 环境缺失导致编译失败。
+2. **全局离线降级策略**：
+   - 必须通过全局单例的 `NetworkMonitor` (基于 `ConnectivityManager.NetworkCallback` + `StateFlow`) 实时监听网络连接状态。
+   - 所有涉及云端大模型推断或网络下载的交互，必须在 ViewModel 意图处理的起始位置判断网络状态，并在无网时阻断请求，优雅降级为本地数据读取或给出清晰的无网提示。 

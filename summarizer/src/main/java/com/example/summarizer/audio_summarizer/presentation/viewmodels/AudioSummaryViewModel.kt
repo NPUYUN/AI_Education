@@ -6,8 +6,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.common.config.GlobalConfigRepository
 import com.example.common.dispatchers.DispatcherProvider
+import com.example.common.utils.NetworkMonitor
 import com.example.summarizer.audio_summarizer.services.AudioSummaryRepository
-import com.example.summarizer.video_summarizer.services.SherpaAsrManager
+import com.example.summarizer.videosummarizer.services.SherpaAsrManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,129 +28,147 @@ data class AudioSummaryUiState(
     val isSummarizing: Boolean = false,
     val transcriptResult: String = "",
     val summaryResult: String = "",
-    val error: String? = null
+    val error: String? = null,
 )
 
 @HiltViewModel
-class AudioSummaryViewModel @Inject constructor(
-    @ApplicationContext private val context: Context,
-    private val repository: AudioSummaryRepository,
-    private val sherpaAsrManager: SherpaAsrManager,
-    private val globalConfigRepository: GlobalConfigRepository,
-    private val dispatcherProvider: DispatcherProvider
-) : ViewModel() {
+class AudioSummaryViewModel
+    @Inject
+    constructor(
+        @ApplicationContext private val context: Context,
+        private val repository: AudioSummaryRepository,
+        private val sherpaAsrManager: SherpaAsrManager,
+        private val globalConfigRepository: GlobalConfigRepository,
+        private val dispatcherProvider: DispatcherProvider,
+        private val networkMonitor: NetworkMonitor,
+    ) : ViewModel() {
+        private val _uiState = MutableStateFlow(AudioSummaryUiState())
+        val uiState: StateFlow<AudioSummaryUiState> = _uiState.asStateFlow()
 
-    private val _uiState = MutableStateFlow(AudioSummaryUiState())
-    val uiState: StateFlow<AudioSummaryUiState> = _uiState.asStateFlow()
+        fun handleAudioUri(uri: Uri) {
+            val name = getFileName(uri)
+            _uiState.value =
+                _uiState.value.copy(
+                    selectedAudioUri = uri,
+                    selectedAudioName = name,
+                    transcriptResult = "",
+                    summaryResult = "",
+                    error = null,
+                )
+        }
 
-    fun handleAudioUri(uri: Uri) {
-        val name = getFileName(uri)
-        _uiState.value = _uiState.value.copy(
-            selectedAudioUri = uri,
-            selectedAudioName = name,
-            transcriptResult = "",
-            summaryResult = "",
-            error = null
-        )
-    }
-
-    private fun getFileName(uri: Uri): String {
-        var name = "unknown_audio"
-        context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
-            if (cursor.moveToFirst()) {
-                val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
-                if (nameIndex != -1) {
-                    name = cursor.getString(nameIndex)
+        private fun getFileName(uri: Uri): String {
+            var name = "unknown_audio"
+            context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                    if (nameIndex != -1) {
+                        name = cursor.getString(nameIndex)
+                    }
                 }
             }
-        }
-        return name
-    }
-
-    fun processAudio() {
-        val uri = _uiState.value.selectedAudioUri
-        if (uri == null) {
-            _uiState.value = _uiState.value.copy(error = "请先选择一个音频文件")
-            return
+            return name
         }
 
-        _uiState.value = _uiState.value.copy(
-            isTranscribing = true,
-            error = null,
-            transcriptResult = "",
-            summaryResult = ""
-        )
+        fun processAudio() {
+            val uri = _uiState.value.selectedAudioUri
+            if (uri == null) {
+                _uiState.value = _uiState.value.copy(error = "请先选择一个音频文件")
+                return
+            }
 
-        viewModelScope.launch {
-            try {
-                // 1. Copy URI to a temporary file
-                val tempFile = withContext(dispatcherProvider.io) {
-                    val file = File(context.cacheDir, "temp_audio_${System.currentTimeMillis()}.tmp")
-                    context.contentResolver.openInputStream(uri)?.use { input ->
-                        FileOutputStream(file).use { output ->
-                            input.copyTo(output)
+            _uiState.value =
+                _uiState.value.copy(
+                    isTranscribing = true,
+                    error = null,
+                    transcriptResult = "",
+                    summaryResult = "",
+                )
+
+            viewModelScope.launch {
+                try {
+                    // 1. Copy URI to a temporary file
+                    val tempFile =
+                        withContext(dispatcherProvider.io) {
+                            val file = File(context.cacheDir, "temp_audio_${System.currentTimeMillis()}.tmp")
+                            context.contentResolver.openInputStream(uri)?.use { input ->
+                                FileOutputStream(file).use { output ->
+                                    input.copyTo(output)
+                                }
+                            }
+                            file
                         }
+
+                    if (!tempFile.exists() || tempFile.length() == 0L) {
+                        throw Exception("无法读取音频文件内容")
                     }
-                    file
-                }
 
-                if (!tempFile.exists() || tempFile.length() == 0L) {
-                    throw Exception("无法读取音频文件内容")
-                }
+                    // 2. Transcribe using SherpaAsrManager
+                    val transcript =
+                        try {
+                            sherpaAsrManager.transcribe(tempFile)
+                        } finally {
+                            withContext(dispatcherProvider.io) {
+                                if (tempFile.exists()) tempFile.delete()
+                            }
+                        }
 
-                // 2. Transcribe using SherpaAsrManager
-                val transcript = try {
-                    sherpaAsrManager.transcribe(tempFile)
-                } finally {
-                    withContext(dispatcherProvider.io) {
-                        if (tempFile.exists()) tempFile.delete()
+                    if (transcript.isBlank()) {
+                        throw Exception("音频转写结果为空")
                     }
-                }
 
-                if (transcript.isBlank()) {
-                    throw Exception("音频转写结果为空")
-                }
-
-                _uiState.value = _uiState.value.copy(
-                    isTranscribing = false,
-                    transcriptResult = transcript,
-                    isSummarizing = true
-                )
-
-                // 3. Summarize using API
-                // Using Video Summary Configs for now as it represents the summarizer module configs
-                val apiKey = globalConfigRepository.getEffectiveVideoSummaryApiKey().first()
-                val baseUrl = globalConfigRepository.getVideoSummaryBaseUrl().first()
-                val modelName = globalConfigRepository.getVideoSummaryModelName().first()
-
-                val result = repository.summarizeAudioTranscript(apiKey, transcript, modelName, baseUrl)
-
-                result.fold(
-                    onSuccess = { summary ->
-                        _uiState.value = _uiState.value.copy(
-                            isSummarizing = false,
-                            summaryResult = summary
+                    _uiState.value =
+                        _uiState.value.copy(
+                            isTranscribing = false,
+                            transcriptResult = transcript,
+                            isSummarizing = true,
                         )
-                    },
-                    onFailure = { e ->
-                        _uiState.value = _uiState.value.copy(
-                            isSummarizing = false,
-                            error = e.message ?: "生成总结时发生未知错误"
-                        )
-                    }
-                )
 
-            } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    isTranscribing = false,
-                    isSummarizing = false,
-                    error = e.message ?: "处理音频时发生异常"
-                )
+                    if (!networkMonitor.isConnected.value) {
+                        _uiState.value =
+                            _uiState.value.copy(
+                                isSummarizing = false,
+                                error = "当前处于无网络环境，离线转写已完成，但无法进行大模型总结。\n您可以复制转写结果，待网络恢复后重试。",
+                            )
+                        return@launch
+                    }
+
+                    // 3. Summarize using API
+                    // Using Video Summary Configs for now as it represents the summarizer module configs
+                    val apiKey = globalConfigRepository.getEffectiveVideoSummaryApiKey().first()
+                    val baseUrl = globalConfigRepository.getVideoSummaryBaseUrl().first()
+                    val modelName = globalConfigRepository.getVideoSummaryModelName().first()
+
+                    val result = repository.summarizeAudioTranscript(apiKey, transcript, modelName, baseUrl)
+
+                    result.fold(
+                        onSuccess = { summary ->
+                            _uiState.value =
+                                _uiState.value.copy(
+                                    isSummarizing = false,
+                                    summaryResult = summary,
+                                )
+                        },
+                        onFailure = { e ->
+                            _uiState.value =
+                                _uiState.value.copy(
+                                    isSummarizing = false,
+                                    error = e.message ?: "生成总结时发生未知错误",
+                                )
+                        },
+                    )
+                } catch (e: Exception) {
+                    _uiState.value =
+                        _uiState.value.copy(
+                            isTranscribing = false,
+                            isSummarizing = false,
+                            error = e.message ?: "处理音频时发生异常",
+                        )
+                }
             }
         }
-    }
 
-    fun clearError() {
-        _uiState.value = _uiState.value.copy(error = null)
+        fun clearError() {
+            _uiState.value = _uiState.value.copy(error = null)
+        }
     }
-}

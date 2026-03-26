@@ -5,14 +5,14 @@ import androidx.room.Room
 import com.example.common.data.local.auth.AuthDatabase
 import com.example.common.data.local.auth.UserDao
 import com.example.common.database.ChatDatabase
-import com.example.common.database.dao.ChatDao
-import com.example.common.database.dao.KnowledgeCardDao
-import com.example.common.database.dao.ErrorBookDao
-import com.example.common.database.dao.SolveHistoryDao
 import com.example.common.database.PreferencesManager
-import com.example.common.manager.VoskVoiceManager
-import com.example.common.dispatchers.DispatcherProvider
+import com.example.common.database.dao.ChatDao
+import com.example.common.database.dao.ErrorBookDao
+import com.example.common.database.dao.KnowledgeCardDao
+import com.example.common.database.dao.SolveHistoryDao
 import com.example.common.dispatchers.DefaultDispatcherProvider
+import com.example.common.dispatchers.DispatcherProvider
+import com.example.common.manager.VoskVoiceManager
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -23,19 +23,18 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object CommonModule {
-
     @Provides
     @Singleton
     fun provideAuthDatabase(
-        @ApplicationContext context: Context
+        @ApplicationContext context: Context,
     ): AuthDatabase {
         return Room.databaseBuilder(
             context,
             AuthDatabase::class.java,
-            "auth_db"
+            "auth_db",
         )
-        .fallbackToDestructiveMigration(true)
-         .build()
+            .fallbackToDestructiveMigration(true)
+            .build()
     }
 
     @Provides
@@ -47,7 +46,7 @@ object CommonModule {
     @Provides
     @Singleton
     fun provideChatDatabase(
-        @ApplicationContext context: Context
+        @ApplicationContext context: Context,
     ): ChatDatabase {
         return ChatDatabase.getDatabase(context)
     }
@@ -69,7 +68,7 @@ object CommonModule {
     fun provideErrorBookDao(database: ChatDatabase): ErrorBookDao {
         return database.errorBookDao()
     }
-    
+
     @Provides
     @Singleton
     fun provideSolveHistoryDao(database: ChatDatabase): SolveHistoryDao {
@@ -78,7 +77,9 @@ object CommonModule {
 
     @Provides
     @Singleton
-    fun providePreferencesManager(@ApplicationContext context: Context): PreferencesManager {
+    fun providePreferencesManager(
+        @ApplicationContext context: Context,
+    ): PreferencesManager {
         return PreferencesManager(context)
     }
 
@@ -86,7 +87,7 @@ object CommonModule {
     @Singleton
     fun provideVoskVoiceManager(
         @ApplicationContext context: Context,
-        voskModelManager: com.example.common.manager.VoskModelManager
+        voskModelManager: com.example.common.manager.VoskModelManager,
     ): VoskVoiceManager {
         return VoskVoiceManager(context, voskModelManager)
     }
@@ -95,5 +96,13 @@ object CommonModule {
     @Singleton
     fun provideDispatcherProvider(): DispatcherProvider {
         return DefaultDispatcherProvider()
+    }
+
+    @Provides
+    @Singleton
+    fun provideNetworkMonitor(
+        @ApplicationContext context: Context,
+    ): com.example.common.utils.NetworkMonitor {
+        return com.example.common.utils.NetworkMonitor(context)
     }
 }

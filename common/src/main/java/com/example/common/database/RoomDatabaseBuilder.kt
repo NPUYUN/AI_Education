@@ -6,13 +6,16 @@ import androidx.room.RoomDatabase
 import com.example.common.config.AppConstants
 
 object RoomDatabaseBuilder {
-    inline fun <reified T : RoomDatabase> build(context: Context, databaseName: String = AppConstants.DATABASE_NAME): T {
+    inline fun <reified T : RoomDatabase> build(
+        context: Context,
+        databaseName: String = AppConstants.DATABASE_NAME,
+    ): T {
         return Room.databaseBuilder(
             context.applicationContext,
             T::class.java,
-            databaseName
+            databaseName,
         )
-        .fallbackToDestructiveMigration(true) // For development simplicity
-        .build()
+            .fallbackToDestructiveMigration(true) // For development simplicity
+            .build()
     }
 }

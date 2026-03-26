@@ -1,16 +1,14 @@
 package com.example.common.utils
 
+import android.util.Base64
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.mockito.MockedStatic
 import org.mockito.Mockito
 import org.mockito.junit.MockitoJUnitRunner
-import android.util.Base64
 
 @RunWith(MockitoJUnitRunner::class)
 class EncryptionUtilsTest {
-
     @Test
     fun `sha256 generates correct hash`() {
         val input = "hello world"
@@ -23,7 +21,7 @@ class EncryptionUtilsTest {
     fun `encryptAES and decryptAES work symmetrically`() {
         val originalText = "SuperSecretData123"
         val secretKey = "MySuperSecretKey"
-        
+
         // Mock Base64
         Mockito.mockStatic(Base64::class.java).use { mockedBase64 ->
             mockedBase64.`when`<String> { Base64.encodeToString(Mockito.any(ByteArray::class.java), Mockito.eq(Base64.DEFAULT)) }
@@ -31,7 +29,7 @@ class EncryptionUtilsTest {
                     val bytes = invocation.arguments[0] as ByteArray
                     java.util.Base64.getEncoder().encodeToString(bytes)
                 }
-                
+
             mockedBase64.`when`<ByteArray> { Base64.decode(Mockito.anyString(), Mockito.eq(Base64.DEFAULT)) }
                 .thenAnswer { invocation ->
                     val string = invocation.arguments[0] as String
@@ -39,7 +37,7 @@ class EncryptionUtilsTest {
                 }
 
             val encrypted = EncryptionUtils.encryptAES(originalText, secretKey)
-            
+
             val decrypted = EncryptionUtils.decryptAES(encrypted, secretKey)
             assertEquals(originalText, decrypted)
         }
@@ -49,14 +47,14 @@ class EncryptionUtilsTest {
     fun `encryptAES with short key handles padding correctly`() {
         val originalText = "Data"
         val shortKey = "Short" // Less than 16 bytes
-        
+
         Mockito.mockStatic(Base64::class.java).use { mockedBase64 ->
             mockedBase64.`when`<String> { Base64.encodeToString(Mockito.any(ByteArray::class.java), Mockito.eq(Base64.DEFAULT)) }
                 .thenAnswer { invocation ->
                     val bytes = invocation.arguments[0] as ByteArray
                     java.util.Base64.getEncoder().encodeToString(bytes)
                 }
-                
+
             mockedBase64.`when`<ByteArray> { Base64.decode(Mockito.anyString(), Mockito.eq(Base64.DEFAULT)) }
                 .thenAnswer { invocation ->
                     val string = invocation.arguments[0] as String
@@ -65,7 +63,7 @@ class EncryptionUtilsTest {
 
             val encrypted = EncryptionUtils.encryptAES(originalText, shortKey)
             val decrypted = EncryptionUtils.decryptAES(encrypted, shortKey)
-            
+
             assertEquals(originalText, decrypted)
         }
     }
@@ -74,14 +72,14 @@ class EncryptionUtilsTest {
     fun `encryptAES with long key handles truncation correctly`() {
         val originalText = "Data"
         val longKey = "ThisIsAVeryLongKeyThatExceedsThirtyTwoBytesLength" // > 32 bytes
-        
+
         Mockito.mockStatic(Base64::class.java).use { mockedBase64 ->
             mockedBase64.`when`<String> { Base64.encodeToString(Mockito.any(ByteArray::class.java), Mockito.eq(Base64.DEFAULT)) }
                 .thenAnswer { invocation ->
                     val bytes = invocation.arguments[0] as ByteArray
                     java.util.Base64.getEncoder().encodeToString(bytes)
                 }
-                
+
             mockedBase64.`when`<ByteArray> { Base64.decode(Mockito.anyString(), Mockito.eq(Base64.DEFAULT)) }
                 .thenAnswer { invocation ->
                     val string = invocation.arguments[0] as String
@@ -90,7 +88,7 @@ class EncryptionUtilsTest {
 
             val encrypted = EncryptionUtils.encryptAES(originalText, longKey)
             val decrypted = EncryptionUtils.decryptAES(encrypted, longKey)
-            
+
             assertEquals(originalText, decrypted)
         }
     }

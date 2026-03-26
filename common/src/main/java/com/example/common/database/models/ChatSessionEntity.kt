@@ -9,5 +9,5 @@ data class ChatSessionEntity(
     val userId: String,
     val title: String,
     val lastMessage: String,
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = System.currentTimeMillis(),
 )

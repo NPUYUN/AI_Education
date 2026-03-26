@@ -8,12 +8,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.example.summarizer.video_summarizer.presentation.viewmodels.VideoDownloadViewModel
-import com.example.summarizer.video_summarizer.presentation.screens.VideoDownloadScreen
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.summarizer.core.ui.theme.Ai_EducationTheme
-
+import com.example.summarizer.videosummarizer.presentation.screens.VideoDownloadScreen
+import com.example.summarizer.videosummarizer.presentation.viewmodels.VideoDownloadViewModel
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -26,7 +25,7 @@ class MainActivity : ComponentActivity() {
             Ai_EducationTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
+                    color = MaterialTheme.colorScheme.background,
                 ) {
                     val viewModel: VideoDownloadViewModel = hiltViewModel()
                     VideoDownloadScreen(viewModel = viewModel)

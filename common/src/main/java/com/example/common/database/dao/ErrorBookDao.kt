@@ -21,7 +21,7 @@ interface ErrorBookDao {
 
     @Delete
     suspend fun deleteErrorRecord(record: ErrorBookEntity)
-    
+
     @Query("DELETE FROM error_book")
     suspend fun deleteAllErrorRecords()
 }

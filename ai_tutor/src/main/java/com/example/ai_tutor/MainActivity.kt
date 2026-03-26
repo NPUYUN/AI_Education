@@ -9,7 +9,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.ui.Modifier
 import com.example.ai_tutor.core.ui.theme.Ai_EducationTheme
 import com.example.ai_tutor.timeline_map.presentation.screens.TimelineMapScreen
-
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint

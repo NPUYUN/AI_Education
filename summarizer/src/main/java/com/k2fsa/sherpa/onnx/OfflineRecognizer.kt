@@ -9,7 +9,6 @@ data class OfflineRecognizerResult(
     val lang: String,
     val emotion: String,
     val event: String,
-
     // valid only for TDT models
     val durations: FloatArray,
 )
@@ -144,11 +143,12 @@ class OfflineRecognizer(
     private var ptr: Long
 
     init {
-        ptr = if (assetManager != null) {
-            newFromAsset(assetManager, config)
-        } else {
-            newFromFile(config)
-        }
+        ptr =
+            if (assetManager != null) {
+                newFromAsset(assetManager, config)
+            } else {
+                newFromFile(config)
+            }
     }
 
     protected fun finalize() {
@@ -177,18 +177,22 @@ class OfflineRecognizer(
 
     private external fun createStream(ptr: Long): Long
 
-    private external fun setConfig(ptr: Long, config: OfflineRecognizerConfig)
+    private external fun setConfig(
+        ptr: Long,
+        config: OfflineRecognizerConfig,
+    )
 
     private external fun newFromAsset(
         assetManager: AssetManager,
         config: OfflineRecognizerConfig,
     ): Long
 
-    private external fun newFromFile(
-        config: OfflineRecognizerConfig,
-    ): Long
+    private external fun newFromFile(config: OfflineRecognizerConfig): Long
 
-    private external fun decode(ptr: Long, streamPtr: Long)
+    private external fun decode(
+        ptr: Long,
+        streamPtr: Long,
+    )
 
     private external fun getResult(streamPtr: Long): OfflineRecognizerResult
 
@@ -239,9 +243,10 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
         0 -> {
             val modelDir = "sherpa-onnx-paraformer-zh-2023-09-14"
             return OfflineModelConfig(
-                paraformer = OfflineParaformerModelConfig(
-                    model = "$modelDir/model.int8.onnx",
-                ),
+                paraformer =
+                    OfflineParaformerModelConfig(
+                        model = "$modelDir/model.int8.onnx",
+                    ),
                 tokens = "$modelDir/tokens.txt",
                 modelType = "paraformer",
             )
@@ -250,11 +255,12 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
         1 -> {
             val modelDir = "icefall-asr-multidataset-pruned_transducer_stateless7-2023-05-04"
             return OfflineModelConfig(
-                transducer = OfflineTransducerModelConfig(
-                    encoder = "$modelDir/encoder-epoch-30-avg-4.int8.onnx",
-                    decoder = "$modelDir/decoder-epoch-30-avg-4.onnx",
-                    joiner = "$modelDir/joiner-epoch-30-avg-4.onnx",
-                ),
+                transducer =
+                    OfflineTransducerModelConfig(
+                        encoder = "$modelDir/encoder-epoch-30-avg-4.int8.onnx",
+                        decoder = "$modelDir/decoder-epoch-30-avg-4.onnx",
+                        joiner = "$modelDir/joiner-epoch-30-avg-4.onnx",
+                    ),
                 tokens = "$modelDir/tokens.txt",
                 modelType = "transducer",
             )
@@ -263,10 +269,11 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
         2 -> {
             val modelDir = "sherpa-onnx-whisper-tiny.en"
             return OfflineModelConfig(
-                whisper = OfflineWhisperModelConfig(
-                    encoder = "$modelDir/tiny.en-encoder.int8.onnx",
-                    decoder = "$modelDir/tiny.en-decoder.int8.onnx",
-                ),
+                whisper =
+                    OfflineWhisperModelConfig(
+                        encoder = "$modelDir/tiny.en-encoder.int8.onnx",
+                        decoder = "$modelDir/tiny.en-decoder.int8.onnx",
+                    ),
                 tokens = "$modelDir/tiny.en-tokens.txt",
                 modelType = "whisper",
             )
@@ -275,24 +282,25 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
         3 -> {
             val modelDir = "sherpa-onnx-whisper-base.en"
             return OfflineModelConfig(
-                whisper = OfflineWhisperModelConfig(
-                    encoder = "$modelDir/base.en-encoder.int8.onnx",
-                    decoder = "$modelDir/base.en-decoder.int8.onnx",
-                ),
+                whisper =
+                    OfflineWhisperModelConfig(
+                        encoder = "$modelDir/base.en-encoder.int8.onnx",
+                        decoder = "$modelDir/base.en-decoder.int8.onnx",
+                    ),
                 tokens = "$modelDir/base.en-tokens.txt",
                 modelType = "whisper",
             )
         }
 
-
         4 -> {
             val modelDir = "icefall-asr-zipformer-wenetspeech-20230615"
             return OfflineModelConfig(
-                transducer = OfflineTransducerModelConfig(
-                    encoder = "$modelDir/encoder-epoch-12-avg-4.int8.onnx",
-                    decoder = "$modelDir/decoder-epoch-12-avg-4.onnx",
-                    joiner = "$modelDir/joiner-epoch-12-avg-4.int8.onnx",
-                ),
+                transducer =
+                    OfflineTransducerModelConfig(
+                        encoder = "$modelDir/encoder-epoch-12-avg-4.int8.onnx",
+                        decoder = "$modelDir/decoder-epoch-12-avg-4.onnx",
+                        joiner = "$modelDir/joiner-epoch-12-avg-4.int8.onnx",
+                    ),
                 tokens = "$modelDir/tokens.txt",
                 modelType = "transducer",
             )
@@ -301,11 +309,12 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
         5 -> {
             val modelDir = "sherpa-onnx-zipformer-multi-zh-hans-2023-9-2"
             return OfflineModelConfig(
-                transducer = OfflineTransducerModelConfig(
-                    encoder = "$modelDir/encoder-epoch-20-avg-1.int8.onnx",
-                    decoder = "$modelDir/decoder-epoch-20-avg-1.onnx",
-                    joiner = "$modelDir/joiner-epoch-20-avg-1.int8.onnx",
-                ),
+                transducer =
+                    OfflineTransducerModelConfig(
+                        encoder = "$modelDir/encoder-epoch-20-avg-1.int8.onnx",
+                        decoder = "$modelDir/decoder-epoch-20-avg-1.onnx",
+                        joiner = "$modelDir/joiner-epoch-20-avg-1.int8.onnx",
+                    ),
                 tokens = "$modelDir/tokens.txt",
                 modelType = "transducer",
             )
@@ -314,9 +323,10 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
         6 -> {
             val modelDir = "sherpa-onnx-nemo-ctc-en-citrinet-512"
             return OfflineModelConfig(
-                nemo = OfflineNemoEncDecCtcModelConfig(
-                    model = "$modelDir/model.int8.onnx",
-                ),
+                nemo =
+                    OfflineNemoEncDecCtcModelConfig(
+                        model = "$modelDir/model.int8.onnx",
+                    ),
                 tokens = "$modelDir/tokens.txt",
             )
         }
@@ -324,9 +334,10 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
         7 -> {
             val modelDir = "sherpa-onnx-nemo-fast-conformer-ctc-be-de-en-es-fr-hr-it-pl-ru-uk-20k"
             return OfflineModelConfig(
-                nemo = OfflineNemoEncDecCtcModelConfig(
-                    model = "$modelDir/model.onnx",
-                ),
+                nemo =
+                    OfflineNemoEncDecCtcModelConfig(
+                        model = "$modelDir/model.onnx",
+                    ),
                 tokens = "$modelDir/tokens.txt",
             )
         }
@@ -334,9 +345,10 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
         8 -> {
             val modelDir = "sherpa-onnx-nemo-fast-conformer-ctc-en-24500"
             return OfflineModelConfig(
-                nemo = OfflineNemoEncDecCtcModelConfig(
-                    model = "$modelDir/model.onnx",
-                ),
+                nemo =
+                    OfflineNemoEncDecCtcModelConfig(
+                        model = "$modelDir/model.onnx",
+                    ),
                 tokens = "$modelDir/tokens.txt",
             )
         }
@@ -344,9 +356,10 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
         9 -> {
             val modelDir = "sherpa-onnx-nemo-fast-conformer-ctc-en-de-es-fr-14288"
             return OfflineModelConfig(
-                nemo = OfflineNemoEncDecCtcModelConfig(
-                    model = "$modelDir/model.onnx",
-                ),
+                nemo =
+                    OfflineNemoEncDecCtcModelConfig(
+                        model = "$modelDir/model.onnx",
+                    ),
                 tokens = "$modelDir/tokens.txt",
             )
         }
@@ -354,9 +367,10 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
         10 -> {
             val modelDir = "sherpa-onnx-nemo-fast-conformer-ctc-es-1424"
             return OfflineModelConfig(
-                nemo = OfflineNemoEncDecCtcModelConfig(
-                    model = "$modelDir/model.onnx",
-                ),
+                nemo =
+                    OfflineNemoEncDecCtcModelConfig(
+                        model = "$modelDir/model.onnx",
+                    ),
                 tokens = "$modelDir/tokens.txt",
             )
         }
@@ -373,11 +387,12 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
         12 -> {
             val modelDir = "sherpa-onnx-zipformer-thai-2024-06-20"
             return OfflineModelConfig(
-                transducer = OfflineTransducerModelConfig(
-                    encoder = "$modelDir/encoder-epoch-12-avg-5.int8.onnx",
-                    decoder = "$modelDir/decoder-epoch-12-avg-5.onnx",
-                    joiner = "$modelDir/joiner-epoch-12-avg-5.int8.onnx",
-                ),
+                transducer =
+                    OfflineTransducerModelConfig(
+                        encoder = "$modelDir/encoder-epoch-12-avg-5.int8.onnx",
+                        decoder = "$modelDir/decoder-epoch-12-avg-5.onnx",
+                        joiner = "$modelDir/joiner-epoch-12-avg-5.int8.onnx",
+                    ),
                 tokens = "$modelDir/tokens.txt",
                 modelType = "transducer",
             )
@@ -386,11 +401,12 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
         13 -> {
             val modelDir = "sherpa-onnx-zipformer-korean-2024-06-24"
             return OfflineModelConfig(
-                transducer = OfflineTransducerModelConfig(
-                    encoder = "$modelDir/encoder-epoch-99-avg-1.int8.onnx",
-                    decoder = "$modelDir/decoder-epoch-99-avg-1.onnx",
-                    joiner = "$modelDir/joiner-epoch-99-avg-1.int8.onnx",
-                ),
+                transducer =
+                    OfflineTransducerModelConfig(
+                        encoder = "$modelDir/encoder-epoch-99-avg-1.int8.onnx",
+                        decoder = "$modelDir/decoder-epoch-99-avg-1.onnx",
+                        joiner = "$modelDir/joiner-epoch-99-avg-1.int8.onnx",
+                    ),
                 tokens = "$modelDir/tokens.txt",
                 modelType = "transducer",
             )
@@ -399,9 +415,10 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
         14 -> {
             val modelDir = "sherpa-onnx-paraformer-zh-small-2024-03-09"
             return OfflineModelConfig(
-                paraformer = OfflineParaformerModelConfig(
-                    model = "$modelDir/model.int8.onnx",
-                ),
+                paraformer =
+                    OfflineParaformerModelConfig(
+                        model = "$modelDir/model.int8.onnx",
+                    ),
                 tokens = "$modelDir/tokens.txt",
                 modelType = "paraformer",
             )
@@ -410,9 +427,10 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
         15 -> {
             val modelDir = "sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2024-07-17"
             return OfflineModelConfig(
-                senseVoice = OfflineSenseVoiceModelConfig(
-                    model = "$modelDir/model.int8.onnx",
-                ),
+                senseVoice =
+                    OfflineSenseVoiceModelConfig(
+                        model = "$modelDir/model.int8.onnx",
+                    ),
                 tokens = "$modelDir/tokens.txt",
             )
         }
@@ -420,11 +438,12 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
         16 -> {
             val modelDir = "sherpa-onnx-zipformer-ja-reazonspeech-2024-08-01"
             return OfflineModelConfig(
-                transducer = OfflineTransducerModelConfig(
-                    encoder = "$modelDir/encoder-epoch-99-avg-1.int8.onnx",
-                    decoder = "$modelDir/decoder-epoch-99-avg-1.onnx",
-                    joiner = "$modelDir/joiner-epoch-99-avg-1.int8.onnx",
-                ),
+                transducer =
+                    OfflineTransducerModelConfig(
+                        encoder = "$modelDir/encoder-epoch-99-avg-1.int8.onnx",
+                        decoder = "$modelDir/decoder-epoch-99-avg-1.onnx",
+                        joiner = "$modelDir/joiner-epoch-99-avg-1.int8.onnx",
+                    ),
                 tokens = "$modelDir/tokens.txt",
                 modelType = "transducer",
             )
@@ -433,11 +452,12 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
         17 -> {
             val modelDir = "sherpa-onnx-zipformer-ru-2024-09-18"
             return OfflineModelConfig(
-                transducer = OfflineTransducerModelConfig(
-                    encoder = "$modelDir/encoder.int8.onnx",
-                    decoder = "$modelDir/decoder.onnx",
-                    joiner = "$modelDir/joiner.int8.onnx",
-                ),
+                transducer =
+                    OfflineTransducerModelConfig(
+                        encoder = "$modelDir/encoder.int8.onnx",
+                        decoder = "$modelDir/decoder.onnx",
+                        joiner = "$modelDir/joiner.int8.onnx",
+                    ),
                 tokens = "$modelDir/tokens.txt",
                 modelType = "transducer",
             )
@@ -446,11 +466,12 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
         18 -> {
             val modelDir = "sherpa-onnx-small-zipformer-ru-2024-09-18"
             return OfflineModelConfig(
-                transducer = OfflineTransducerModelConfig(
-                    encoder = "$modelDir/encoder.int8.onnx",
-                    decoder = "$modelDir/decoder.onnx",
-                    joiner = "$modelDir/joiner.int8.onnx",
-                ),
+                transducer =
+                    OfflineTransducerModelConfig(
+                        encoder = "$modelDir/encoder.int8.onnx",
+                        decoder = "$modelDir/decoder.onnx",
+                        joiner = "$modelDir/joiner.int8.onnx",
+                    ),
                 tokens = "$modelDir/tokens.txt",
                 modelType = "transducer",
             )
@@ -459,9 +480,10 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
         19 -> {
             val modelDir = "sherpa-onnx-nemo-ctc-giga-am-russian-2024-10-24"
             return OfflineModelConfig(
-                nemo = OfflineNemoEncDecCtcModelConfig(
-                    model = "$modelDir/model.int8.onnx",
-                ),
+                nemo =
+                    OfflineNemoEncDecCtcModelConfig(
+                        model = "$modelDir/model.int8.onnx",
+                    ),
                 tokens = "$modelDir/tokens.txt",
             )
         }
@@ -469,11 +491,12 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
         20 -> {
             val modelDir = "sherpa-onnx-nemo-transducer-giga-am-russian-2024-10-24"
             return OfflineModelConfig(
-                transducer = OfflineTransducerModelConfig(
-                    encoder = "$modelDir/encoder.int8.onnx",
-                    decoder = "$modelDir/decoder.onnx",
-                    joiner = "$modelDir/joiner.onnx",
-                ),
+                transducer =
+                    OfflineTransducerModelConfig(
+                        encoder = "$modelDir/encoder.int8.onnx",
+                        decoder = "$modelDir/decoder.onnx",
+                        joiner = "$modelDir/joiner.onnx",
+                    ),
                 tokens = "$modelDir/tokens.txt",
                 modelType = "nemo_transducer",
             )
@@ -482,12 +505,13 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
         21 -> {
             val modelDir = "sherpa-onnx-moonshine-tiny-en-int8"
             return OfflineModelConfig(
-                moonshine = OfflineMoonshineModelConfig(
-                    preprocessor = "$modelDir/preprocess.onnx",
-                    encoder = "$modelDir/encode.int8.onnx",
-                    uncachedDecoder = "$modelDir/uncached_decode.int8.onnx",
-                    cachedDecoder = "$modelDir/cached_decode.int8.onnx",
-                ),
+                moonshine =
+                    OfflineMoonshineModelConfig(
+                        preprocessor = "$modelDir/preprocess.onnx",
+                        encoder = "$modelDir/encode.int8.onnx",
+                        uncachedDecoder = "$modelDir/uncached_decode.int8.onnx",
+                        cachedDecoder = "$modelDir/cached_decode.int8.onnx",
+                    ),
                 tokens = "$modelDir/tokens.txt",
             )
         }
@@ -495,12 +519,13 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
         22 -> {
             val modelDir = "sherpa-onnx-moonshine-base-en-int8"
             return OfflineModelConfig(
-                moonshine = OfflineMoonshineModelConfig(
-                    preprocessor = "$modelDir/preprocess.onnx",
-                    encoder = "$modelDir/encode.int8.onnx",
-                    uncachedDecoder = "$modelDir/uncached_decode.int8.onnx",
-                    cachedDecoder = "$modelDir/cached_decode.int8.onnx",
-                ),
+                moonshine =
+                    OfflineMoonshineModelConfig(
+                        preprocessor = "$modelDir/preprocess.onnx",
+                        encoder = "$modelDir/encode.int8.onnx",
+                        uncachedDecoder = "$modelDir/uncached_decode.int8.onnx",
+                        cachedDecoder = "$modelDir/cached_decode.int8.onnx",
+                    ),
                 tokens = "$modelDir/tokens.txt",
             )
         }
@@ -508,11 +533,12 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
         23 -> {
             val modelDir = "sherpa-onnx-zipformer-zh-en-2023-11-22"
             return OfflineModelConfig(
-                transducer = OfflineTransducerModelConfig(
-                    encoder = "$modelDir/encoder-epoch-34-avg-19.int8.onnx",
-                    decoder = "$modelDir/decoder-epoch-34-avg-19.onnx",
-                    joiner = "$modelDir/joiner-epoch-34-avg-19.int8.onnx",
-                ),
+                transducer =
+                    OfflineTransducerModelConfig(
+                        encoder = "$modelDir/encoder-epoch-34-avg-19.int8.onnx",
+                        decoder = "$modelDir/decoder-epoch-34-avg-19.onnx",
+                        joiner = "$modelDir/joiner-epoch-34-avg-19.int8.onnx",
+                    ),
                 tokens = "$modelDir/tokens.txt",
                 modelType = "transducer",
             )
@@ -521,10 +547,11 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
         24 -> {
             val modelDir = "sherpa-onnx-fire-red-asr-large-zh_en-2025-02-16"
             return OfflineModelConfig(
-                fireRedAsr = OfflineFireRedAsrModelConfig(
-                    encoder = "$modelDir/encoder.int8.onnx",
-                    decoder = "$modelDir/decoder.int8.onnx",
-                ),
+                fireRedAsr =
+                    OfflineFireRedAsrModelConfig(
+                        encoder = "$modelDir/encoder.int8.onnx",
+                        decoder = "$modelDir/decoder.int8.onnx",
+                    ),
                 tokens = "$modelDir/tokens.txt",
             )
         }
@@ -532,9 +559,10 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
         25 -> {
             val modelDir = "sherpa-onnx-dolphin-base-ctc-multi-lang-int8-2025-04-02"
             return OfflineModelConfig(
-                dolphin = OfflineDolphinModelConfig(
-                    model = "$modelDir/model.int8.onnx",
-                ),
+                dolphin =
+                    OfflineDolphinModelConfig(
+                        model = "$modelDir/model.int8.onnx",
+                    ),
                 tokens = "$modelDir/tokens.txt",
             )
         }
@@ -542,11 +570,12 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
         26 -> {
             val modelDir = "sherpa-onnx-zipformer-vi-int8-2025-04-20"
             return OfflineModelConfig(
-                transducer = OfflineTransducerModelConfig(
-                    encoder = "$modelDir/encoder-epoch-12-avg-8.int8.onnx",
-                    decoder = "$modelDir/decoder-epoch-12-avg-8.onnx",
-                    joiner = "$modelDir/joiner-epoch-12-avg-8.int8.onnx",
-                ),
+                transducer =
+                    OfflineTransducerModelConfig(
+                        encoder = "$modelDir/encoder-epoch-12-avg-8.int8.onnx",
+                        decoder = "$modelDir/decoder-epoch-12-avg-8.onnx",
+                        joiner = "$modelDir/joiner-epoch-12-avg-8.int8.onnx",
+                    ),
                 tokens = "$modelDir/tokens.txt",
                 modelType = "transducer",
             )
@@ -555,9 +584,10 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
         27 -> {
             val modelDir = "sherpa-onnx-nemo-ctc-giga-am-v2-russian-2025-04-19"
             return OfflineModelConfig(
-                nemo = OfflineNemoEncDecCtcModelConfig(
-                    model = "$modelDir/model.int8.onnx",
-                ),
+                nemo =
+                    OfflineNemoEncDecCtcModelConfig(
+                        model = "$modelDir/model.int8.onnx",
+                    ),
                 tokens = "$modelDir/tokens.txt",
             )
         }
@@ -565,11 +595,12 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
         28 -> {
             val modelDir = "sherpa-onnx-nemo-transducer-giga-am-v2-russian-2025-04-19"
             return OfflineModelConfig(
-                transducer = OfflineTransducerModelConfig(
-                    encoder = "$modelDir/encoder.int8.onnx",
-                    decoder = "$modelDir/decoder.onnx",
-                    joiner = "$modelDir/joiner.onnx",
-                ),
+                transducer =
+                    OfflineTransducerModelConfig(
+                        encoder = "$modelDir/encoder.int8.onnx",
+                        decoder = "$modelDir/decoder.onnx",
+                        joiner = "$modelDir/joiner.onnx",
+                    ),
                 tokens = "$modelDir/tokens.txt",
                 modelType = "nemo_transducer",
             )
@@ -578,11 +609,12 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
         29 -> {
             val modelDir = "sherpa-onnx-zipformer-ru-int8-2025-04-20"
             return OfflineModelConfig(
-                transducer = OfflineTransducerModelConfig(
-                    encoder = "$modelDir/encoder.int8.onnx",
-                    decoder = "$modelDir/decoder.onnx",
-                    joiner = "$modelDir/joiner.int8.onnx",
-                ),
+                transducer =
+                    OfflineTransducerModelConfig(
+                        encoder = "$modelDir/encoder.int8.onnx",
+                        decoder = "$modelDir/decoder.onnx",
+                        joiner = "$modelDir/joiner.int8.onnx",
+                    ),
                 tokens = "$modelDir/tokens.txt",
                 modelType = "transducer",
             )
@@ -591,11 +623,12 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
         30 -> {
             val modelDir = "sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8"
             return OfflineModelConfig(
-                transducer = OfflineTransducerModelConfig(
-                    encoder = "$modelDir/encoder.int8.onnx",
-                    decoder = "$modelDir/decoder.int8.onnx",
-                    joiner = "$modelDir/joiner.int8.onnx",
-                ),
+                transducer =
+                    OfflineTransducerModelConfig(
+                        encoder = "$modelDir/encoder.int8.onnx",
+                        decoder = "$modelDir/decoder.int8.onnx",
+                        joiner = "$modelDir/joiner.int8.onnx",
+                    ),
                 tokens = "$modelDir/tokens.txt",
                 modelType = "nemo_transducer",
             )
@@ -604,9 +637,10 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
         31 -> {
             val modelDir = "sherpa-onnx-zipformer-ctc-zh-int8-2025-07-03"
             return OfflineModelConfig(
-                zipformerCtc = OfflineZipformerCtcModelConfig(
-                    model = "$modelDir/model.int8.onnx",
-                ),
+                zipformerCtc =
+                    OfflineZipformerCtcModelConfig(
+                        model = "$modelDir/model.int8.onnx",
+                    ),
                 tokens = "$modelDir/tokens.txt",
             )
         }
@@ -614,13 +648,14 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
         32 -> {
             val modelDir = "sherpa-onnx-nemo-canary-180m-flash-en-es-de-fr-int8"
             return OfflineModelConfig(
-                canary = OfflineCanaryModelConfig(
-                    encoder = "$modelDir/encoder.int8.onnx",
-                    decoder = "$modelDir/decoder.int8.onnx",
-                    srcLang = "en",
-                    tgtLang = "en",
-                    usePnc = true,
-                ),
+                canary =
+                    OfflineCanaryModelConfig(
+                        encoder = "$modelDir/encoder.int8.onnx",
+                        decoder = "$modelDir/decoder.int8.onnx",
+                        srcLang = "en",
+                        tgtLang = "en",
+                        usePnc = true,
+                    ),
                 tokens = "$modelDir/tokens.txt",
             )
         }
@@ -628,9 +663,10 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
         33 -> {
             val modelDir = "sherpa-onnx-nemo-parakeet_tdt_ctc_110m-en-36000-int8"
             return OfflineModelConfig(
-                nemo = OfflineNemoEncDecCtcModelConfig(
-                    model = "$modelDir/model.int8.onnx",
-                ),
+                nemo =
+                    OfflineNemoEncDecCtcModelConfig(
+                        model = "$modelDir/model.int8.onnx",
+                    ),
                 tokens = "$modelDir/tokens.txt",
             )
         }
@@ -638,9 +674,10 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
         34 -> {
             val modelDir = "sherpa-onnx-nemo-parakeet-tdt_ctc-0.6b-ja-35000-int8"
             return OfflineModelConfig(
-                nemo = OfflineNemoEncDecCtcModelConfig(
-                    model = "$modelDir/model.int8.onnx",
-                ),
+                nemo =
+                    OfflineNemoEncDecCtcModelConfig(
+                        model = "$modelDir/model.int8.onnx",
+                    ),
                 tokens = "$modelDir/tokens.txt",
             )
         }
@@ -648,11 +685,12 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
         35 -> {
             val modelDir = "sherpa-onnx-nemo-transducer-stt_pt_fastconformer_hybrid_large_pc-int8"
             return OfflineModelConfig(
-                transducer = OfflineTransducerModelConfig(
-                    encoder = "$modelDir/encoder.int8.onnx",
-                    decoder = "$modelDir/decoder.int8.onnx",
-                    joiner = "$modelDir/joiner.int8.onnx",
-                ),
+                transducer =
+                    OfflineTransducerModelConfig(
+                        encoder = "$modelDir/encoder.int8.onnx",
+                        decoder = "$modelDir/decoder.int8.onnx",
+                        joiner = "$modelDir/joiner.int8.onnx",
+                    ),
                 tokens = "$modelDir/tokens.txt",
                 modelType = "nemo_transducer",
             )
@@ -661,9 +699,10 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
         36 -> {
             val modelDir = "sherpa-onnx-nemo-stt_pt_fastconformer_hybrid_large_pc-int8"
             return OfflineModelConfig(
-                nemo = OfflineNemoEncDecCtcModelConfig(
-                    model = "$modelDir/model.int8.onnx",
-                ),
+                nemo =
+                    OfflineNemoEncDecCtcModelConfig(
+                        model = "$modelDir/model.int8.onnx",
+                    ),
                 tokens = "$modelDir/tokens.txt",
             )
         }
@@ -671,11 +710,12 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
         37 -> {
             val modelDir = "sherpa-onnx-nemo-transducer-stt_de_fastconformer_hybrid_large_pc-int8"
             return OfflineModelConfig(
-                transducer = OfflineTransducerModelConfig(
-                    encoder = "$modelDir/encoder.int8.onnx",
-                    decoder = "$modelDir/decoder.int8.onnx",
-                    joiner = "$modelDir/joiner.int8.onnx",
-                ),
+                transducer =
+                    OfflineTransducerModelConfig(
+                        encoder = "$modelDir/encoder.int8.onnx",
+                        decoder = "$modelDir/decoder.int8.onnx",
+                        joiner = "$modelDir/joiner.int8.onnx",
+                    ),
                 tokens = "$modelDir/tokens.txt",
                 modelType = "nemo_transducer",
             )
@@ -684,9 +724,10 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
         38 -> {
             val modelDir = "sherpa-onnx-nemo-stt_de_fastconformer_hybrid_large_pc-int8"
             return OfflineModelConfig(
-                nemo = OfflineNemoEncDecCtcModelConfig(
-                    model = "$modelDir/model.int8.onnx",
-                ),
+                nemo =
+                    OfflineNemoEncDecCtcModelConfig(
+                        model = "$modelDir/model.int8.onnx",
+                    ),
                 tokens = "$modelDir/tokens.txt",
             )
         }
@@ -694,9 +735,10 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
         39 -> {
             val modelDir = "sherpa-onnx-zipformer-ctc-small-zh-int8-2025-07-16"
             return OfflineModelConfig(
-                zipformerCtc = OfflineZipformerCtcModelConfig(
-                    model = "$modelDir/model.int8.onnx",
-                ),
+                zipformerCtc =
+                    OfflineZipformerCtcModelConfig(
+                        model = "$modelDir/model.int8.onnx",
+                    ),
                 tokens = "$modelDir/tokens.txt",
             )
         }
@@ -704,11 +746,12 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
         40 -> {
             val modelDir = "sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8"
             return OfflineModelConfig(
-                transducer = OfflineTransducerModelConfig(
-                    encoder = "$modelDir/encoder.int8.onnx",
-                    decoder = "$modelDir/decoder.int8.onnx",
-                    joiner = "$modelDir/joiner.int8.onnx",
-                ),
+                transducer =
+                    OfflineTransducerModelConfig(
+                        encoder = "$modelDir/encoder.int8.onnx",
+                        decoder = "$modelDir/decoder.int8.onnx",
+                        joiner = "$modelDir/joiner.int8.onnx",
+                    ),
                 tokens = "$modelDir/tokens.txt",
                 modelType = "nemo_transducer",
             )
@@ -717,9 +760,10 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
         41 -> {
             val modelDir = "sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2025-09-09"
             return OfflineModelConfig(
-                senseVoice = OfflineSenseVoiceModelConfig(
-                    model = "$modelDir/model.int8.onnx",
-                ),
+                senseVoice =
+                    OfflineSenseVoiceModelConfig(
+                        model = "$modelDir/model.int8.onnx",
+                    ),
                 tokens = "$modelDir/tokens.txt",
             )
         }
@@ -728,9 +772,10 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
             val modelDir =
                 "sherpa-onnx-wenetspeech-yue-u2pp-conformer-ctc-zh-en-cantonese-int8-2025-09-10"
             return OfflineModelConfig(
-                wenetCtc = OfflineWenetCtcModelConfig(
-                    model = "$modelDir/model.int8.onnx",
-                ),
+                wenetCtc =
+                    OfflineWenetCtcModelConfig(
+                        model = "$modelDir/model.int8.onnx",
+                    ),
                 tokens = "$modelDir/tokens.txt",
             )
         }
@@ -738,9 +783,10 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
         43 -> {
             val modelDir = "sherpa-onnx-paraformer-zh-int8-2025-10-07"
             return OfflineModelConfig(
-                paraformer = OfflineParaformerModelConfig(
-                    model = "$modelDir/model.int8.onnx",
-                ),
+                paraformer =
+                    OfflineParaformerModelConfig(
+                        model = "$modelDir/model.int8.onnx",
+                    ),
                 tokens = "$modelDir/tokens.txt",
                 modelType = "paraformer",
             )
@@ -749,9 +795,10 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
         44 -> {
             val modelDir = "sherpa-onnx-omnilingual-asr-1600-languages-300M-ctc-int8-2025-11-12"
             return OfflineModelConfig(
-                omnilingual = OfflineOmnilingualAsrCtcModelConfig(
-                    model = "$modelDir/model.int8.onnx",
-                ),
+                omnilingual =
+                    OfflineOmnilingualAsrCtcModelConfig(
+                        model = "$modelDir/model.int8.onnx",
+                    ),
                 tokens = "$modelDir/tokens.txt",
             )
         }
@@ -759,9 +806,10 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
         45 -> {
             val modelDir = "sherpa-onnx-medasr-ctc-en-int8-2025-12-25"
             return OfflineModelConfig(
-                medasr = OfflineMedAsrCtcModelConfig(
-                    model = "$modelDir/model.int8.onnx",
-                ),
+                medasr =
+                    OfflineMedAsrCtcModelConfig(
+                        model = "$modelDir/model.int8.onnx",
+                    ),
                 tokens = "$modelDir/tokens.txt",
             )
         }
@@ -769,12 +817,13 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
         46 -> {
             val modelDir = "sherpa-onnx-funasr-nano-int8-2025-12-30"
             return OfflineModelConfig(
-                funasrNano = OfflineFunAsrNanoModelConfig(
-                    encoderAdaptor = "$modelDir/encoder_adaptor.int8.onnx",
-                    llm = "$modelDir/llm.int8.onnx",
-                    embedding = "$modelDir/embedding.int8.onnx",
-                    tokenizer = "$modelDir/Qwen3-0.6B",
-                ),
+                funasrNano =
+                    OfflineFunAsrNanoModelConfig(
+                        encoderAdaptor = "$modelDir/encoder_adaptor.int8.onnx",
+                        llm = "$modelDir/llm.int8.onnx",
+                        embedding = "$modelDir/embedding.int8.onnx",
+                        tokenizer = "$modelDir/Qwen3-0.6B",
+                    ),
                 tokens = "",
             )
         }
@@ -784,18 +833,20 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
                 "sherpa-onnx-qnn-5-seconds-sense-voice-zh-en-ja-ko-yue-2024-07-17-int8-android-aarch64"
             return OfflineModelConfig(
                 provider = "qnn",
-                senseVoice = OfflineSenseVoiceModelConfig(
-                    model = "$modelDir/libmodel.so",
-                    qnnConfig = QnnConfig(
-                        // Please copy libQnnHtp.so and libQnnSystem.so to jniLibs/arm64-v8a by yourself
-                        //
-                        // model.bin is created in the first run and is used from the second run
-                        // to speed up the initialization
-                        backendLib = "libQnnHtp.so",
-                        systemLib = "libQnnSystem.so",
-                        contextBinary = "$modelDir/model.bin",
+                senseVoice =
+                    OfflineSenseVoiceModelConfig(
+                        model = "$modelDir/libmodel.so",
+                        qnnConfig =
+                            QnnConfig(
+                                // Please copy libQnnHtp.so and libQnnSystem.so to jniLibs/arm64-v8a by yourself
+                                //
+                                // model.bin is created in the first run and is used from the second run
+                                // to speed up the initialization
+                                backendLib = "libQnnHtp.so",
+                                systemLib = "libQnnSystem.so",
+                                contextBinary = "$modelDir/model.bin",
+                            ),
                     ),
-                ),
                 tokens = "$modelDir/tokens.txt",
                 debug = true,
             )
@@ -806,14 +857,16 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
                 "sherpa-onnx-qnn-8-seconds-sense-voice-zh-en-ja-ko-yue-2024-07-17-int8-android-aarch64"
             return OfflineModelConfig(
                 provider = "qnn",
-                senseVoice = OfflineSenseVoiceModelConfig(
-                    model = "$modelDir/libmodel.so",
-                    qnnConfig = QnnConfig(
-                        backendLib = "libQnnHtp.so",
-                        systemLib = "libQnnSystem.so",
-                        contextBinary = "$modelDir/model.bin",
+                senseVoice =
+                    OfflineSenseVoiceModelConfig(
+                        model = "$modelDir/libmodel.so",
+                        qnnConfig =
+                            QnnConfig(
+                                backendLib = "libQnnHtp.so",
+                                systemLib = "libQnnSystem.so",
+                                contextBinary = "$modelDir/model.bin",
+                            ),
                     ),
-                ),
                 tokens = "$modelDir/tokens.txt",
                 debug = true,
             )
@@ -824,14 +877,16 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
                 "sherpa-onnx-qnn-10-seconds-sense-voice-zh-en-ja-ko-yue-2024-07-17-int8-android-aarch64"
             return OfflineModelConfig(
                 provider = "qnn",
-                senseVoice = OfflineSenseVoiceModelConfig(
-                    model = "$modelDir/libmodel.so",
-                    qnnConfig = QnnConfig(
-                        backendLib = "libQnnHtp.so",
-                        systemLib = "libQnnSystem.so",
-                        contextBinary = "$modelDir/model.bin",
+                senseVoice =
+                    OfflineSenseVoiceModelConfig(
+                        model = "$modelDir/libmodel.so",
+                        qnnConfig =
+                            QnnConfig(
+                                backendLib = "libQnnHtp.so",
+                                systemLib = "libQnnSystem.so",
+                                contextBinary = "$modelDir/model.bin",
+                            ),
                     ),
-                ),
                 tokens = "$modelDir/tokens.txt",
                 debug = true,
             )
@@ -842,14 +897,16 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
                 "sherpa-onnx-qnn-13-seconds-sense-voice-zh-en-ja-ko-yue-2024-07-17-int8-android-aarch64"
             return OfflineModelConfig(
                 provider = "qnn",
-                senseVoice = OfflineSenseVoiceModelConfig(
-                    model = "$modelDir/libmodel.so",
-                    qnnConfig = QnnConfig(
-                        backendLib = "libQnnHtp.so",
-                        systemLib = "libQnnSystem.so",
-                        contextBinary = "$modelDir/model.bin",
+                senseVoice =
+                    OfflineSenseVoiceModelConfig(
+                        model = "$modelDir/libmodel.so",
+                        qnnConfig =
+                            QnnConfig(
+                                backendLib = "libQnnHtp.so",
+                                systemLib = "libQnnSystem.so",
+                                contextBinary = "$modelDir/model.bin",
+                            ),
                     ),
-                ),
                 tokens = "$modelDir/tokens.txt",
             )
         }
@@ -859,14 +916,16 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
                 "sherpa-onnx-qnn-15-seconds-sense-voice-zh-en-ja-ko-yue-2024-07-17-int8-android-aarch64"
             return OfflineModelConfig(
                 provider = "qnn",
-                senseVoice = OfflineSenseVoiceModelConfig(
-                    model = "$modelDir/libmodel.so",
-                    qnnConfig = QnnConfig(
-                        backendLib = "libQnnHtp.so",
-                        systemLib = "libQnnSystem.so",
-                        contextBinary = "$modelDir/model.bin",
+                senseVoice =
+                    OfflineSenseVoiceModelConfig(
+                        model = "$modelDir/libmodel.so",
+                        qnnConfig =
+                            QnnConfig(
+                                backendLib = "libQnnHtp.so",
+                                systemLib = "libQnnSystem.so",
+                                contextBinary = "$modelDir/model.bin",
+                            ),
                     ),
-                ),
                 tokens = "$modelDir/tokens.txt",
             )
         }
@@ -876,14 +935,16 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
                 "sherpa-onnx-qnn-18-seconds-sense-voice-zh-en-ja-ko-yue-2024-07-17-int8-android-aarch64"
             return OfflineModelConfig(
                 provider = "qnn",
-                senseVoice = OfflineSenseVoiceModelConfig(
-                    model = "$modelDir/libmodel.so",
-                    qnnConfig = QnnConfig(
-                        backendLib = "libQnnHtp.so",
-                        systemLib = "libQnnSystem.so",
-                        contextBinary = "$modelDir/model.bin",
+                senseVoice =
+                    OfflineSenseVoiceModelConfig(
+                        model = "$modelDir/libmodel.so",
+                        qnnConfig =
+                            QnnConfig(
+                                backendLib = "libQnnHtp.so",
+                                systemLib = "libQnnSystem.so",
+                                contextBinary = "$modelDir/model.bin",
+                            ),
                     ),
-                ),
                 tokens = "$modelDir/tokens.txt",
             )
         }
@@ -893,14 +954,16 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
                 "sherpa-onnx-qnn-20-seconds-sense-voice-zh-en-ja-ko-yue-2024-07-17-int8-android-aarch64"
             return OfflineModelConfig(
                 provider = "qnn",
-                senseVoice = OfflineSenseVoiceModelConfig(
-                    model = "$modelDir/libmodel.so",
-                    qnnConfig = QnnConfig(
-                        backendLib = "libQnnHtp.so",
-                        systemLib = "libQnnSystem.so",
-                        contextBinary = "$modelDir/model.bin",
+                senseVoice =
+                    OfflineSenseVoiceModelConfig(
+                        model = "$modelDir/libmodel.so",
+                        qnnConfig =
+                            QnnConfig(
+                                backendLib = "libQnnHtp.so",
+                                systemLib = "libQnnSystem.so",
+                                contextBinary = "$modelDir/model.bin",
+                            ),
                     ),
-                ),
                 tokens = "$modelDir/tokens.txt",
             )
         }
@@ -910,14 +973,16 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
                 "sherpa-onnx-qnn-23-seconds-sense-voice-zh-en-ja-ko-yue-2024-07-17-int8-android-aarch64"
             return OfflineModelConfig(
                 provider = "qnn",
-                senseVoice = OfflineSenseVoiceModelConfig(
-                    model = "$modelDir/libmodel.so",
-                    qnnConfig = QnnConfig(
-                        backendLib = "libQnnHtp.so",
-                        systemLib = "libQnnSystem.so",
-                        contextBinary = "$modelDir/model.bin",
+                senseVoice =
+                    OfflineSenseVoiceModelConfig(
+                        model = "$modelDir/libmodel.so",
+                        qnnConfig =
+                            QnnConfig(
+                                backendLib = "libQnnHtp.so",
+                                systemLib = "libQnnSystem.so",
+                                contextBinary = "$modelDir/model.bin",
+                            ),
                     ),
-                ),
                 tokens = "$modelDir/tokens.txt",
             )
         }
@@ -927,14 +992,16 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
                 "sherpa-onnx-qnn-25-seconds-sense-voice-zh-en-ja-ko-yue-2024-07-17-int8-android-aarch64"
             return OfflineModelConfig(
                 provider = "qnn",
-                senseVoice = OfflineSenseVoiceModelConfig(
-                    model = "$modelDir/libmodel.so",
-                    qnnConfig = QnnConfig(
-                        backendLib = "libQnnHtp.so",
-                        systemLib = "libQnnSystem.so",
-                        contextBinary = "$modelDir/model.bin",
+                senseVoice =
+                    OfflineSenseVoiceModelConfig(
+                        model = "$modelDir/libmodel.so",
+                        qnnConfig =
+                            QnnConfig(
+                                backendLib = "libQnnHtp.so",
+                                systemLib = "libQnnSystem.so",
+                                contextBinary = "$modelDir/model.bin",
+                            ),
                     ),
-                ),
                 tokens = "$modelDir/tokens.txt",
             )
         }
@@ -944,14 +1011,16 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
                 "sherpa-onnx-qnn-28-seconds-sense-voice-zh-en-ja-ko-yue-2024-07-17-int8-android-aarch64"
             return OfflineModelConfig(
                 provider = "qnn",
-                senseVoice = OfflineSenseVoiceModelConfig(
-                    model = "$modelDir/libmodel.so",
-                    qnnConfig = QnnConfig(
-                        backendLib = "libQnnHtp.so",
-                        systemLib = "libQnnSystem.so",
-                        contextBinary = "$modelDir/model.bin",
+                senseVoice =
+                    OfflineSenseVoiceModelConfig(
+                        model = "$modelDir/libmodel.so",
+                        qnnConfig =
+                            QnnConfig(
+                                backendLib = "libQnnHtp.so",
+                                systemLib = "libQnnSystem.so",
+                                contextBinary = "$modelDir/model.bin",
+                            ),
                     ),
-                ),
                 tokens = "$modelDir/tokens.txt",
             )
         }
@@ -961,14 +1030,16 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
                 "sherpa-onnx-qnn-30-seconds-sense-voice-zh-en-ja-ko-yue-2024-07-17-int8-android-aarch64"
             return OfflineModelConfig(
                 provider = "qnn",
-                senseVoice = OfflineSenseVoiceModelConfig(
-                    model = "$modelDir/libmodel.so",
-                    qnnConfig = QnnConfig(
-                        backendLib = "libQnnHtp.so",
-                        systemLib = "libQnnSystem.so",
-                        contextBinary = "$modelDir/model.bin",
+                senseVoice =
+                    OfflineSenseVoiceModelConfig(
+                        model = "$modelDir/libmodel.so",
+                        qnnConfig =
+                            QnnConfig(
+                                backendLib = "libQnnHtp.so",
+                                systemLib = "libQnnSystem.so",
+                                contextBinary = "$modelDir/model.bin",
+                            ),
                     ),
-                ),
                 tokens = "$modelDir/tokens.txt",
             )
         }
@@ -978,14 +1049,16 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
                 "sherpa-onnx-qnn-5-seconds-zipformer-ctc-zh-2025-07-03-int8-android-aarch64"
             return OfflineModelConfig(
                 provider = "qnn",
-                zipformerCtc = OfflineZipformerCtcModelConfig(
-                    model = "$modelDir/libmodel.so",
-                    qnnConfig = QnnConfig(
-                        backendLib = "libQnnHtp.so",
-                        systemLib = "libQnnSystem.so",
-                        contextBinary = "$modelDir/model.bin",
+                zipformerCtc =
+                    OfflineZipformerCtcModelConfig(
+                        model = "$modelDir/libmodel.so",
+                        qnnConfig =
+                            QnnConfig(
+                                backendLib = "libQnnHtp.so",
+                                systemLib = "libQnnSystem.so",
+                                contextBinary = "$modelDir/model.bin",
+                            ),
                     ),
-                ),
                 tokens = "$modelDir/tokens.txt",
                 debug = true,
             )
@@ -996,14 +1069,16 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
                 "sherpa-onnx-qnn-8-seconds-zipformer-ctc-zh-2025-07-03-int8-android-aarch64"
             return OfflineModelConfig(
                 provider = "qnn",
-                zipformerCtc = OfflineZipformerCtcModelConfig(
-                    model = "$modelDir/libmodel.so",
-                    qnnConfig = QnnConfig(
-                        backendLib = "libQnnHtp.so",
-                        systemLib = "libQnnSystem.so",
-                        contextBinary = "$modelDir/model.bin",
+                zipformerCtc =
+                    OfflineZipformerCtcModelConfig(
+                        model = "$modelDir/libmodel.so",
+                        qnnConfig =
+                            QnnConfig(
+                                backendLib = "libQnnHtp.so",
+                                systemLib = "libQnnSystem.so",
+                                contextBinary = "$modelDir/model.bin",
+                            ),
                     ),
-                ),
                 tokens = "$modelDir/tokens.txt",
                 debug = true,
             )
@@ -1014,14 +1089,16 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
                 "sherpa-onnx-qnn-10-seconds-zipformer-ctc-zh-2025-07-03-int8-android-aarch64"
             return OfflineModelConfig(
                 provider = "qnn",
-                zipformerCtc = OfflineZipformerCtcModelConfig(
-                    model = "$modelDir/libmodel.so",
-                    qnnConfig = QnnConfig(
-                        backendLib = "libQnnHtp.so",
-                        systemLib = "libQnnSystem.so",
-                        contextBinary = "$modelDir/model.bin",
+                zipformerCtc =
+                    OfflineZipformerCtcModelConfig(
+                        model = "$modelDir/libmodel.so",
+                        qnnConfig =
+                            QnnConfig(
+                                backendLib = "libQnnHtp.so",
+                                systemLib = "libQnnSystem.so",
+                                contextBinary = "$modelDir/model.bin",
+                            ),
                     ),
-                ),
                 tokens = "$modelDir/tokens.txt",
                 debug = true,
             )
@@ -1032,14 +1109,16 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
                 "sherpa-onnx-qnn-13-seconds-zipformer-ctc-zh-2025-07-03-int8-android-aarch64"
             return OfflineModelConfig(
                 provider = "qnn",
-                zipformerCtc = OfflineZipformerCtcModelConfig(
-                    model = "$modelDir/libmodel.so",
-                    qnnConfig = QnnConfig(
-                        backendLib = "libQnnHtp.so",
-                        systemLib = "libQnnSystem.so",
-                        contextBinary = "$modelDir/model.bin",
+                zipformerCtc =
+                    OfflineZipformerCtcModelConfig(
+                        model = "$modelDir/libmodel.so",
+                        qnnConfig =
+                            QnnConfig(
+                                backendLib = "libQnnHtp.so",
+                                systemLib = "libQnnSystem.so",
+                                contextBinary = "$modelDir/model.bin",
+                            ),
                     ),
-                ),
                 tokens = "$modelDir/tokens.txt",
             )
         }
@@ -1049,14 +1128,16 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
                 "sherpa-onnx-qnn-15-seconds-zipformer-ctc-zh-2025-07-03-int8-android-aarch64"
             return OfflineModelConfig(
                 provider = "qnn",
-                zipformerCtc = OfflineZipformerCtcModelConfig(
-                    model = "$modelDir/libmodel.so",
-                    qnnConfig = QnnConfig(
-                        backendLib = "libQnnHtp.so",
-                        systemLib = "libQnnSystem.so",
-                        contextBinary = "$modelDir/model.bin",
+                zipformerCtc =
+                    OfflineZipformerCtcModelConfig(
+                        model = "$modelDir/libmodel.so",
+                        qnnConfig =
+                            QnnConfig(
+                                backendLib = "libQnnHtp.so",
+                                systemLib = "libQnnSystem.so",
+                                contextBinary = "$modelDir/model.bin",
+                            ),
                     ),
-                ),
                 tokens = "$modelDir/tokens.txt",
             )
         }
@@ -1066,14 +1147,16 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
                 "sherpa-onnx-qnn-18-seconds-zipformer-ctc-zh-2025-07-03-int8-android-aarch64"
             return OfflineModelConfig(
                 provider = "qnn",
-                zipformerCtc = OfflineZipformerCtcModelConfig(
-                    model = "$modelDir/libmodel.so",
-                    qnnConfig = QnnConfig(
-                        backendLib = "libQnnHtp.so",
-                        systemLib = "libQnnSystem.so",
-                        contextBinary = "$modelDir/model.bin",
+                zipformerCtc =
+                    OfflineZipformerCtcModelConfig(
+                        model = "$modelDir/libmodel.so",
+                        qnnConfig =
+                            QnnConfig(
+                                backendLib = "libQnnHtp.so",
+                                systemLib = "libQnnSystem.so",
+                                contextBinary = "$modelDir/model.bin",
+                            ),
                     ),
-                ),
                 tokens = "$modelDir/tokens.txt",
             )
         }
@@ -1083,14 +1166,16 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
                 "sherpa-onnx-qnn-20-seconds-zipformer-ctc-zh-2025-07-03-int8-android-aarch64"
             return OfflineModelConfig(
                 provider = "qnn",
-                zipformerCtc = OfflineZipformerCtcModelConfig(
-                    model = "$modelDir/libmodel.so",
-                    qnnConfig = QnnConfig(
-                        backendLib = "libQnnHtp.so",
-                        systemLib = "libQnnSystem.so",
-                        contextBinary = "$modelDir/model.bin",
+                zipformerCtc =
+                    OfflineZipformerCtcModelConfig(
+                        model = "$modelDir/libmodel.so",
+                        qnnConfig =
+                            QnnConfig(
+                                backendLib = "libQnnHtp.so",
+                                systemLib = "libQnnSystem.so",
+                                contextBinary = "$modelDir/model.bin",
+                            ),
                     ),
-                ),
                 tokens = "$modelDir/tokens.txt",
             )
         }
@@ -1100,14 +1185,16 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
                 "sherpa-onnx-qnn-23-seconds-zipformer-ctc-zh-2025-07-03-int8-android-aarch64"
             return OfflineModelConfig(
                 provider = "qnn",
-                zipformerCtc = OfflineZipformerCtcModelConfig(
-                    model = "$modelDir/libmodel.so",
-                    qnnConfig = QnnConfig(
-                        backendLib = "libQnnHtp.so",
-                        systemLib = "libQnnSystem.so",
-                        contextBinary = "$modelDir/model.bin",
+                zipformerCtc =
+                    OfflineZipformerCtcModelConfig(
+                        model = "$modelDir/libmodel.so",
+                        qnnConfig =
+                            QnnConfig(
+                                backendLib = "libQnnHtp.so",
+                                systemLib = "libQnnSystem.so",
+                                contextBinary = "$modelDir/model.bin",
+                            ),
                     ),
-                ),
                 tokens = "$modelDir/tokens.txt",
             )
         }
@@ -1117,14 +1204,16 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
                 "sherpa-onnx-qnn-25-seconds-zipformer-ctc-zh-2025-07-03-int8-android-aarch64"
             return OfflineModelConfig(
                 provider = "qnn",
-                zipformerCtc = OfflineZipformerCtcModelConfig(
-                    model = "$modelDir/libmodel.so",
-                    qnnConfig = QnnConfig(
-                        backendLib = "libQnnHtp.so",
-                        systemLib = "libQnnSystem.so",
-                        contextBinary = "$modelDir/model.bin",
+                zipformerCtc =
+                    OfflineZipformerCtcModelConfig(
+                        model = "$modelDir/libmodel.so",
+                        qnnConfig =
+                            QnnConfig(
+                                backendLib = "libQnnHtp.so",
+                                systemLib = "libQnnSystem.so",
+                                contextBinary = "$modelDir/model.bin",
+                            ),
                     ),
-                ),
                 tokens = "$modelDir/tokens.txt",
             )
         }
@@ -1134,14 +1223,16 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
                 "sherpa-onnx-qnn-28-seconds-zipformer-ctc-zh-2025-07-03-int8-android-aarch64"
             return OfflineModelConfig(
                 provider = "qnn",
-                zipformerCtc = OfflineZipformerCtcModelConfig(
-                    model = "$modelDir/libmodel.so",
-                    qnnConfig = QnnConfig(
-                        backendLib = "libQnnHtp.so",
-                        systemLib = "libQnnSystem.so",
-                        contextBinary = "$modelDir/model.bin",
+                zipformerCtc =
+                    OfflineZipformerCtcModelConfig(
+                        model = "$modelDir/libmodel.so",
+                        qnnConfig =
+                            QnnConfig(
+                                backendLib = "libQnnHtp.so",
+                                systemLib = "libQnnSystem.so",
+                                contextBinary = "$modelDir/model.bin",
+                            ),
                     ),
-                ),
                 tokens = "$modelDir/tokens.txt",
             )
         }
@@ -1151,14 +1242,16 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
                 "sherpa-onnx-qnn-30-seconds-zipformer-ctc-zh-2025-07-03-int8-android-aarch64"
             return OfflineModelConfig(
                 provider = "qnn",
-                zipformerCtc = OfflineZipformerCtcModelConfig(
-                    model = "$modelDir/libmodel.so",
-                    qnnConfig = QnnConfig(
-                        backendLib = "libQnnHtp.so",
-                        systemLib = "libQnnSystem.so",
-                        contextBinary = "$modelDir/model.bin",
+                zipformerCtc =
+                    OfflineZipformerCtcModelConfig(
+                        model = "$modelDir/libmodel.so",
+                        qnnConfig =
+                            QnnConfig(
+                                backendLib = "libQnnHtp.so",
+                                systemLib = "libQnnSystem.so",
+                                contextBinary = "$modelDir/model.bin",
+                            ),
                     ),
-                ),
                 tokens = "$modelDir/tokens.txt",
             )
         }
@@ -1169,14 +1262,16 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
                 "sherpa-onnx-qnn-SM8850-binary-10-seconds-sense-voice-zh-en-ja-ko-yue-2024-07-17-int8"
             return OfflineModelConfig(
                 provider = "qnn",
-                senseVoice = OfflineSenseVoiceModelConfig(
-                    qnnConfig = QnnConfig(
-                        // Please copy libQnnHtp.so and libQnnSystem.so to jniLibs/arm64-v8a by yourself
-                        backendLib = "libQnnHtp.so",
-                        systemLib = "libQnnSystem.so",
-                        contextBinary = "$modelDir/model.bin",
+                senseVoice =
+                    OfflineSenseVoiceModelConfig(
+                        qnnConfig =
+                            QnnConfig(
+                                // Please copy libQnnHtp.so and libQnnSystem.so to jniLibs/arm64-v8a by yourself
+                                backendLib = "libQnnHtp.so",
+                                systemLib = "libQnnSystem.so",
+                                contextBinary = "$modelDir/model.bin",
+                            ),
                     ),
-                ),
                 tokens = "$modelDir/tokens.txt",
                 debug = true,
             )
@@ -1186,16 +1281,18 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
             val modelDir = "sherpa-onnx-qnn-5-seconds-paraformer-zh-2023-03-28-int8-android-aarch64"
             return OfflineModelConfig(
                 provider = "qnn",
-                paraformer = OfflineParaformerModelConfig(
-                    model = "$modelDir/libencoder.so,$modelDir/libpredictor.so,$modelDir/libdecoder.so",
-                    qnnConfig = QnnConfig(
-                        backendLib = "libQnnHtp.so",
-                        systemLib = "libQnnSystem.so",
-                        // The following three *.bin files are generated during the first run
-                        // and are used to replace the corresponding *.so files in later runs
-                        contextBinary = "$modelDir/encoder.bin,$modelDir/predictor.bin,$modelDir/decoder.bin",
+                paraformer =
+                    OfflineParaformerModelConfig(
+                        model = "$modelDir/libencoder.so,$modelDir/libpredictor.so,$modelDir/libdecoder.so",
+                        qnnConfig =
+                            QnnConfig(
+                                backendLib = "libQnnHtp.so",
+                                systemLib = "libQnnSystem.so",
+                                // The following three *.bin files are generated during the first run
+                                // and are used to replace the corresponding *.so files in later runs
+                                contextBinary = "$modelDir/encoder.bin,$modelDir/predictor.bin,$modelDir/decoder.bin",
+                            ),
                     ),
-                ),
                 tokens = "$modelDir/tokens.txt",
                 debug = true,
             )
@@ -1205,16 +1302,18 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
             val modelDir = "sherpa-onnx-qnn-5-seconds-paraformer-zh-2025-10-07-int8-android-aarch64"
             return OfflineModelConfig(
                 provider = "qnn",
-                paraformer = OfflineParaformerModelConfig(
-                    model = "$modelDir/libencoder.so,$modelDir/libpredictor.so,$modelDir/libdecoder.so",
-                    qnnConfig = QnnConfig(
-                        backendLib = "libQnnHtp.so",
-                        systemLib = "libQnnSystem.so",
-                        // The following three *.bin files are generated during the first run
-                        // and are used to replace the corresponding *.so files in later runs
-                        contextBinary = "$modelDir/encoder.bin,$modelDir/predictor.bin,$modelDir/decoder.bin",
+                paraformer =
+                    OfflineParaformerModelConfig(
+                        model = "$modelDir/libencoder.so,$modelDir/libpredictor.so,$modelDir/libdecoder.so",
+                        qnnConfig =
+                            QnnConfig(
+                                backendLib = "libQnnHtp.so",
+                                systemLib = "libQnnSystem.so",
+                                // The following three *.bin files are generated during the first run
+                                // and are used to replace the corresponding *.so files in later runs
+                                contextBinary = "$modelDir/encoder.bin,$modelDir/predictor.bin,$modelDir/decoder.bin",
+                            ),
                     ),
-                ),
                 tokens = "$modelDir/tokens.txt",
                 debug = true,
             )
@@ -1225,13 +1324,15 @@ fun getOfflineModelConfig(type: Int): OfflineModelConfig? {
             val modelDir = "sherpa-onnx-qnn-SM8850-binary-5-seconds-paraformer-zh-2023-03-28-int8"
             return OfflineModelConfig(
                 provider = "qnn",
-                paraformer = OfflineParaformerModelConfig(
-                    qnnConfig = QnnConfig(
-                        backendLib = "libQnnHtp.so",
-                        systemLib = "libQnnSystem.so",
-                        contextBinary = "$modelDir/encoder.bin,$modelDir/predictor.bin,$modelDir/decoder.bin",
+                paraformer =
+                    OfflineParaformerModelConfig(
+                        qnnConfig =
+                            QnnConfig(
+                                backendLib = "libQnnHtp.so",
+                                systemLib = "libQnnSystem.so",
+                                contextBinary = "$modelDir/encoder.bin,$modelDir/predictor.bin,$modelDir/decoder.bin",
+                            ),
                     ),
-                ),
                 tokens = "$modelDir/tokens.txt",
                 debug = true,
             )

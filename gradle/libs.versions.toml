@@ -4,6 +4,8 @@ mockitoKotlin = "5.2.1"
 coroutines = "1.8.0"
 turbine = "1.0.0"
 jacoco = "0.8.11"
+detekt = "1.23.5"
+ktlint = "12.1.0"
 agp = "8.7.3" # Updated to match recent standards or keep user's 9.0.0 if valid, but 9.0.0 is cutting edge. User had 9.0.0 in previous read. I'll stick to what was there or a stable high version. User had 9.0.0.
 coreKtx = "1.12.0"
 junit = "4.13.2"
@@ -39,6 +41,7 @@ osmdroid = "6.1.18"
 foojay = "0.8.0"
 hilt = "2.51.1"
 hiltNavigationCompose = "1.2.0"
+profileinstaller = "1.3.1"
 
 [libraries]
 foojay-resolver = { group = "org.gradle.toolchains", name = "foojay-resolver", version.ref = "foojay" }
@@ -82,6 +85,7 @@ androidx-datastore-preferences = { group = "androidx.datastore", name = "datasto
 retrofit = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = "retrofit" }
 retrofit-converter-gson = { group = "com.squareup.retrofit2", name = "converter-gson", version.ref = "retrofit" }
 okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
+okhttp-sse = { group = "com.squareup.okhttp3", name = "okhttp-sse", version.ref = "okhttp" }
 okhttp-logging = { group = "com.squareup.okhttp3", name = "logging-interceptor", version.ref = "okhttp" }
 guava-android = { group = "com.google.guava", name = "guava", version.ref = "guava" }
 
@@ -124,6 +128,7 @@ mockito-core = { group = "org.mockito", name = "mockito-core", version.ref = "mo
 mockito-kotlin = { group = "org.mockito.kotlin", name = "mockito-kotlin", version.ref = "mockitoKotlin" }
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines" }
 turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine" }
+androidx-profileinstaller = { group = "androidx.profileinstaller", name = "profileinstaller", version.ref = "profileinstaller" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
@@ -132,5 +137,7 @@ kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 google-devtools-ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
+detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
+ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint" }
 
 jacoco = { id = "jacoco" }

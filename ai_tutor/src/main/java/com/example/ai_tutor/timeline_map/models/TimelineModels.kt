@@ -8,13 +8,13 @@ data class HistoricalEvent(
     val people: List<String>,
     val latitude: Double,
     val longitude: Double,
-    val linkedEventIds: List<String> = emptyList()
+    val linkedEventIds: List<String> = emptyList(),
 )
 
 enum class SpeechLanguage(val tag: String) {
     AUTO(""),
     ZH("zh-CN"),
-    EN("en-US")
+    EN("en-US"),
 }
 
 // Basic entity for Knowledge Graph
@@ -23,5 +23,5 @@ data class KnowledgePoint(
     val name: String,
     val subject: String,
     val description: String,
-    val relatedPoints: List<String> = emptyList() // IDs of related points
+    val relatedPoints: List<String> = emptyList(), // IDs of related points
 )

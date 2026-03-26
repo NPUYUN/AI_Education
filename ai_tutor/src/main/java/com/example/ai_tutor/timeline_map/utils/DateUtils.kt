@@ -16,7 +16,7 @@ object DateUtils {
 
     fun parseDateKey(time: String): Long {
         val year = extractYear(time) ?: return Long.MAX_VALUE
-        
+
         val monthRegex = Regex("[-/\\.年]\\s*(\\d{1,2})\\s*(月|-|/|\\.|$)")
         val dayRegex = Regex("[-/\\.月]\\s*(\\d{1,2})\\s*(日|号|$)")
 
@@ -25,7 +25,7 @@ object DateUtils {
 
         val month = monthMatch?.groupValues?.get(1)?.toIntOrNull()?.coerceIn(1, 12) ?: 1
         val day = dayMatch?.groupValues?.get(1)?.toIntOrNull()?.coerceIn(1, 28) ?: 1
-        
+
         return year.toLong() * 10000 + month * 100 + day
     }
 }

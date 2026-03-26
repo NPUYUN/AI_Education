@@ -9,5 +9,5 @@ data class MessageEntity(
     val sessionId: String,
     val role: String, // "user" or "assistant"
     val content: String,
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = System.currentTimeMillis(),
 )

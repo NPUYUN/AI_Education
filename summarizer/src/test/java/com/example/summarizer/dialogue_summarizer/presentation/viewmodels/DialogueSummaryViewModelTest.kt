@@ -26,12 +26,11 @@ import org.mockito.kotlin.whenever
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class DialogueSummaryViewModelTest {
-
     private lateinit var viewModel: DialogueSummaryViewModel
     private lateinit var mockRepository: DialogueSummaryRepository
     private lateinit var mockChatDao: ChatDao
     private lateinit var mockGlobalConfigRepository: GlobalConfigRepository
-    
+
     private val testDispatcher = StandardTestDispatcher()
 
     @Before
@@ -52,68 +51,73 @@ class DialogueSummaryViewModelTest {
     }
 
     @Test
-    fun `init loads sessions`() = runTest(testDispatcher) {
-        val sessions = listOf(
-            ChatSessionEntity(id = "1", userId = "default_user", title = "Session 1", timestamp = 0L, lastMessage = "")
-        )
-        whenever(mockChatDao.getSessions("default_user")).thenReturn(flowOf(sessions))
+    fun `init loads sessions`() =
+        runTest(testDispatcher) {
+            val sessions =
+                listOf(
+                    ChatSessionEntity(id = "1", userId = "default_user", title = "Session 1", timestamp = 0L, lastMessage = ""),
+                )
+            whenever(mockChatDao.getSessions("default_user")).thenReturn(flowOf(sessions))
 
-        viewModel = DialogueSummaryViewModel(mockRepository, mockChatDao, mockGlobalConfigRepository)
-        advanceUntilIdle()
+            viewModel = DialogueSummaryViewModel(mockRepository, mockChatDao, mockGlobalConfigRepository)
+            advanceUntilIdle()
 
-        assertEquals(sessions, viewModel.uiState.value.sessions)
-        assertNull(viewModel.uiState.value.error)
-    }
-
-    @Test
-    fun `selectSession updates state`() = runTest(testDispatcher) {
-        whenever(mockChatDao.getSessions("default_user")).thenReturn(flowOf(emptyList()))
-        viewModel = DialogueSummaryViewModel(mockRepository, mockChatDao, mockGlobalConfigRepository)
-        
-        val session = ChatSessionEntity(id = "1", userId = "default_user", title = "Session 1", timestamp = 0L, lastMessage = "")
-        viewModel.selectSession(session)
-
-        assertEquals(session, viewModel.uiState.value.selectedSession)
-        assertEquals("", viewModel.uiState.value.summaryResult)
-        assertNull(viewModel.uiState.value.error)
-    }
+            assertEquals(sessions, viewModel.uiState.value.sessions)
+            assertNull(viewModel.uiState.value.error)
+        }
 
     @Test
-    fun `summarizeSelectedSession with empty messages sets error`() = runTest(testDispatcher) {
-        whenever(mockChatDao.getSessions("default_user")).thenReturn(flowOf(emptyList()))
-        viewModel = DialogueSummaryViewModel(mockRepository, mockChatDao, mockGlobalConfigRepository)
-        
-        val session = ChatSessionEntity(id = "1", userId = "default_user", title = "Session 1", timestamp = 0L, lastMessage = "")
-        viewModel.selectSession(session)
-        
-        whenever(mockChatDao.getMessages("1")).thenReturn(flowOf(emptyList()))
+    fun `selectSession updates state`() =
+        runTest(testDispatcher) {
+            whenever(mockChatDao.getSessions("default_user")).thenReturn(flowOf(emptyList()))
+            viewModel = DialogueSummaryViewModel(mockRepository, mockChatDao, mockGlobalConfigRepository)
 
-        viewModel.summarizeSelectedSession()
-        advanceUntilIdle()
+            val session = ChatSessionEntity(id = "1", userId = "default_user", title = "Session 1", timestamp = 0L, lastMessage = "")
+            viewModel.selectSession(session)
 
-        assertEquals("该对话没有内容", viewModel.uiState.value.error)
-        assertFalse(viewModel.uiState.value.isSummarizing)
-    }
+            assertEquals(session, viewModel.uiState.value.selectedSession)
+            assertEquals("", viewModel.uiState.value.summaryResult)
+            assertNull(viewModel.uiState.value.error)
+        }
 
     @Test
-    fun `summarizeSelectedSession success updates summaryResult`() = runTest(testDispatcher) {
-        whenever(mockChatDao.getSessions("default_user")).thenReturn(flowOf(emptyList()))
-        viewModel = DialogueSummaryViewModel(mockRepository, mockChatDao, mockGlobalConfigRepository)
-        
-        val session = ChatSessionEntity(id = "1", userId = "default_user", title = "Session 1", timestamp = 0L, lastMessage = "")
-        viewModel.selectSession(session)
-        
-        val messages = listOf(MessageEntity(id = 1L, sessionId = "1", role = "user", content = "Hello", timestamp = 0L))
-        whenever(mockChatDao.getMessages("1")).thenReturn(flowOf(messages))
-        whenever(mockRepository.summarizeDialogue(any(), any(), any(), any())).thenReturn(Result.success("Summary Result"))
+    fun `summarizeSelectedSession with empty messages sets error`() =
+        runTest(testDispatcher) {
+            whenever(mockChatDao.getSessions("default_user")).thenReturn(flowOf(emptyList()))
+            viewModel = DialogueSummaryViewModel(mockRepository, mockChatDao, mockGlobalConfigRepository)
 
-        viewModel.summarizeSelectedSession()
-        assertTrue(viewModel.uiState.value.isSummarizing)
-        
-        advanceUntilIdle()
+            val session = ChatSessionEntity(id = "1", userId = "default_user", title = "Session 1", timestamp = 0L, lastMessage = "")
+            viewModel.selectSession(session)
 
-        assertEquals("Summary Result", viewModel.uiState.value.summaryResult)
-        assertFalse(viewModel.uiState.value.isSummarizing)
-        assertNull(viewModel.uiState.value.error)
-    }
+            whenever(mockChatDao.getMessages("1")).thenReturn(flowOf(emptyList()))
+
+            viewModel.summarizeSelectedSession()
+            advanceUntilIdle()
+
+            assertEquals("该对话没有内容", viewModel.uiState.value.error)
+            assertFalse(viewModel.uiState.value.isSummarizing)
+        }
+
+    @Test
+    fun `summarizeSelectedSession success updates summaryResult`() =
+        runTest(testDispatcher) {
+            whenever(mockChatDao.getSessions("default_user")).thenReturn(flowOf(emptyList()))
+            viewModel = DialogueSummaryViewModel(mockRepository, mockChatDao, mockGlobalConfigRepository)
+
+            val session = ChatSessionEntity(id = "1", userId = "default_user", title = "Session 1", timestamp = 0L, lastMessage = "")
+            viewModel.selectSession(session)
+
+            val messages = listOf(MessageEntity(id = 1L, sessionId = "1", role = "user", content = "Hello", timestamp = 0L))
+            whenever(mockChatDao.getMessages("1")).thenReturn(flowOf(messages))
+            whenever(mockRepository.summarizeDialogue(any(), any(), any(), any())).thenReturn(Result.success("Summary Result"))
+
+            viewModel.summarizeSelectedSession()
+            assertTrue(viewModel.uiState.value.isSummarizing)
+
+            advanceUntilIdle()
+
+            assertEquals("Summary Result", viewModel.uiState.value.summaryResult)
+            assertFalse(viewModel.uiState.value.isSummarizing)
+            assertNull(viewModel.uiState.value.error)
+        }
 }

@@ -2,9 +2,6 @@ package com.example.ai_tutor.multimodal_chat.services
 
 import com.example.common.dispatchers.DispatcherProvider
 import com.example.common.network.RetrofitClient
-import com.example.common.network.llm.ChatResponse
-import com.example.common.network.llm.ChatChoice
-import com.example.common.network.llm.ChatMessage
 import com.example.common.network.llm.OpenAiService
 import io.mockk.coEvery
 import io.mockk.every
@@ -30,16 +27,16 @@ import kotlin.test.assertEquals
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class LlmRepositoryTest {
-
     private lateinit var repository: LlmRepository
     private val testDispatcher = StandardTestDispatcher()
-    
-    private val dispatcherProvider = object : DispatcherProvider {
-        override val main = testDispatcher
-        override val io = testDispatcher
-        override val default = testDispatcher
-        override val unconfined = testDispatcher
-    }
+
+    private val dispatcherProvider =
+        object : DispatcherProvider {
+            override val main = testDispatcher
+            override val io = testDispatcher
+            override val default = testDispatcher
+            override val unconfined = testDispatcher
+        }
 
     private val mockService = mockk<OpenAiService>()
     private val mockRetrofit = mockk<Retrofit>()
@@ -47,11 +44,11 @@ class LlmRepositoryTest {
     @Before
     fun setup() {
         Dispatchers.setMain(testDispatcher)
-        
+
         mockkObject(RetrofitClient)
         every { RetrofitClient.create(any(), any()) } returns mockRetrofit
         every { mockRetrofit.create(OpenAiService::class.java) } returns mockService
-        
+
         repository = LlmRepository(dispatcherProvider)
     }
 
@@ -62,58 +59,61 @@ class LlmRepositoryTest {
     }
 
     @Test
-    fun `sendMessage emits successful response`() = runTest(testDispatcher) {
-        val expectedText = "Hello from AI"
-        val mockResponse = ChatResponse(
-            choices = listOf(
-                ChatChoice(message = ChatMessage(role = "assistant", content = expectedText))
-            ),
-            output = null,
-            usage = null,
-            requestId = null
-        )
-        
-        coEvery { mockService.chat(any()) } returns mockResponse
+    fun `sendMessage emits successful response`() =
+        runTest(testDispatcher) {
+            val expectedText = "Hello from AI"
+            val mockJson = """data: {"choices":[{"delta":{"content":"$expectedText"}}]}
+data: [DONE]
+"""
+            val responseBody = mockJson.toResponseBody("text/event-stream".toMediaTypeOrNull())
 
-        val result = repository.sendMessage(
-            apiKey = "test_key",
-            prompt = "Hi",
-            history = emptyList()
-        ).toList()
+            coEvery { mockService.chatStream(any()) } returns responseBody
 
-        assertEquals(1, result.size)
-        assertEquals(expectedText, result[0])
-    }
+            val result =
+                repository.sendMessage(
+                    apiKey = "test_key",
+                    prompt = "Hi",
+                    history = emptyList(),
+                ).toList()
+
+            assertEquals(1, result.size)
+            assertEquals(expectedText, result[0])
+        }
 
     @Test
-    fun `sendMessage emits error when HttpException 401 occurs`() = runTest(testDispatcher) {
-        val errorResponse = Response.error<ChatResponse>(
-            401,
-            "Unauthorized".toResponseBody("application/json".toMediaTypeOrNull())
-        )
-        coEvery { mockService.chat(any()) } throws HttpException(errorResponse)
+    fun `sendMessage emits error when HttpException 401 occurs`() =
+        runTest(testDispatcher) {
+            val errorResponse =
+                Response.error<okhttp3.ResponseBody>(
+                    401,
+                    "Unauthorized".toResponseBody("application/json".toMediaTypeOrNull()),
+                )
+            coEvery { mockService.chatStream(any()) } throws HttpException(errorResponse)
 
-        val result = repository.sendMessage(
-            apiKey = "invalid_key",
-            prompt = "Hi",
-            history = emptyList()
-        ).toList()
+            val result =
+                repository.sendMessage(
+                    apiKey = "invalid_key",
+                    prompt = "Hi",
+                    history = emptyList(),
+                ).toList()
 
-        assertEquals(1, result.size)
-        assertEquals("Error: API Key 无效或未授权，请在设置中检查您的 API Key。", result[0])
-    }
+            assertEquals(1, result.size)
+            assertEquals("Error: API Key 无效或未授权，请在设置中检查您的 API Key。", result[0])
+        }
 
     @Test
-    fun `sendMessage emits error when generic exception occurs`() = runTest(testDispatcher) {
-        coEvery { mockService.chat(any()) } throws RuntimeException("Network timeout")
+    fun `sendMessage emits error when generic exception occurs`() =
+        runTest(testDispatcher) {
+            coEvery { mockService.chatStream(any()) } throws RuntimeException("Network timeout")
 
-        val result = repository.sendMessage(
-            apiKey = "test_key",
-            prompt = "Hi",
-            history = emptyList()
-        ).toList()
+            val result =
+                repository.sendMessage(
+                    apiKey = "test_key",
+                    prompt = "Hi",
+                    history = emptyList(),
+                ).toList()
 
-        assertEquals(1, result.size)
-        assertEquals("Error: Network timeout", result[0])
-    }
+            assertEquals(1, result.size)
+            assertEquals("Error: Network timeout", result[0])
+        }
 }

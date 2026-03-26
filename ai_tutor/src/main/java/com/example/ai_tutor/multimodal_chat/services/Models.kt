@@ -6,5 +6,5 @@ import com.example.common.network.llm.ChatMessage
 data class DialogueContext(
     val sessionId: String,
     val history: MutableList<ChatMessage> = mutableListOf(),
-    val currentIntent: String? = null
+    val currentIntent: String? = null,
 )

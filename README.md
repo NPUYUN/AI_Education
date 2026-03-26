@@ -33,12 +33,14 @@
 ### 架构规范
 * **架构模式**: Clean Architecture + MVVM + 单向数据流 (MVI 思想的 StateFlow 管理)。
 * **多模块化 (Multi-module)**: 以业务为边界拆分主模块 (`app`, `common`, `ai_tutor`, `solver`, `summarizer`, `review`)，模块内严格按 `models`, `services`, `presentation` 进行组件分层。
+* **高可用性与离线降级**: 内置 `NetworkMonitor` 实时监听网络状态，提供全局的离线降级策略（无网环境下无缝切换至本地错题本、历史记录、离线语音转写及本地图元渲染）。
 
 ### 核心技术框架
-* **UI**: Jetpack Compose (全面应用了 Material 3 规范与系统级过渡/可见性动效)。
+* **UI**: Jetpack Compose (全面应用了 Material 3 规范、深色模式适配与系统级无障碍访问支持 Accessibility)。
 * **依赖注入**: Dagger Hilt，包括自定义 Coroutine DispatcherProvider 增强可测试性。
 * **持久化**: Room Database (包含关联表、TypeConverters) 与 DataStore/SharedPreferences。
-* **网络与通信**: Retrofit, OkHttp, 统一的 OpenAI 兼容 LLM 接口层。
+* **网络与通信**: Retrofit, OkHttp, 统一的基于 SSE (Server-Sent Events) 的流式输出大模型接口。
+* **安全存储**: 基于 Android NDK (C++) 的 API Key 安全存储机制，支持 XOR 异或加密与 BuildConfig 优雅降级。
 * **多媒体与底层处理**: CameraX (拍照), Sherpa ONNX (离线语音转文字), Coil (图片加载与裁剪), PDFBox-Android (PDF解析)。
 
 ---
@@ -97,5 +99,7 @@ MODEL_NAME=qwen-vl-plus
 ## 🧪 测试与质量保证
 
 * **单元测试**: 核心业务模块（`common` 模块的底层网络库、工具类、ViewModel 以及 `solver`/`summarizer` 模块的状态流处理）已配置完善的单元测试。
+* **UI 测试**: 针对核心 Compose 页面配置了 Compose UI JUnit4 测试框架。
 * **覆盖率**: 采用 Jacoco 进行测试覆盖率统计，核心业务逻辑代码覆盖率达到 **91%** 以上。
 * **容错机制**: 各模块均具备完善的异常捕获（如网络错误、图片/文件解析失败、AI 返回非标准 JSON 处理），并配合标准化的 Error Card 动效进行用户提示。
+* **代码质量**: 集成了 Ktlint 与 Detekt 进行严格的代码风格与质量检查，确保团队协作代码风格统一。

@@ -18,7 +18,7 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        
+
         ndk {
             // 只保留主流架构，减少 APK 和构建占用空间
             abiFilters.add("arm64-v8a")
@@ -29,11 +29,14 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
+                "proguard-rules.pro",
             )
+            // Enable Baseline Profiles
+            // baselineProfile.enabled = true
         }
     }
     compileOptions {
@@ -67,6 +70,9 @@ dependencies {
     implementation(project(":summarizer"))
     implementation(project(":review"))
 
+    // Baseline Profiles
+    implementation(libs.androidx.profileinstaller)
+
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
@@ -76,7 +82,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
-    
+
     // Navigation
     implementation(libs.androidx.navigation.compose)
 
