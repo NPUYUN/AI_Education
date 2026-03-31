@@ -96,15 +96,6 @@ class TimelineMapViewModel
                     }
                 }
             }
-
-            val sample = knowledgeGraphManager.linkEvents(repository.sampleEvents())
-            val sortedEvents = sortEvents(sample)
-            _uiState.update {
-                it.copy(
-                    events = sortedEvents,
-                    selectedEventId = sortedEvents.firstOrNull()?.id,
-                )
-            }
         }
 
         fun updateQuery(text: String) {

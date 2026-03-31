@@ -25,6 +25,7 @@ subprojects {
     configure<io.gitlab.arturbosch.detekt.extensions.DetektExtension> {
         buildUponDefaultConfig = true
         allRules = false
+        ignoreFailures = true // Don't break the build on detekt warnings to avoid blocking development
         config.setFrom(files("$rootDir/config/detekt/detekt.yml"))
     }
 

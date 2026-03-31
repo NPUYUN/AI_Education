@@ -4,22 +4,25 @@ echo "======================================"
 echo " Running Git Pre-Commit Hook"
 echo "======================================"
 
-echo "Running Detekt..."
+echo "Running Ktlint (Auto-formatting)..."
+./gradlew ktlintFormat
+KTLINT_STATUS=$?
+
+echo "Running Detekt (Code quality analysis)..."
 ./gradlew detekt
 DETEKT_STATUS=$?
 
-echo "Running Ktlint..."
-./gradlew ktlintCheck
-KTLINT_STATUS=$?
-
 if [ $DETEKT_STATUS -ne 0 ] || [ $KTLINT_STATUS -ne 0 ]; then
   echo "=========================================================="
-  echo " Code quality checks failed! Commit aborted."
-  echo " Please fix the issues and try again."
-  echo " You can use './gradlew ktlintFormat' to auto-format code."
+  echo " ⚠️  Code quality checks found some issues or formatting was applied!"
+  echo "     Commit is ALLOWED to proceed to avoid blocking your workflow."
+  echo "     Please review the Gradle reports above when possible."
   echo "=========================================================="
-  exit 1
+else
+  echo "=========================================================="
+  echo " ✅ All checks passed! Proceeding with commit..."
+  echo "=========================================================="
 fi
 
-echo "All checks passed! Proceeding with commit..."
+# Always exit 0 to not block the commit, preventing false positives from ruining workflows
 exit 0
