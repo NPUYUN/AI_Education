@@ -24,15 +24,15 @@ This project is divided into four core business modules to deeply cover all lear
 * **Personal Center & Config**: Unified management and seamless switching of global LLM model parameters (API Key, Base URL, Model Selection).
 
 ### 2. 📝 Smart Solver
-* **Multimodal Input**: Supports photo-based problem solving (integrated with CameraX), gallery uploads, and quick history retrieval.
-* **Smart Classification & Parsing**: Automatically identifies the subject of the problem (Geometry, Algebra, Physics, Chemistry, Biology, etc.) and loads subject-specific system Prompts.
+* **Multimodal Input**: Supports photo-based problem solving (integrated with CameraX, featuring built-in image rotation and cropping), gallery uploads, and quick history retrieval. Supports mixed text and image queries.
+* **Smart Classification & Parsing**: Automatically identifies the subject of the problem (Geometry, Algebra, Physics, Chemistry, Biology, etc.) and loads subject-specific system Prompts. Features an intelligent fallback mechanism to pure vision models (e.g., `qwen-vl-plus`) when identifying problems containing images.
 * **Dynamic Geometry Canvas**: Deeply integrated with the `exp4j` math engine to dynamically draw function graphs (including tangents and shaded areas), geometric shapes, physics force diagrams, and chemistry experiment schematics based on AI-output JSON instructions.
 * **Error Book Integration**: Supports one-click addition to the Error Book after successful problem solving, synchronizing states in the solving history.
 
 ### 3. 📑 Intelligent Summarizer
 * **Multi-format Text Summarization**: Supports direct pasting of long texts, or importing and parsing PDF (PDFBox), Word (XML parsing), HTML (Jsoup), TXT/CSV files to extract core summaries.
 * **Audio & Video Summarization**: Efficient offline Automatic Speech Recognition (ASR) using Sherpa ONNX, combined with LLMs for refinement and summarization.
-* **Dialogue & Knowledge Cards**: Supports importing historical dialogues from the Room database for review, converting high-value content into knowledge cards with one click (supports local CRUD management).
+* **Dialogue Review & PDF Export**: Supports importing historical dialogues from the Room database for review. All summarization results (text, audio, video, dialogue) can be **exported to beautifully formatted PDF documents** with one click for easy local archiving and sharing.
 
 ### 4. 📚 Smart Review
 * **Ebbinghaus Review Planner**: Supports customized review schedules for different subjects, intelligently planning daily review tasks using the memory curve algorithm.
@@ -73,10 +73,9 @@ AI_Education/
 │   └── comprehensive/    # Main solver flow (Camera, Upload)
 ├── summarizer/           # Intelligent Summarizer module
 │   ├── video_summarizer/ # Video summarization
-│   ├── text_summarizer/  # Multi-format document parsing
+│   ├── text_summarizer/  # Multi-format document parsing & PDF Export
 │   ├── audio_summarizer/ # Offline ASR summarization
-│   ├── dialogue_summarizer/ # Dialogue review
-│   └── knowledge_cards/  # Knowledge cards CRUD
+│   └── dialogue_summarizer/ # Dialogue review
 └── review/               # Smart Review module
     ├── planner/          # Ebbinghaus planner
     ├── reinforcement/    # Reinforcement quizzes

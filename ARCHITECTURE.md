@@ -30,10 +30,9 @@ AI_Education/
 │   └── comprehensive/    # 综合解题子模块 (包含拍照解题、自动分类与错题本联动)
 ├── summarizer/           # 智能总结主模块
 │   ├── video_summarizer/ # 视频总结子模块
-│   ├── text_summarizer/  # 文本总结子模块 (多格式解析)
+│   ├── text_summarizer/  # 文本总结子模块 (多格式解析与 PDF 导出)
 │   ├── audio_summarizer/ # 音频/语音总结子模块 (离线转写)
-│   ├── dialogue_summarizer/ # 对话历史总结子模块
-│   └── knowledge_cards/  # 知识卡片管理子模块
+│   └── dialogue_summarizer/ # 对话历史总结子模块
 └── review/               # 智能复习主模块
     ├── planner/          # 复习计划子模块 (艾宾浩斯记忆曲线)
     ├── reinforcement/    # 知识巩固子模块
