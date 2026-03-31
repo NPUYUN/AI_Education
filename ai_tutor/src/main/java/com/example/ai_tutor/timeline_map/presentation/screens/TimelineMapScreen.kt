@@ -365,23 +365,24 @@ private fun updateMarkers(
         marker.title = "${e.time} ${e.location}"
         // 禁用默认的 InfoWindow，改为 Compose UI 处理
         marker.infoWindow = null
-        
+
         val isSelected = e.id == selectedId
         val markerIcon = androidx.core.content.ContextCompat.getDrawable(context, com.example.common.R.drawable.ic_map_marker)?.mutate()
-        
+
         if (markerIcon != null) {
             // 设置选中与非选中状态的颜色
-            val tintColor = if (isSelected) {
-                android.graphics.Color.parseColor("#E53935") // 选中为红色
-            } else {
-                android.graphics.Color.parseColor("#1976D2") // 默认未选中为蓝色
-            }
+            val tintColor =
+                if (isSelected) {
+                    android.graphics.Color.parseColor("#E53935") // 选中为红色
+                } else {
+                    android.graphics.Color.parseColor("#1976D2") // 默认未选中为蓝色
+                }
             markerIcon.setTint(tintColor)
-            
+
             marker.icon = markerIcon
             marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
         }
-        
+
         marker.setOnMarkerClickListener { _, _ ->
             onSelect(e.id)
             true
