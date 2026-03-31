@@ -20,14 +20,18 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.example.ai_tutor.multimodal_chat.presentation.viewmodels.AiTutorViewModel
+import com.example.common.R
 import com.example.common.network.llm.ContentItem
 import com.example.common.presentation.components.ChatInputArea
 import com.example.common.presentation.components.GlobalApiSettingsDialog
@@ -45,16 +49,17 @@ fun ChatScreen(
 ) {
     val context = LocalContext.current
     val listState = rememberLazyListState()
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    LaunchedEffect(uiState.errorMessage) {
-        uiState.errorMessage?.let { errorMsg ->
+    val errorEvent by viewModel.errorEvents.collectAsStateWithLifecycle(initialValue = null)
+
+    LaunchedEffect(errorEvent) {
+        errorEvent?.let { errorMsg ->
             snackbarHostState.showSnackbar(
                 message = errorMsg,
                 duration = SnackbarDuration.Short,
             )
-            viewModel.clearErrorMessage()
         }
     }
 
@@ -201,7 +206,7 @@ fun WelcomeScreen(
             tint = MaterialTheme.colorScheme.primary,
         )
         Text(
-            text = "欢迎回来，聊聊新话题",
+            text = stringResource(R.string.welcome_back_new_topic),
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
             color = MaterialTheme.colorScheme.onBackground,
@@ -255,6 +260,7 @@ fun AssistantTimelineBubble(
     topic: String,
     onNavigateToTimeline: (String) -> Unit,
 ) {
+    val contentDesc = stringResource(R.string.ai_generated_timeline_map_for_topic, topic)
     Surface(
         color = MaterialTheme.colorScheme.surfaceVariant,
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 4.dp, bottomEnd = 20.dp),
@@ -263,7 +269,7 @@ fun AssistantTimelineBubble(
                 .widthIn(max = 320.dp)
                 .padding(vertical = 8.dp)
                 .semantics(mergeDescendants = true) {
-                    contentDescription = "AI助手生成了关于 $topic 的时间轴地图"
+                    contentDescription = contentDesc
                 },
         shadowElevation = 1.dp,
     ) {
@@ -271,7 +277,7 @@ fun AssistantTimelineBubble(
             modifier = Modifier.padding(16.dp),
         ) {
             Text(
-                text = "已为您准备好关于“$topic”的时间轴地图。",
+                text = stringResource(R.string.timeline_map_ready_for_topic, topic),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -280,7 +286,7 @@ fun AssistantTimelineBubble(
                 onClick = { onNavigateToTimeline(topic) },
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text("查看详情")
+                Text(stringResource(R.string.view_details))
             }
         }
     }
@@ -346,6 +352,7 @@ fun MessageItem(
 fun UserImageBubble(imageUrl: String) {
     var error by remember { mutableStateOf<String?>(null) }
 
+    val imageISentMsg = stringResource(R.string.image_i_sent)
     Column {
         Surface(
             shape = RoundedCornerShape(12.dp),
@@ -354,7 +361,7 @@ fun UserImageBubble(imageUrl: String) {
                     .widthIn(max = 280.dp)
                     .padding(vertical = 4.dp)
                     .semantics(mergeDescendants = true) {
-                        contentDescription = "我发送的图片"
+                        contentDescription = imageISentMsg
                     },
             color = MaterialTheme.colorScheme.surfaceContainer,
             shadowElevation = 1.dp,
@@ -428,6 +435,7 @@ fun UserImageBubble(imageUrl: String) {
 
 @Composable
 fun UserTextBubble(text: String) {
+    val contentDesc = stringResource(R.string.message_i_sent, text)
     Surface(
         color = MaterialTheme.colorScheme.primary,
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 4.dp),
@@ -436,7 +444,7 @@ fun UserTextBubble(text: String) {
                 .widthIn(max = 300.dp)
                 .padding(vertical = 4.dp)
                 .semantics(mergeDescendants = true) {
-                    contentDescription = "我发送的消息：$text"
+                    contentDescription = contentDesc
                 },
         shadowElevation = 2.dp,
     ) {
@@ -451,6 +459,7 @@ fun UserTextBubble(text: String) {
 
 @Composable
 fun AssistantMessage(markdown: String) {
+    val contentDesc = stringResource(R.string.ai_assistant_reply, markdown)
     Surface(
         color = MaterialTheme.colorScheme.surfaceVariant,
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 4.dp, bottomEnd = 20.dp),
@@ -459,7 +468,7 @@ fun AssistantMessage(markdown: String) {
                 .widthIn(max = 320.dp)
                 .padding(vertical = 8.dp)
                 .semantics(mergeDescendants = true) {
-                    contentDescription = "AI助手回复：$markdown"
+                    contentDescription = contentDesc
                 },
         shadowElevation = 1.dp,
     ) {

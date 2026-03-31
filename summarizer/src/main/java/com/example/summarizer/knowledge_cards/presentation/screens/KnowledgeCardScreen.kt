@@ -25,8 +25,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.common.R
 import com.example.common.database.models.KnowledgeCardEntity
 import com.example.summarizer.knowledge_cards.presentation.viewmodels.KnowledgeCardViewModel
 import java.text.SimpleDateFormat
@@ -39,24 +42,35 @@ fun KnowledgeCardScreen(
     viewModel: KnowledgeCardViewModel,
     onNavigateBack: () -> Unit,
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
     var showAddDialog by remember { mutableStateOf(false) }
     var expandedCard by remember { mutableStateOf<KnowledgeCardEntity?>(null) }
 
+    LaunchedEffect(viewModel.errorEvents) {
+        viewModel.errorEvents.collect { error ->
+            snackbarHostState.showSnackbar(
+                message = error,
+                duration = SnackbarDuration.Short,
+            )
+        }
+    }
+
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text("知识卡片") },
+                title = { Text(stringResource(R.string.knowledge_card)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
             )
         },
         floatingActionButton = {
             FloatingActionButton(onClick = { showAddDialog = true }) {
-                Icon(Icons.Default.Add, contentDescription = "添加卡片")
+                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_card))
             }
         },
     ) { padding ->
@@ -72,7 +86,7 @@ fun KnowledgeCardScreen(
                 value = uiState.searchQuery,
                 onValueChange = { viewModel.updateSearchQuery(it) },
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("搜索标签...") },
+                placeholder = { Text(stringResource(R.string.search_tags)) },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                 singleLine = true,
                 shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
@@ -83,27 +97,9 @@ fun KnowledgeCardScreen(
                     ),
             )
 
-            AnimatedVisibility(
-                visible = uiState.error != null,
-                enter = fadeIn() + expandVertically(),
-                exit = fadeOut() + shrinkVertically(),
-            ) {
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-                    modifier = Modifier.fillMaxWidth().shadow(2.dp, RoundedCornerShape(12.dp)),
-                    shape = RoundedCornerShape(12.dp),
-                ) {
-                    Text(
-                        text = uiState.error ?: "",
-                        color = MaterialTheme.colorScheme.onErrorContainer,
-                        modifier = Modifier.padding(16.dp),
-                    )
-                }
-            }
-
             if (uiState.cards.isEmpty()) {
                 Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    Text("暂无知识卡片", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.no_knowledge_cards), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             } else {
                 LazyColumn(
@@ -189,7 +185,7 @@ fun KnowledgeCardItem(
                 IconButton(onClick = onDelete, modifier = Modifier.size(24.dp)) {
                     Icon(
                         Icons.Default.Delete,
-                        contentDescription = "删除",
+                        contentDescription = stringResource(R.string.delete),
                         tint = MaterialTheme.colorScheme.error,
                         modifier = Modifier.size(20.dp),
                     )
@@ -208,8 +204,9 @@ fun KnowledgeCardItem(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
+                val emptyTags = stringResource(R.string.none)
                 Text(
-                    text = "标签: ${card.tags.ifEmpty { "无" }}",
+                    text = stringResource(R.string.tag_colon, card.tags.ifEmpty { emptyTags }),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.primary,
                 )
@@ -235,26 +232,26 @@ fun AddCardDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("添加知识卡片") },
+        title = { Text(stringResource(R.string.add_knowledge_card)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
-                    label = { Text("标题") },
+                    label = { Text(stringResource(R.string.title)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 OutlinedTextField(
                     value = content,
                     onValueChange = { content = it },
-                    label = { Text("内容") },
+                    label = { Text(stringResource(R.string.content)) },
                     modifier = Modifier.fillMaxWidth().height(120.dp),
                 )
                 OutlinedTextField(
                     value = tags,
                     onValueChange = { tags = it },
-                    label = { Text("标签 (逗号分隔)") },
+                    label = { Text(stringResource(R.string.tags_comma_separated)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -265,12 +262,12 @@ fun AddCardDialog(
                 onClick = { onSave(title, content, tags) },
                 enabled = title.isNotBlank() && content.isNotBlank(),
             ) {
-                Text("保存")
+                Text(stringResource(R.string.save))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("取消")
+                Text(stringResource(R.string.cancel))
             }
         },
     )
@@ -292,7 +289,7 @@ fun CardDetailDialog(
                         .verticalScroll(rememberScrollState()),
             ) {
                 Text(
-                    text = "来源: ${card.source} | 标签: ${card.tags}",
+                    text = stringResource(R.string.source_and_tags, card.source, card.tags),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(bottom = 8.dp),
@@ -307,7 +304,7 @@ fun CardDetailDialog(
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("关闭")
+                Text(stringResource(R.string.close))
             }
         },
     )

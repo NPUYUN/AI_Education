@@ -43,7 +43,6 @@ class KnowledgeCardViewModelTest {
             advanceUntilIdle()
 
             assertEquals(cards, viewModel.uiState.value.cards)
-            assertNull(viewModel.uiState.value.error)
         }
 
     @Test

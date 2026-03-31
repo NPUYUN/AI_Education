@@ -1,6 +1,7 @@
 package com.example.solver.geometry_solver.presentation.components
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -10,8 +11,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableFloatState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -23,7 +25,9 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.example.common.R
 import net.objecthunter.exp4j.ExpressionBuilder
 import kotlin.math.PI
 import kotlin.math.atan2
@@ -47,27 +51,35 @@ fun GeometryStepCard(
         modifier = modifier,
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
     ) {
-        Text(step.title)
-        var zoom by remember { mutableStateOf(1f) }
-        var yaw by remember { mutableStateOf(30f) }
-        var pitch by remember { mutableStateOf(15f) }
-        Row {
-            Text("缩放")
-            Slider(value = zoom, onValueChange = { zoom = it }, valueRange = 0.5f..2.5f)
+        Column {
+            Text(step.title)
+            GeometryInteractiveCanvas(step, prevShapes)
         }
-        if (step.type.equals("3D", ignoreCase = true)) {
-            Row {
-                Text("Yaw")
-                Slider(value = yaw, onValueChange = { yaw = it }, valueRange = -90f..90f)
-            }
-            Row {
-                Text("Pitch")
-                Slider(value = pitch, onValueChange = { pitch = it }, valueRange = -60f..60f)
-            }
-        }
-        val hasAxes = step.shapes.any { (it["kind"] as? String).orEmpty().equals("axes", ignoreCase = true) }
-        val axesShape = step.shapes.firstOrNull { (it["kind"] as? String).orEmpty().equals("axes", ignoreCase = true) }
-        val shapesToDraw = step.shapes.filterNot { (it["kind"] as? String).orEmpty().equals("axes", ignoreCase = true) }
+    }
+}
+
+@Composable
+fun GeometryInteractiveCanvas(
+    step: GeometryDrawingStep,
+    prevShapes: List<Map<String, Any>> = emptyList(),
+) {
+    val zoomState = remember { mutableFloatStateOf(1f) }
+    val yawState = remember { mutableFloatStateOf(30f) }
+    val pitchState = remember { mutableFloatStateOf(15f) }
+
+    Column {
+        GeometryControls(
+            is3D = step.type.equals("3D", ignoreCase = true),
+            zoomState = zoomState,
+            yawState = yawState,
+            pitchState = pitchState,
+        )
+
+        val hasAxes = remember(step.shapes) { step.shapes.any { (it["kind"] as? String).orEmpty().equals("axes", ignoreCase = true) } }
+        val axesShape =
+            remember(step.shapes) { step.shapes.firstOrNull { (it["kind"] as? String).orEmpty().equals("axes", ignoreCase = true) } }
+        val shapesToDraw =
+            remember(step.shapes) { step.shapes.filterNot { (it["kind"] as? String).orEmpty().equals("axes", ignoreCase = true) } }
 
         val onSurfaceColor = MaterialTheme.colorScheme.onSurface
         val outlineVariantColor = MaterialTheme.colorScheme.outlineVariant
@@ -80,9 +92,12 @@ fun GeometryStepCard(
                     .height(300.dp),
         ) {
             val base = min(size.width, size.height) / 20f
-            val scale = base * zoom
+            val scale = base * zoomState.floatValue
             val centerX = size.width / 2f
             val centerY = size.height / 2f
+            val yaw = yawState.floatValue
+            val pitch = pitchState.floatValue
+
             if (hasAxes && axesShape != null) {
                 drawAxesConfig(centerX, centerY, scale, axesShape, outlineVariantColor)
             } else {
@@ -90,6 +105,31 @@ fun GeometryStepCard(
             }
             prevShapes.forEach { shape -> drawShape(shape, centerX, centerY, scale, onSurfaceColor, primaryColor, step.type, yaw, pitch) }
             shapesToDraw.forEach { shape -> drawShape(shape, centerX, centerY, scale, onSurfaceColor, primaryColor, step.type, yaw, pitch) }
+        }
+    }
+}
+
+@Composable
+fun GeometryControls(
+    is3D: Boolean,
+    zoomState: MutableFloatState,
+    yawState: MutableFloatState,
+    pitchState: MutableFloatState,
+) {
+    Column {
+        Row {
+            Text(stringResource(R.string.zoom))
+            Slider(value = zoomState.floatValue, onValueChange = { zoomState.floatValue = it }, valueRange = 0.5f..2.5f)
+        }
+        if (is3D) {
+            Row {
+                Text("Yaw")
+                Slider(value = yawState.floatValue, onValueChange = { yawState.floatValue = it }, valueRange = -90f..90f)
+            }
+            Row {
+                Text("Pitch")
+                Slider(value = pitchState.floatValue, onValueChange = { pitchState.floatValue = it }, valueRange = -60f..60f)
+            }
         }
     }
 }

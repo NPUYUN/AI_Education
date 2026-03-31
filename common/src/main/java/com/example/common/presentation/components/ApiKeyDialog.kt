@@ -17,10 +17,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import com.example.common.R
 
 @Composable
 fun ApiKeyDialog(
@@ -28,8 +30,8 @@ fun ApiKeyDialog(
     onApiKeyChange: (String) -> Unit,
     onSave: () -> Unit,
     onDismiss: () -> Unit,
-    title: String = "API Key 设置",
-    description: String = "请填写 API Key 以启用功能。",
+    title: String = stringResource(R.string.api_key_settings),
+    description: String = stringResource(R.string.please_fill_api_key_to_enable),
 ) {
     Dialog(onDismissRequest = onDismiss) {
         Card(
@@ -55,7 +57,7 @@ fun ApiKeyDialog(
                     onValueChange = onApiKeyChange,
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    placeholder = { Text("请输入 API Key") },
+                    placeholder = { Text(stringResource(R.string.please_input_api_key)) },
                     visualTransformation = if (apiKey.isNotEmpty()) PasswordVisualTransformation() else VisualTransformation.None,
                 )
                 Spacer(modifier = Modifier.height(12.dp))
@@ -64,11 +66,11 @@ fun ApiKeyDialog(
                     horizontalArrangement = Arrangement.End,
                 ) {
                     TextButton(onClick = onDismiss) {
-                        Text("取消")
+                        Text(stringResource(R.string.cancel))
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(onClick = onSave, enabled = apiKey.isNotBlank()) {
-                        Text("保存")
+                        Text(stringResource(R.string.save))
                     }
                 }
             }

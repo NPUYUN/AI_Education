@@ -8,12 +8,11 @@ import com.example.common.database.PreferencesManager
 import com.example.common.database.dao.ErrorBookDao
 import com.example.common.database.models.ErrorBookEntity
 import com.example.common.utils.NetworkMonitor
+import com.example.common.utils.toUserFriendlyMessage
 import com.example.review.planner.services.ReviewRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import java.net.SocketTimeoutException
-import java.net.UnknownHostException
 import javax.inject.Inject
 
 data class ReviewUiState(
@@ -28,7 +27,6 @@ data class ReviewUiState(
     val isGeneratingQuiz: Boolean = false,
     // Error Book
     val errorRecords: List<ErrorBookEntity> = emptyList(),
-    val error: String? = null,
 )
 
 @HiltViewModel
@@ -43,6 +41,9 @@ class ReviewViewModel
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(ReviewUiState())
         val uiState: StateFlow<ReviewUiState> = _uiState.asStateFlow()
+
+        private val _errorEvents = kotlinx.coroutines.channels.Channel<String>()
+        val errorEvents = _errorEvents.receiveAsFlow()
 
         init {
             viewModelScope.launch {
@@ -67,7 +68,7 @@ class ReviewViewModel
         }
 
         fun setTab(index: Int) {
-            _uiState.update { it.copy(selectedTab = index, error = null) }
+            _uiState.update { it.copy(selectedTab = index) }
         }
 
         fun updateSubjectInput(input: String) {
@@ -84,23 +85,19 @@ class ReviewViewModel
             }
         }
 
-        fun clearError() {
-            _uiState.update { it.copy(error = null) }
-        }
-
         fun generateReviewPlan() {
             val subjectsInput = _uiState.value.subjectInput
             if (subjectsInput.isBlank()) {
-                _uiState.update { it.copy(error = "请输入复习科目") }
+                viewModelScope.launch { _errorEvents.send("请输入复习科目") }
                 return
             }
             if (!networkMonitor.isConnected.value) {
-                _uiState.update { it.copy(error = "当前处于无网络环境，无法生成复习计划。") }
+                viewModelScope.launch { _errorEvents.send("当前处于无网络环境，无法生成复习计划。") }
                 return
             }
             val subjects = subjectsInput.split("[,，、]".toRegex()).map { it.trim() }.filter { it.isNotBlank() }
 
-            _uiState.update { it.copy(isGeneratingPlan = true, error = null, reviewPlan = "") }
+            _uiState.update { it.copy(isGeneratingPlan = true, reviewPlan = "") }
             viewModelScope.launch {
                 try {
                     val apiKey = globalConfigRepository.getAiTutorApiKey().firstOrNull()?.takeIf { it.isNotBlank() } ?: AppConstants.DEFAULT_API_KEY
@@ -113,22 +110,14 @@ class ReviewViewModel
                         _uiState.update { it.copy(isGeneratingPlan = false, reviewPlan = result.getOrNull() ?: "") }
                     } else {
                         val exception = result.exceptionOrNull()
-                        val errorMsg =
-                            when (exception) {
-                                is SocketTimeoutException -> "网络请求超时，请稍后重试"
-                                is UnknownHostException -> "无法连接到服务器，请检查网络设置"
-                                else -> exception?.message ?: "未知错误"
-                            }
-                        _uiState.update { it.copy(isGeneratingPlan = false, error = errorMsg) }
+                        val errorMsg = exception?.toUserFriendlyMessage() ?: "未知错误"
+                        _uiState.update { it.copy(isGeneratingPlan = false) }
+                        _errorEvents.send(errorMsg)
                     }
                 } catch (e: Exception) {
-                    val errorMsg =
-                        when (e) {
-                            is SocketTimeoutException -> "网络请求超时，请稍后重试"
-                            is UnknownHostException -> "无法连接到服务器，请检查网络设置"
-                            else -> e.message ?: "发生异常"
-                        }
-                    _uiState.update { it.copy(isGeneratingPlan = false, error = errorMsg) }
+                    val errorMsg = e.toUserFriendlyMessage()
+                    _uiState.update { it.copy(isGeneratingPlan = false) }
+                    _errorEvents.send(errorMsg)
                 }
             }
         }
@@ -136,15 +125,15 @@ class ReviewViewModel
         fun generateReinforcementQuiz() {
             val kp = _uiState.value.knowledgePointInput
             if (kp.isBlank()) {
-                _uiState.update { it.copy(error = "请输入要巩固的知识点") }
+                viewModelScope.launch { _errorEvents.send("请输入要巩固的知识点") }
                 return
             }
             if (!networkMonitor.isConnected.value) {
-                _uiState.update { it.copy(error = "当前处于无网络环境，无法生成巩固练习。") }
+                viewModelScope.launch { _errorEvents.send("当前处于无网络环境，无法生成巩固练习。") }
                 return
             }
 
-            _uiState.update { it.copy(isGeneratingQuiz = true, error = null, reinforcementQuiz = "") }
+            _uiState.update { it.copy(isGeneratingQuiz = true, reinforcementQuiz = "") }
             viewModelScope.launch {
                 try {
                     val apiKey = globalConfigRepository.getAiTutorApiKey().firstOrNull()?.takeIf { it.isNotBlank() } ?: AppConstants.DEFAULT_API_KEY
@@ -157,22 +146,14 @@ class ReviewViewModel
                         _uiState.update { it.copy(isGeneratingQuiz = false, reinforcementQuiz = result.getOrNull() ?: "") }
                     } else {
                         val exception = result.exceptionOrNull()
-                        val errorMsg =
-                            when (exception) {
-                                is SocketTimeoutException -> "网络请求超时，请稍后重试"
-                                is UnknownHostException -> "无法连接到服务器，请检查网络设置"
-                                else -> exception?.message ?: "未知错误"
-                            }
-                        _uiState.update { it.copy(isGeneratingQuiz = false, error = errorMsg) }
+                        val errorMsg = exception?.toUserFriendlyMessage() ?: "未知错误"
+                        _uiState.update { it.copy(isGeneratingQuiz = false) }
+                        _errorEvents.send(errorMsg)
                     }
                 } catch (e: Exception) {
-                    val errorMsg =
-                        when (e) {
-                            is SocketTimeoutException -> "网络请求超时，请稍后重试"
-                            is UnknownHostException -> "无法连接到服务器，请检查网络设置"
-                            else -> e.message ?: "发生异常"
-                        }
-                    _uiState.update { it.copy(isGeneratingQuiz = false, error = errorMsg) }
+                    val errorMsg = e.toUserFriendlyMessage()
+                    _uiState.update { it.copy(isGeneratingQuiz = false) }
+                    _errorEvents.send(errorMsg)
                 }
             }
         }

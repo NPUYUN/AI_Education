@@ -12,25 +12,44 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AudioFile
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material3.*
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.common.R
 import com.example.common.ui.components.SafeMarkdownText
 import com.example.summarizer.audio_summarizer.presentation.viewmodels.AudioSummaryViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AudioSummaryScreen(viewModel: AudioSummaryViewModel) {
-    val uiState by viewModel.uiState.collectAsState()
+fun AudioSummaryScreen(
+    viewModel: AudioSummaryViewModel,
+    onBack: () -> Unit,
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val errorEvent by viewModel.errorEvents.collectAsStateWithLifecycle(initialValue = null)
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(errorEvent) {
+        errorEvent?.let { errorMsg ->
+            snackbarHostState.showSnackbar(
+                message = errorMsg,
+                duration = SnackbarDuration.Short,
+            )
+        }
+    }
 
     val audioPickerLauncher =
         rememberLauncherForActivityResult(
@@ -39,167 +58,177 @@ fun AudioSummaryScreen(viewModel: AudioSummaryViewModel) {
             uri?.let { viewModel.handleAudioUri(it) }
         }
 
-    val screenHeight = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp.dp
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.audio_summary)) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface),
+            )
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+    ) { paddingValues ->
+        val screenHeight = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp.dp
 
-    Column(
-        modifier =
-            Modifier
-                .fillMaxSize()
-                .padding(16.dp)
-                .verticalScroll(rememberScrollState())
-                .heightIn(min = screenHeight),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        // Audio Selection Card
-        Card(
-            modifier = Modifier.fillMaxWidth().shadow(2.dp, RoundedCornerShape(16.dp)),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(16.dp)
+                    .verticalScroll(rememberScrollState())
+                    .heightIn(min = screenHeight),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Column(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                Icon(
-                    imageVector = Icons.Default.AudioFile,
-                    contentDescription = null,
-                    modifier = Modifier.size(48.dp),
-                    tint = MaterialTheme.colorScheme.primary,
-                )
-
-                if (uiState.selectedAudioName.isNotEmpty()) {
-                    Text(
-                        text = "已选择：${uiState.selectedAudioName}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                } else {
-                    Text(
-                        text = "尚未选择音频文件",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-
-                Button(
-                    onClick = { audioPickerLauncher.launch("audio/*") },
-                    enabled = !uiState.isTranscribing && !uiState.isSummarizing,
-                ) {
-                    Text(if (uiState.selectedAudioUri == null) "选择音频文件" else "重新选择")
-                }
-            }
-        }
-
-        // Process Button
-        Button(
-            onClick = { viewModel.processAudio() },
-            modifier = Modifier.fillMaxWidth(),
-            enabled = uiState.selectedAudioUri != null && !uiState.isTranscribing && !uiState.isSummarizing,
-        ) {
-            if (uiState.isTranscribing || uiState.isSummarizing) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp),
-                    color = MaterialTheme.colorScheme.onPrimary,
-                    strokeWidth = 2.dp,
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(if (uiState.isTranscribing) "正在提取并转写音频 (可能需要较长时间)..." else "正在生成智能总结...")
-            } else {
-                Icon(Icons.Default.AutoAwesome, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("开始处理并总结")
-            }
-        }
-
-        // Error Message
-        AnimatedVisibility(
-            visible = uiState.error != null,
-            enter = fadeIn() + expandVertically(),
-            exit = fadeOut() + shrinkVertically(),
-        ) {
-            uiState.error?.let { errorMsg ->
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-                    modifier = Modifier.fillMaxWidth().shadow(2.dp, RoundedCornerShape(12.dp)),
-                    shape = RoundedCornerShape(12.dp),
-                ) {
-                    Text(
-                        text = errorMsg,
-                        color = MaterialTheme.colorScheme.onErrorContainer,
-                        modifier = Modifier.padding(16.dp),
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                }
-            }
-        }
-
-        // Transcript Result Area
-        AnimatedVisibility(
-            visible = uiState.transcriptResult.isNotBlank(),
-            enter = fadeIn() + expandVertically(),
-            exit = fadeOut() + shrinkVertically(),
-        ) {
+            // Audio Selection Card
             Card(
                 modifier = Modifier.fillMaxWidth().shadow(2.dp, RoundedCornerShape(16.dp)),
                 shape = RoundedCornerShape(16.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "音频转写结果",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.secondary,
-                        modifier = Modifier.padding(bottom = 12.dp),
-                    )
-                    HorizontalDivider(modifier = Modifier.padding(bottom = 12.dp))
-                    Text(
-                        text = uiState.transcriptResult,
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                }
-            }
-        }
-
-        // Summary Result Area
-        AnimatedVisibility(
-            visible = uiState.summaryResult.isNotBlank(),
-            enter = fadeIn() + expandVertically(),
-            exit = fadeOut() + shrinkVertically(),
-        ) {
-            Card(
-                modifier = Modifier.fillMaxWidth().shadow(2.dp, RoundedCornerShape(16.dp)),
-                shape = RoundedCornerShape(16.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "智能总结",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(bottom = 12.dp),
+                Column(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.AudioFile,
+                        contentDescription = null,
+                        modifier = Modifier.size(48.dp),
+                        tint = MaterialTheme.colorScheme.primary,
                     )
-                    HorizontalDivider(modifier = Modifier.padding(bottom = 12.dp))
 
-                    SafeMarkdownText(
-                        markdown = uiState.summaryResult,
-                        style =
-                            MaterialTheme.typography.bodyLarge.copy(
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            ),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+                    if (uiState.selectedAudioName.isNotEmpty()) {
+                        Text(
+                            text = stringResource(R.string.selected_audio_name, uiState.selectedAudioName),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    } else {
+                        Text(
+                            text = stringResource(R.string.audio_file_not_selected),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+
+                    Button(
+                        onClick = { audioPickerLauncher.launch("audio/*") },
+                        enabled = !uiState.isTranscribing && !uiState.isSummarizing,
+                    ) {
+                        Text(
+                            if (uiState.selectedAudioUri == null) {
+                                stringResource(
+                                    R.string.select_audio_file,
+                                )
+                            } else {
+                                stringResource(R.string.reselect)
+                            },
+                        )
+                    }
                 }
             }
-        }
-        if (uiState.summaryResult.isNotBlank()) {
-            Spacer(modifier = Modifier.height(32.dp))
+
+            // Action Button
+            Button(
+                onClick = { viewModel.processAudio() },
+                modifier = Modifier.fillMaxWidth().height(56.dp),
+                enabled = !uiState.isTranscribing && !uiState.isSummarizing && uiState.selectedAudioUri != null,
+            ) {
+                if (uiState.isTranscribing || uiState.isSummarizing) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        strokeWidth = 2.dp,
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        if (uiState.isTranscribing) {
+                            stringResource(
+                                R.string.extracting_and_transcribing_audio,
+                            )
+                        } else {
+                            stringResource(R.string.generating_smart_summary)
+                        },
+                    )
+                } else {
+                    Icon(Icons.Default.AutoAwesome, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(stringResource(R.string.start_processing_and_summarizing))
+                }
+            }
+
+            // Transcription Result Area
+            AnimatedVisibility(
+                visible = uiState.transcriptResult.isNotBlank(),
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically(),
+            ) {
+                Card(
+                    modifier = Modifier.fillMaxWidth().shadow(2.dp, RoundedCornerShape(16.dp)),
+                    shape = RoundedCornerShape(16.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = stringResource(R.string.audio_transcription_result),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.secondary,
+                            modifier = Modifier.padding(bottom = 12.dp),
+                        )
+                        HorizontalDivider(modifier = Modifier.padding(bottom = 12.dp))
+                        Text(
+                            text = uiState.transcriptResult,
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
+                }
+            }
+
+            // Summary Result Area
+            AnimatedVisibility(
+                visible = uiState.summaryResult.isNotBlank(),
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically(),
+            ) {
+                Card(
+                    modifier = Modifier.fillMaxWidth().shadow(2.dp, RoundedCornerShape(16.dp)),
+                    shape = RoundedCornerShape(16.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = stringResource(R.string.smart_summary),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(bottom = 12.dp),
+                        )
+                        HorizontalDivider(modifier = Modifier.padding(bottom = 12.dp))
+
+                        SafeMarkdownText(
+                            markdown = uiState.summaryResult,
+                            style =
+                                MaterialTheme.typography.bodyLarge.copy(
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                ),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
+            }
+            if (uiState.summaryResult.isNotBlank()) {
+                Spacer(modifier = Modifier.height(32.dp))
+            }
         }
     }
 }

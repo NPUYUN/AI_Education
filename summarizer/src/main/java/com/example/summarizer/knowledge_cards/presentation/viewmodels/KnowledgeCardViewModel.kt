@@ -5,10 +5,12 @@ import androidx.lifecycle.viewModelScope
 import com.example.common.database.dao.KnowledgeCardDao
 import com.example.common.database.models.KnowledgeCardEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import java.util.UUID
 import javax.inject.Inject
@@ -16,7 +18,6 @@ import javax.inject.Inject
 data class KnowledgeCardUiState(
     val cards: List<KnowledgeCardEntity> = emptyList(),
     val searchQuery: String = "",
-    val error: String? = null,
 )
 
 @HiltViewModel
@@ -27,6 +28,9 @@ class KnowledgeCardViewModel
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(KnowledgeCardUiState())
         val uiState: StateFlow<KnowledgeCardUiState> = _uiState.asStateFlow()
+
+        private val _errorEvents = Channel<String>()
+        val errorEvents = _errorEvents.receiveAsFlow()
 
         init {
             loadCards()
@@ -42,9 +46,9 @@ class KnowledgeCardViewModel
                     }
 
                 flow.catch { e ->
-                    _uiState.value = _uiState.value.copy(error = "加载知识卡片失败: ${e.message}")
+                    _errorEvents.send("加载知识卡片失败: ${e.message}")
                 }.collect { cards ->
-                    _uiState.value = _uiState.value.copy(cards = cards, error = null)
+                    _uiState.value = _uiState.value.copy(cards = cards)
                 }
             }
         }
@@ -59,7 +63,7 @@ class KnowledgeCardViewModel
                 try {
                     knowledgeCardDao.deleteCard(card)
                 } catch (e: Exception) {
-                    _uiState.value = _uiState.value.copy(error = "删除失败: ${e.message}")
+                    _errorEvents.send("删除失败: ${e.message}")
                 }
             }
         }
@@ -82,12 +86,8 @@ class KnowledgeCardViewModel
                         )
                     knowledgeCardDao.insertCard(card)
                 } catch (e: Exception) {
-                    _uiState.value = _uiState.value.copy(error = "保存失败: ${e.message}")
+                    _errorEvents.send("保存失败: ${e.message}")
                 }
             }
-        }
-
-        fun clearError() {
-            _uiState.value = _uiState.value.copy(error = null)
         }
     }

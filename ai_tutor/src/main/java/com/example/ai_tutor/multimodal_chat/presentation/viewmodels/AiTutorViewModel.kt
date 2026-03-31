@@ -22,6 +22,9 @@ import com.example.common.manager.VoskVoiceManager
 import com.example.common.network.llm.ContentItem
 import com.example.common.network.llm.ImageUrl
 import com.example.common.utils.NetworkMonitor
+import com.example.common.utils.toUserFriendlyMessage
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -29,6 +32,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -42,7 +46,6 @@ data class AiTutorUiState(
     val isLoading: Boolean = false,
     val showApiSettings: Boolean = false,
     val isVoiceMode: Boolean = false,
-    val errorMessage: String? = null,
 )
 
 @HiltViewModel
@@ -74,6 +77,9 @@ class AiTutorViewModel
         // UI State
         private val _uiState = MutableStateFlow(AiTutorUiState())
         val uiState: StateFlow<AiTutorUiState> = _uiState.asStateFlow()
+
+        private val _errorEvents = kotlinx.coroutines.channels.Channel<String>()
+        val errorEvents = _errorEvents.receiveAsFlow()
 
         fun setApiSettingsVisible(visible: Boolean) {
             _uiState.update { it.copy(showApiSettings = visible) }
@@ -224,11 +230,14 @@ class AiTutorViewModel
         // ...
 
         fun clearErrorMessage() {
-            _uiState.update { it.copy(errorMessage = null) }
+            // Deprecated: error events are now handled via Channel
         }
 
         private fun handleError(message: String) {
-            _uiState.update { it.copy(errorMessage = message, isLoading = false) }
+            _uiState.update { it.copy(isLoading = false) }
+            viewModelScope.launch {
+                _errorEvents.send(message)
+            }
         }
 
         fun onInputChanged(text: String) {
@@ -416,14 +425,6 @@ class AiTutorViewModel
             }
         }
 
-        private fun encodeImage(bitmap: Bitmap): String {
-            val scaledBitmap = scaleBitmap(bitmap)
-            val outputStream = java.io.ByteArrayOutputStream()
-            scaledBitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 80, outputStream)
-            val bytes = outputStream.toByteArray()
-            return "data:image/jpeg;base64," + android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
-        }
-
         fun onSuggestionClicked(suggestion: String) {
             onInputChanged(suggestion)
             sendMessage()
@@ -527,10 +528,17 @@ class AiTutorViewModel
                     displayUrl = "file://$localPath" // Use file path for display
                 }
                 // 3. Encode to Base64 (for API)
-                val outputStream = java.io.ByteArrayOutputStream()
+                // Use an initial capacity of 512KB to reduce memory reallocation during compression
+                val outputStream = java.io.ByteArrayOutputStream(512 * 1024)
                 scaledBitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 80, outputStream)
                 val bytes = outputStream.toByteArray()
                 base64Image = "data:image/jpeg;base64," + android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+
+                // Clean up native bitmap memory
+                if (scaledBitmap != image) {
+                    image.recycle()
+                }
+                scaledBitmap.recycle()
             }
 
             inputImageState.value = null // Clear after processing
@@ -739,10 +747,13 @@ class AiTutorViewModel
                         val displayUrl = if (localPath.isNotEmpty()) "file://$localPath" else null
 
                         // Encode (for API)
-                        val outputStream = java.io.ByteArrayOutputStream()
+                        val outputStream = java.io.ByteArrayOutputStream(512 * 1024)
                         bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 80, outputStream)
                         val bytes = outputStream.toByteArray()
                         val base64Image = "data:image/jpeg;base64," + android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+
+                        // Clean up native bitmap memory
+                        bitmap.recycle()
 
                         val stableUiImageUrl = displayUrl ?: base64Image
 
@@ -856,10 +867,12 @@ class AiTutorViewModel
                         }
                     }
                 } catch (e: Exception) {
-                    handleError("Network Error: ${e.message ?: "Unknown error occurred"}")
+                    handleError(e.toUserFriendlyMessage())
                 }
             }
         }
+
+        private val gson = Gson()
 
         private fun serializeContent(content: Any?): String {
             if (content == null) return ""
@@ -867,19 +880,7 @@ class AiTutorViewModel
                 is String -> content
                 is List<*> -> {
                     val items = content.filterIsInstance<ContentItem>()
-                    val jsonArray = org.json.JSONArray()
-                    items.forEach { item ->
-                        val jsonObj = org.json.JSONObject()
-                        jsonObj.put("type", item.type)
-                        item.text?.let { jsonObj.put("text", it) }
-                        item.imageUrl?.let {
-                            val urlObj = org.json.JSONObject()
-                            urlObj.put("url", it.url)
-                            jsonObj.put("imageUrl", urlObj)
-                        }
-                        jsonArray.put(jsonObj)
-                    }
-                    "JSON_CONTENT:$jsonArray"
+                    "JSON_CONTENT:${gson.toJson(items)}"
                 }
                 else -> content.toString()
             }
@@ -889,22 +890,8 @@ class AiTutorViewModel
             if (contentStr.startsWith("JSON_CONTENT:")) {
                 try {
                     val jsonStr = contentStr.substring("JSON_CONTENT:".length)
-                    val jsonArray = org.json.JSONArray(jsonStr)
-                    val items = mutableListOf<ContentItem>()
-                    for (i in 0 until jsonArray.length()) {
-                        val obj = jsonArray.getJSONObject(i)
-                        val type = obj.optString("type")
-                        val text = if (obj.has("text")) obj.getString("text") else null
-                        val imageUrlObj = obj.optJSONObject("imageUrl")
-                        val imageUrl =
-                            if (imageUrlObj != null) {
-                                ImageUrl(url = imageUrlObj.optString("url"))
-                            } else {
-                                null
-                            }
-                        items.add(ContentItem(type = type, text = text, imageUrl = imageUrl))
-                    }
-                    return items
+                    val type = object : TypeToken<List<ContentItem>>() {}.type
+                    return gson.fromJson<List<ContentItem>>(jsonStr, type) ?: emptyList<ContentItem>()
                 } catch (e: Exception) {
                     e.printStackTrace()
                     return contentStr

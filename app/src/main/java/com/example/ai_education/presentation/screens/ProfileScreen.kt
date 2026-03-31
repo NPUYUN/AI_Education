@@ -23,10 +23,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import com.example.common.R
 import com.example.common.database.PreferencesManager
 import kotlinx.coroutines.launch
 import java.io.File
@@ -38,9 +41,16 @@ fun ProfileScreen() {
     val scope = rememberCoroutineScope()
     val preferencesManager = remember { PreferencesManager(context) }
 
-    val savedNickname by preferencesManager.getString("user_nickname", "用户昵称").collectAsState(initial = "用户昵称")
-    val savedSignature by preferencesManager.getString("user_signature", "这里是个性签名...").collectAsState(initial = "这里是个性签名...")
-    val savedAvatar by preferencesManager.getString("user_avatar", "").collectAsState(initial = "")
+    // Observe user profile settings
+    val savedNickname by preferencesManager.getString(
+        "user_nickname",
+        stringResource(R.string.user_nickname),
+    ).collectAsStateWithLifecycle(initialValue = stringResource(R.string.user_nickname))
+    val savedSignature by preferencesManager.getString(
+        "user_signature",
+        stringResource(R.string.here_is_signature),
+    ).collectAsStateWithLifecycle(initialValue = stringResource(R.string.here_is_signature))
+    val savedAvatar by preferencesManager.getString("user_avatar", "").collectAsStateWithLifecycle(initialValue = "")
 
     var showEditDialog by remember { mutableStateOf(false) }
     var nickname by remember(savedNickname) { mutableStateOf(savedNickname) }
@@ -83,18 +93,18 @@ fun ProfileScreen() {
     if (showEditDialog) {
         AlertDialog(
             onDismissRequest = { showEditDialog = false },
-            title = { Text("编辑资料") },
+            title = { Text(stringResource(R.string.edit_profile)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
                         value = nickname,
                         onValueChange = { nickname = it },
-                        label = { Text("昵称") },
+                        label = { Text(stringResource(R.string.nickname)) },
                     )
                     OutlinedTextField(
                         value = signature,
                         onValueChange = { signature = it },
-                        label = { Text("个性签名") },
+                        label = { Text(stringResource(R.string.personal_signature)) },
                     )
                 }
             },
@@ -106,12 +116,12 @@ fun ProfileScreen() {
                     }
                     showEditDialog = false
                 }) {
-                    Text("保存")
+                    Text(stringResource(R.string.save))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showEditDialog = false }) {
-                    Text("取消")
+                    Text(stringResource(R.string.cancel))
                 }
             },
         )
@@ -212,7 +222,7 @@ fun ProfileScreen() {
                             modifier = Modifier.size(16.dp),
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("编辑资料")
+                        Text(stringResource(R.string.edit_profile))
                     }
                 }
             }

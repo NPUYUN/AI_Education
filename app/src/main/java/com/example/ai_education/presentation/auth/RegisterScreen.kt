@@ -5,9 +5,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.common.R
 
 @Composable
 fun RegisterScreen(
@@ -20,27 +22,27 @@ fun RegisterScreen(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text("创建账号", style = MaterialTheme.typography.headlineMedium)
+        Text(stringResource(R.string.create_account), style = MaterialTheme.typography.headlineMedium)
         Spacer(Modifier.height(32.dp))
 
         OutlinedTextField(
             value = viewModel.username.value,
             onValueChange = { viewModel.username.value = it },
-            label = { Text("用户名") },
+            label = { Text(stringResource(R.string.username)) },
             modifier = Modifier.fillMaxWidth(),
         )
         Spacer(Modifier.height(16.dp))
         OutlinedTextField(
             value = viewModel.nickname.value,
             onValueChange = { viewModel.nickname.value = it },
-            label = { Text("昵称 (选填)") },
+            label = { Text(stringResource(R.string.nickname_optional)) },
             modifier = Modifier.fillMaxWidth(),
         )
         Spacer(Modifier.height(16.dp))
         OutlinedTextField(
             value = viewModel.password.value,
             onValueChange = { viewModel.password.value = it },
-            label = { Text("密码") },
+            label = { Text(stringResource(R.string.password)) },
             visualTransformation = PasswordVisualTransformation(),
             modifier = Modifier.fillMaxWidth(),
         )
@@ -54,11 +56,11 @@ fun RegisterScreen(
             onClick = { viewModel.register(onRegisterSuccess) },
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Text("注册")
+            Text(stringResource(R.string.register))
         }
         Spacer(Modifier.height(16.dp))
         TextButton(onClick = onNavigateToLogin) {
-            Text("已有账号？去登录")
+            Text(stringResource(R.string.already_have_account_login))
         }
     }
 }

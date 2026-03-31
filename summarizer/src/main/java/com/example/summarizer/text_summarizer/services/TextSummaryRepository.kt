@@ -53,12 +53,6 @@ class TextSummaryRepository
                     } else {
                         Result.success(content.trim())
                     }
-                } catch (e: java.net.UnknownHostException) {
-                    Result.failure(Exception("网络连接断开，请检查网络后重试。您可以先使用离线总结功能（如果有）或复习本地知识卡片。", e))
-                } catch (e: java.net.ConnectException) {
-                    Result.failure(Exception("网络连接失败，请检查网络后重试。", e))
-                } catch (e: java.net.SocketTimeoutException) {
-                    Result.failure(Exception("请求超时。网络可能不稳定，请稍后重试。", e))
                 } catch (e: Exception) {
                     Result.failure(e)
                 }

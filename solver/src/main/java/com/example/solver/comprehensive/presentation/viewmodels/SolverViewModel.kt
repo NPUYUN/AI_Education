@@ -13,6 +13,7 @@ import com.example.common.database.dao.SolveHistoryDao
 import com.example.common.database.models.ErrorBookEntity
 import com.example.common.database.models.SolveHistoryEntity
 import com.example.common.utils.NetworkMonitor
+import com.example.common.utils.toUserFriendlyMessage
 import com.example.solver.comprehensive.services.SolverRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -20,10 +21,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import java.io.ByteArrayOutputStream
-import java.net.SocketTimeoutException
-import java.net.UnknownHostException
 import javax.inject.Inject
 
 data class SolverUiState(
@@ -32,7 +32,6 @@ data class SolverUiState(
     val imageUri: Uri? = null,
     val isSolving: Boolean = false,
     val solutionResult: String = "",
-    val error: String? = null,
     val isAddedToErrorBook: Boolean = false,
     val drawingSteps: List<com.example.solver.geometry_solver.presentation.components.GeometryDrawingStep> = emptyList(),
     val isFunction: Boolean = false,
@@ -53,6 +52,9 @@ class SolverViewModel
         private val _uiState = MutableStateFlow(SolverUiState())
         val uiState: StateFlow<SolverUiState> = _uiState.asStateFlow()
 
+        private val _errorEvents = kotlinx.coroutines.channels.Channel<String>()
+        val errorEvents = _errorEvents.receiveAsFlow()
+
         private var lastHistoryId: Long? = null
 
         val recentHistory = solveHistoryDao.getRecent(8)
@@ -65,7 +67,6 @@ class SolverViewModel
                     questionText = "",
                     imageUri = null,
                     solutionResult = "",
-                    error = null,
                     isAddedToErrorBook = false,
                 )
         }
@@ -77,7 +78,6 @@ class SolverViewModel
                 _uiState.value.copy(
                     questionText = text,
                     selectedTab = newTab,
-                    error = null,
                     isAddedToErrorBook = false,
                     isFunction = isFunctionProblem(text),
                     comprehensiveType = compType,
@@ -91,14 +91,13 @@ class SolverViewModel
                 _uiState.value.copy(
                     imageUri = uri,
                     selectedTab = newTab,
-                    error = null,
                     isAddedToErrorBook = false,
                     comprehensiveType = compType,
                 )
         }
 
         fun clearError() {
-            _uiState.value = _uiState.value.copy(error = null)
+            // Deprecated: error events are now handled via Channel
         }
 
         fun addToErrorBook(
@@ -124,7 +123,7 @@ class SolverViewModel
                     }
                     _uiState.value = _uiState.value.copy(isAddedToErrorBook = true)
                 } catch (e: Exception) {
-                    _uiState.value = _uiState.value.copy(error = "保存到错题本失败: ${e.message}")
+                    _errorEvents.send("保存到错题本失败: ${e.message}")
                 }
             }
         }
@@ -132,19 +131,21 @@ class SolverViewModel
         fun solveProblem() {
             val state = _uiState.value
             if (state.questionText.isBlank() && state.imageUri == null) {
-                _uiState.value = state.copy(error = "请输入题目或上传题目图片")
+                viewModelScope.launch {
+                    _errorEvents.send("请输入题目或上传题目图片")
+                }
                 return
             }
 
-            _uiState.value = state.copy(isSolving = true, error = null, solutionResult = "")
+            _uiState.value = state.copy(isSolving = true, solutionResult = "")
 
             viewModelScope.launch {
                 if (!networkMonitor.isConnected.value) {
                     _uiState.value =
                         _uiState.value.copy(
                             isSolving = false,
-                            error = "当前处于无网络环境，大模型解题服务暂不可用。\n您可以查看历史解题记录和错题本，或连接网络后重试。",
                         )
+                    _errorEvents.send("当前处于无网络环境，大模型解题服务暂不可用。\n您可以查看历史解题记录和错题本，或连接网络后重试。")
                     return@launch
                 }
 
@@ -182,8 +183,8 @@ class SolverViewModel
                             _uiState.value =
                                 _uiState.value.copy(
                                     isSolving = false,
-                                    error = "图片处理失败，请尝试重新选择或拍摄",
                                 )
+                            _errorEvents.send("图片处理失败，请尝试重新选择或拍摄")
                             return@launch
                         }
                     }
@@ -235,30 +236,20 @@ class SolverViewModel
                         }
                     } else {
                         val exception = result.exceptionOrNull()
-                        val errorMsg =
-                            when (exception) {
-                                is SocketTimeoutException -> "网络请求超时，请稍后重试"
-                                is UnknownHostException -> "无法连接到服务器，请检查网络设置"
-                                else -> exception?.message ?: "未知错误"
-                            }
+                        val errorMsg = exception?.toUserFriendlyMessage() ?: "未知错误"
                         _uiState.value =
                             _uiState.value.copy(
                                 isSolving = false,
-                                error = errorMsg,
                             )
+                        _errorEvents.send(errorMsg)
                     }
                 } catch (e: Exception) {
-                    val errorMsg =
-                        when (e) {
-                            is SocketTimeoutException -> "网络请求超时，请稍后重试"
-                            is UnknownHostException -> "无法连接到服务器，请检查网络设置"
-                            else -> e.message ?: "发生异常"
-                        }
+                    val errorMsg = e.toUserFriendlyMessage()
                     _uiState.value =
                         _uiState.value.copy(
                             isSolving = false,
-                            error = errorMsg,
                         )
+                    _errorEvents.send(errorMsg)
                 }
             }
         }
@@ -413,7 +404,8 @@ class SolverViewModel
                         bitmap
                     }
 
-                val outputStream = ByteArrayOutputStream()
+                // Use an initial capacity of 1MB to reduce memory reallocation during compression
+                val outputStream = ByteArrayOutputStream(1024 * 1024)
                 // Try 80% quality first
                 scaledBitmap.compress(Bitmap.CompressFormat.JPEG, 80, outputStream)
 
@@ -426,6 +418,12 @@ class SolverViewModel
                     scaledBitmap.compress(Bitmap.CompressFormat.JPEG, quality, outputStream)
                     bytes = outputStream.toByteArray()
                 }
+
+                // Clean up native bitmap memory
+                if (scaledBitmap != bitmap) {
+                    bitmap.recycle()
+                }
+                scaledBitmap.recycle()
 
                 "data:image/jpeg;base64," + android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
             } catch (e: Exception) {

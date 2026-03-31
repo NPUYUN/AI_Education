@@ -1,12 +1,13 @@
 package com.example.common.manager
 
 import android.content.Context
+import com.example.common.R
+import com.google.gson.JsonParser
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
-import org.json.JSONObject
 import org.vosk.Model
 import org.vosk.Recognizer
 import org.vosk.android.RecognitionListener
@@ -37,7 +38,7 @@ class VoskVoiceManager(
     fun init(scope: CoroutineScope) {
         scope.launch {
             try {
-                _voiceState.send(VoiceState.Loading("正在检查语音模型..."))
+                _voiceState.send(VoiceState.Loading(context.getString(R.string.checking_voice_model)))
                 // Using 0.0f and "" as dummy values since we don't display progress in this init path anymore
                 // Ideally init should be called after Splash has loaded the model.
                 model =
@@ -48,10 +49,10 @@ class VoskVoiceManager(
                 if (model != null) {
                     _voiceState.send(VoiceState.Ready)
                 } else {
-                    _voiceState.send(VoiceState.Error("语音模型后台下载中"))
+                    _voiceState.send(VoiceState.Error(context.getString(R.string.voice_model_downloading_in_background)))
                 }
             } catch (e: Exception) {
-                _voiceState.send(VoiceState.Error("初始化失败: ${e.message}"))
+                _voiceState.send(VoiceState.Error(context.getString(R.string.initialization_failed, e.message)))
             }
         }
     }
@@ -60,7 +61,7 @@ class VoskVoiceManager(
         if (model == null) {
             model = voskModelManager.getModel()
             if (model == null) {
-                _voiceState.trySend(VoiceState.Error("模型仍在下载中，请稍后重试"))
+                _voiceState.trySend(VoiceState.Error(context.getString(R.string.model_still_downloading)))
                 return
             }
         }
@@ -73,7 +74,7 @@ class VoskVoiceManager(
             speechService?.startListening(this)
             _voiceState.trySend(VoiceState.Listening)
         } catch (e: Exception) {
-            _voiceState.trySend(VoiceState.Error("启动录音失败: ${e.message}"))
+            _voiceState.trySend(VoiceState.Error(context.getString(R.string.start_recording_failed, e.message)))
         }
     }
 
@@ -105,8 +106,8 @@ class VoskVoiceManager(
     private fun processResult(jsonString: String?) {
         jsonString?.let {
             try {
-                val json = JSONObject(it)
-                val text = json.optString("text", "").trim()
+                val jsonObject = JsonParser.parseString(it).asJsonObject
+                val text = if (jsonObject.has("text")) jsonObject.get("text").asString.trim() else ""
                 if (text.isNotEmpty()) {
                     _voiceState.trySend(VoiceState.Result(text))
                 }
@@ -117,10 +118,10 @@ class VoskVoiceManager(
     }
 
     override fun onError(exception: Exception?) {
-        _voiceState.trySend(VoiceState.Error(exception?.message ?: "未知错误"))
+        _voiceState.trySend(VoiceState.Error(exception?.message ?: context.getString(R.string.unknown_error)))
     }
 
     override fun onTimeout() {
-        _voiceState.trySend(VoiceState.Error("录音超时"))
+        _voiceState.trySend(VoiceState.Error(context.getString(R.string.recording_timeout)))
     }
 }

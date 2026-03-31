@@ -11,7 +11,10 @@ import com.example.summarizer.videosummarizer.services.SummarizeVideoUseCase
 import com.example.summarizer.videosummarizer.services.VideoDownloader
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -59,6 +62,8 @@ class VideoDownloadViewModelTest {
 
     @Mock private lateinit var summarizeVideoUseCase: SummarizeVideoUseCase
 
+    @Mock private lateinit var networkMonitor: com.example.common.utils.NetworkMonitor
+
     private lateinit var viewModel: VideoDownloadViewModel
 
     @Before
@@ -72,6 +77,8 @@ class VideoDownloadViewModelTest {
 
         `when`(modelDownloader.isModelReady()).thenReturn(true) // Skip model download in simple tests
 
+        `when`(networkMonitor.isConnected).thenReturn(MutableStateFlow(true))
+
         viewModel =
             VideoDownloadViewModel(
                 application,
@@ -82,6 +89,7 @@ class VideoDownloadViewModelTest {
                 dispatcherProvider,
                 processLocalVideoUseCase,
                 summarizeVideoUseCase,
+                networkMonitor,
             )
     }
 
@@ -105,7 +113,6 @@ class VideoDownloadViewModelTest {
     fun `updateInputUrl updates state`() {
         viewModel.updateInputUrl("http://example.com/video")
         assertEquals("http://example.com/video", viewModel.uiState.value.inputUrl)
-        assertEquals(null, viewModel.uiState.value.error)
     }
 
     @Test
@@ -118,16 +125,52 @@ class VideoDownloadViewModelTest {
     }
 
     @Test
-    fun `clearError sets error to null`() {
-        viewModel.clearError()
-        assertEquals(null, viewModel.uiState.value.error)
-    }
+    fun `error event is emitted when handling local video fails`() =
+        runTest(testDispatcher) {
+            val uri = org.mockito.kotlin.mock<android.net.Uri>()
+            val errorMsg = "Local video processing failed"
+            `when`(
+                processLocalVideoUseCase.invoke(org.mockito.kotlin.any(), org.mockito.kotlin.any()),
+            ).thenReturn(Result.failure(Exception(errorMsg)))
+
+            val errorEvents = mutableListOf<String>()
+            val job =
+                launch {
+                    viewModel.errorEvents.toList(errorEvents)
+                }
+
+            viewModel.handleLocalVideo(uri)
+            advanceUntilIdle()
+
+            assertTrue(errorEvents.isNotEmpty())
+            assertEquals("导入视频失败: $errorMsg", errorEvents.first())
+
+            job.cancel()
+        }
 
     @Test
-    fun `clearSuccess sets successMessage to null`() {
-        viewModel.clearSuccess()
-        assertEquals(null, viewModel.uiState.value.successMessage)
-    }
+    fun `error event is emitted when downloading video fails`() =
+        runTest(testDispatcher) {
+            val url = "http://example.com/video"
+            val errorMsg = "Download failed"
+            `when`(
+                downloader.downloadVideo(org.mockito.kotlin.any(), org.mockito.kotlin.any()),
+            ).thenReturn(Result.failure(Exception(errorMsg)))
+
+            val errorEvents = mutableListOf<String>()
+            val job =
+                launch {
+                    viewModel.errorEvents.toList(errorEvents)
+                }
+
+            viewModel.addDownloadTask(url)
+            advanceUntilIdle()
+
+            assertTrue(errorEvents.isNotEmpty())
+            assertEquals("下载失败：$errorMsg", errorEvents.first())
+
+            job.cancel()
+        }
 
     @Test
     fun `removeTask filters out task`() {
@@ -212,5 +255,20 @@ class VideoDownloadViewModelTest {
             val task = state.downloadTasks.first()
             assertEquals("video.mp4", task.title)
             assertEquals(mockFile.absolutePath, task.localPath)
+        }
+
+    @Test
+    fun `addDownloadTask without network shows error`() =
+        runTest(testDispatcher) {
+            val errors = mutableListOf<String>()
+            val job =
+                launch {
+                    viewModel.errorEvents.toList(errors)
+                }
+            `when`(networkMonitor.isConnected).thenReturn(MutableStateFlow(false))
+            viewModel.addDownloadTask("http://example.com/video")
+            advanceUntilIdle()
+            assertTrue(errors.contains("当前处于无网络环境，无法下载视频。"))
+            job.cancel()
         }
 }

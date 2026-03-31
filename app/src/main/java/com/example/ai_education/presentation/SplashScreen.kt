@@ -12,9 +12,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.common.manager.VoskModelManager
 import com.example.summarizer.videosummarizer.services.DownloadStatus
 import kotlinx.coroutines.delay
@@ -25,11 +27,11 @@ fun SplashScreen(
     viewModel: SplashViewModel = hiltViewModel(),
 ) {
     // Collect the initialization state from the manager
-    val voskState by viewModel.voskModelManager.initState.collectAsState()
+    val voskState by viewModel.voskModelManager.initState.collectAsStateWithLifecycle()
 
-    val sherpaProgress by viewModel.sherpaProgress.collectAsState()
-    val sherpaReady by viewModel.sherpaReady.collectAsState()
-    val sherpaError by viewModel.sherpaError.collectAsState()
+    val sherpaProgress by viewModel.sherpaProgress.collectAsStateWithLifecycle()
+    val sherpaReady by viewModel.sherpaReady.collectAsStateWithLifecycle()
+    val sherpaError by viewModel.sherpaError.collectAsStateWithLifecycle()
 
     // Auto-navigate when ready
     LaunchedEffect(voskState, sherpaReady) {
@@ -54,13 +56,13 @@ fun SplashScreen(
                     .fillMaxWidth(),
         ) {
             Text(
-                text = "AI 辅导助手",
+                text = stringResource(com.example.common.R.string.ai_tutor_assistant),
                 style = MaterialTheme.typography.displayMedium.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.primary,
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "正在准备运行环境...",
+                text = stringResource(com.example.common.R.string.preparing_environment),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -69,11 +71,11 @@ fun SplashScreen(
 
             val currentTaskTitle =
                 if (voskState !is VoskModelManager.InitState.Ready) {
-                    "正在加载: 语音唤醒模型"
+                    stringResource(com.example.common.R.string.loading_voice_wakeup_model)
                 } else if (!sherpaReady) {
-                    "正在加载: 语音识别模型"
+                    stringResource(com.example.common.R.string.loading_voice_recognition_model)
                 } else {
-                    "加载完成"
+                    stringResource(com.example.common.R.string.loading_complete)
                 }
 
             val currentTaskStatus =
@@ -123,7 +125,7 @@ fun SplashScreen(
                 TextButton(
                     onClick = { onLoadComplete() },
                 ) {
-                    Text("后台下载并进入主页")
+                    Text(stringResource(com.example.common.R.string.download_in_background_and_enter_home))
                 }
             }
         }
@@ -184,7 +186,14 @@ fun ModelStatusProgress(
                 else -> {
                     // Show indeterminate state text
                     Text(
-                        text = if (status is ModelStatus.Preparing) "准备中..." else "处理中...",
+                        text =
+                            if (status is ModelStatus.Preparing) {
+                                stringResource(
+                                    com.example.common.R.string.preparing,
+                                )
+                            } else {
+                                stringResource(com.example.common.R.string.processing)
+                            },
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -196,14 +205,14 @@ fun ModelStatusProgress(
 
         if (status is ModelStatus.Error) {
             Text(
-                text = "失败: ${status.message}",
+                text = stringResource(com.example.common.R.string.failed_with_message, status.message),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.align(Alignment.Start),
             )
             Spacer(modifier = Modifier.height(8.dp))
             Button(onClick = onRetry, modifier = Modifier.align(Alignment.End)) {
-                Text("重试")
+                Text(stringResource(com.example.common.R.string.retry))
             }
         } else {
             val animatedProgress by animateFloatAsState(

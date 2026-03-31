@@ -10,12 +10,12 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.common.database.PreferencesManager
 
 private val LightColors =
@@ -79,7 +79,7 @@ fun Ai_EducationTheme(
 ) {
     val context = LocalContext.current
     val preferencesManager = remember { PreferencesManager(context) }
-    val themeMode by preferencesManager.getString("theme_mode", "auto").collectAsState(initial = "auto")
+    val themeMode by preferencesManager.getString("theme_mode", "auto").collectAsStateWithLifecycle(initialValue = "auto")
 
     val isDark =
         when (themeMode) {

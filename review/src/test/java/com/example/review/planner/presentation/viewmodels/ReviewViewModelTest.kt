@@ -4,10 +4,14 @@ import com.example.common.config.GlobalConfigRepository
 import com.example.common.database.PreferencesManager
 import com.example.common.database.dao.ErrorBookDao
 import com.example.common.database.models.ErrorBookEntity
+import com.example.common.utils.NetworkMonitor
 import com.example.review.planner.services.ReviewRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.*
 import org.junit.After
 import org.junit.Assert.*
@@ -22,6 +26,7 @@ class ReviewViewModelTest {
     private lateinit var mockErrorBookDao: ErrorBookDao
     private lateinit var mockGlobalConfigRepository: GlobalConfigRepository
     private lateinit var mockPreferencesManager: PreferencesManager
+    private lateinit var mockNetworkMonitor: NetworkMonitor
 
     private val testDispatcher = StandardTestDispatcher()
 
@@ -32,12 +37,14 @@ class ReviewViewModelTest {
         mockErrorBookDao = mock()
         mockGlobalConfigRepository = mock()
         mockPreferencesManager = mock()
+        mockNetworkMonitor = mock()
 
         whenever(mockGlobalConfigRepository.getAiTutorApiKey()).thenReturn(flowOf("test_key"))
         whenever(mockGlobalConfigRepository.getAiTutorModelName()).thenReturn(flowOf("test_model"))
         whenever(mockGlobalConfigRepository.getAiTutorBaseUrl()).thenReturn(flowOf("test_url"))
         whenever(mockErrorBookDao.getAllErrorRecords()).thenReturn(flowOf(emptyList()))
         whenever(mockPreferencesManager.getString(any(), any())).thenReturn(flowOf(""))
+        whenever(mockNetworkMonitor.isConnected).thenReturn(MutableStateFlow(true))
     }
 
     @After
@@ -54,7 +61,14 @@ class ReviewViewModelTest {
                 )
             whenever(mockErrorBookDao.getAllErrorRecords()).thenReturn(flowOf(records))
 
-            viewModel = ReviewViewModel(mockRepository, mockErrorBookDao, mockGlobalConfigRepository, mockPreferencesManager)
+            viewModel =
+                ReviewViewModel(
+                    mockRepository,
+                    mockErrorBookDao,
+                    mockGlobalConfigRepository,
+                    mockPreferencesManager,
+                    mockNetworkMonitor,
+                )
             advanceUntilIdle()
 
             assertEquals(records, viewModel.uiState.value.errorRecords)
@@ -63,7 +77,14 @@ class ReviewViewModelTest {
     @Test
     fun `setTab updates selectedTab`() =
         runTest(testDispatcher) {
-            viewModel = ReviewViewModel(mockRepository, mockErrorBookDao, mockGlobalConfigRepository, mockPreferencesManager)
+            viewModel =
+                ReviewViewModel(
+                    mockRepository,
+                    mockErrorBookDao,
+                    mockGlobalConfigRepository,
+                    mockPreferencesManager,
+                    mockNetworkMonitor,
+                )
             advanceUntilIdle()
 
             viewModel.setTab(2)
@@ -73,7 +94,14 @@ class ReviewViewModelTest {
     @Test
     fun `generateReviewPlan success updates plan`() =
         runTest(testDispatcher) {
-            viewModel = ReviewViewModel(mockRepository, mockErrorBookDao, mockGlobalConfigRepository, mockPreferencesManager)
+            viewModel =
+                ReviewViewModel(
+                    mockRepository,
+                    mockErrorBookDao,
+                    mockGlobalConfigRepository,
+                    mockPreferencesManager,
+                    mockNetworkMonitor,
+                )
             advanceUntilIdle()
 
             whenever(mockRepository.generateReviewPlan(any(), any(), any(), any())).thenReturn(Result.success("My Plan"))
@@ -86,25 +114,46 @@ class ReviewViewModelTest {
 
             assertEquals("My Plan", viewModel.uiState.value.reviewPlan)
             assertFalse(viewModel.uiState.value.isGeneratingPlan)
-            assertNull(viewModel.uiState.value.error)
         }
 
     @Test
-    fun `generateReinforcementQuiz with empty input sets error`() =
+    fun `generateReinforcementQuiz with empty input sends error event`() =
         runTest(testDispatcher) {
-            viewModel = ReviewViewModel(mockRepository, mockErrorBookDao, mockGlobalConfigRepository, mockPreferencesManager)
+            viewModel =
+                ReviewViewModel(
+                    mockRepository,
+                    mockErrorBookDao,
+                    mockGlobalConfigRepository,
+                    mockPreferencesManager,
+                    mockNetworkMonitor,
+                )
             advanceUntilIdle()
+
+            val errors = mutableListOf<String>()
+            val job =
+                launch {
+                    viewModel.errorEvents.toList(errors)
+                }
 
             viewModel.updateKnowledgePointInput("   ")
             viewModel.generateReinforcementQuiz()
+            advanceUntilIdle()
 
-            assertEquals("请输入要巩固的知识点", viewModel.uiState.value.error)
+            assertTrue(errors.contains("请输入要巩固的知识点"))
+            job.cancel()
         }
 
     @Test
     fun `generateReinforcementQuiz success updates quiz`() =
         runTest(testDispatcher) {
-            viewModel = ReviewViewModel(mockRepository, mockErrorBookDao, mockGlobalConfigRepository, mockPreferencesManager)
+            viewModel =
+                ReviewViewModel(
+                    mockRepository,
+                    mockErrorBookDao,
+                    mockGlobalConfigRepository,
+                    mockPreferencesManager,
+                    mockNetworkMonitor,
+                )
             advanceUntilIdle()
 
             viewModel.updateKnowledgePointInput("Math")
@@ -117,13 +166,19 @@ class ReviewViewModelTest {
 
             assertEquals("Quiz Data", viewModel.uiState.value.reinforcementQuiz)
             assertFalse(viewModel.uiState.value.isGeneratingQuiz)
-            assertNull(viewModel.uiState.value.error)
         }
 
     @Test
     fun `deleteErrorRecord calls dao`() =
         runTest(testDispatcher) {
-            viewModel = ReviewViewModel(mockRepository, mockErrorBookDao, mockGlobalConfigRepository, mockPreferencesManager)
+            viewModel =
+                ReviewViewModel(
+                    mockRepository,
+                    mockErrorBookDao,
+                    mockGlobalConfigRepository,
+                    mockPreferencesManager,
+                    mockNetworkMonitor,
+                )
             advanceUntilIdle()
 
             val record = ErrorBookEntity(id = 1, subject = "Math", questionContent = "Q", errorReason = "R", correctSolution = "S")

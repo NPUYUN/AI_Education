@@ -33,6 +33,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -41,6 +42,7 @@ import coil.ImageLoader
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import coil.request.SuccessResult
+import com.example.common.R
 import com.example.common.presentation.components.ChatInputArea
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -128,6 +130,7 @@ fun ImagePreviewScreen(
                             croppedBitmap.compress(Bitmap.CompressFormat.JPEG, 100, stream)
                             stream.flush()
                             stream.close()
+                            croppedBitmap.recycle() // 回收裁剪产生的 Bitmap
 
                             // Update UI on Main Thread
                             withContext(Dispatchers.Main) {
@@ -230,7 +233,7 @@ fun ImagePreviewScreen(
                                 contentColor = MaterialTheme.colorScheme.onPrimary,
                             ),
                     ) {
-                        Text("确认并开始解题", fontSize = 18.sp)
+                        Text(stringResource(R.string.confirm_and_start_solving), fontSize = 18.sp)
                     }
                 }
             } else {
@@ -249,9 +252,14 @@ fun ImagePreviewScreen(
                                 .padding(horizontal = 16.dp, vertical = 8.dp),
                         horizontalArrangement = Arrangement.SpaceEvenly,
                     ) {
-                        val actions = listOf("解答一下", "这是什么", "翻译一下")
+                        val actions =
+                            listOf(
+                                stringResource(R.string.solve_it) to "解答一下",
+                                stringResource(R.string.what_is_this) to "这是什么",
+                                stringResource(R.string.translate_it) to "翻译一下",
+                            )
 
-                        actions.forEach { action ->
+                        actions.forEach { (label, action) ->
                             Box(
                                 modifier =
                                     Modifier
@@ -264,7 +272,7 @@ fun ImagePreviewScreen(
                                         .padding(horizontal = 16.dp, vertical = 8.dp),
                             ) {
                                 Text(
-                                    text = action,
+                                    text = label,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     fontSize = 14.sp,
                                 )
@@ -363,7 +371,7 @@ fun CropOverlay(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             TextButton(onClick = onCancel) {
-                Text("取消", color = Color.White, fontSize = 18.sp)
+                Text(stringResource(R.string.cancel), color = Color.White, fontSize = 18.sp)
             }
             // Optional: Add Reset or Rotate buttons here if needed
         }
@@ -527,7 +535,7 @@ fun CropOverlay(
                 shape = RoundedCornerShape(25.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
             ) {
-                Text("完成", fontSize = 18.sp, color = MaterialTheme.colorScheme.onPrimary)
+                Text(stringResource(R.string.complete), fontSize = 18.sp, color = MaterialTheme.colorScheme.onPrimary)
             }
         }
     }

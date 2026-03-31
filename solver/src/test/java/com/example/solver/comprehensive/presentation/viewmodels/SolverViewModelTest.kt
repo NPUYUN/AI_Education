@@ -1,6 +1,5 @@
 package com.example.solver.comprehensive.presentation.viewmodels
 
-import android.content.Context
 import com.example.common.config.GlobalConfigRepository
 import com.example.common.database.dao.ErrorBookDao
 import com.example.common.database.dao.SolveHistoryDao
@@ -8,6 +7,8 @@ import com.example.solver.comprehensive.services.SolverRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -34,19 +35,20 @@ class SolverViewModelTest {
     private lateinit var globalConfigRepository: GlobalConfigRepository
     private lateinit var errorBookDao: ErrorBookDao
     private lateinit var solveHistoryDao: SolveHistoryDao
-    private lateinit var context: Context
 
     private lateinit var viewModel: SolverViewModel
 
     @Before
-    fun setup() {
+    fun setUp() {
         Dispatchers.setMain(testDispatcher)
 
         repository = mock()
         globalConfigRepository = mock()
         errorBookDao = mock()
         solveHistoryDao = mock()
-        context = mock()
+        val networkMonitor = mock<com.example.common.utils.NetworkMonitor>()
+        val isConnectedFlow = kotlinx.coroutines.flow.MutableStateFlow(true)
+        whenever(networkMonitor.isConnected).thenReturn(isConnectedFlow)
 
         whenever(globalConfigRepository.getAiTutorApiKey()).thenReturn(flowOf("test-key"))
         whenever(globalConfigRepository.getAiTutorModelName()).thenReturn(flowOf("test-model"))
@@ -61,7 +63,8 @@ class SolverViewModelTest {
                 globalConfigRepository,
                 errorBookDao,
                 solveHistoryDao,
-                context,
+                networkMonitor,
+                mock(),
             )
     }
 
@@ -80,7 +83,6 @@ class SolverViewModelTest {
             assertEquals(1, state.selectedTab)
             assertEquals("", state.questionText)
             assertEquals("", state.solutionResult)
-            assertEquals(null, state.error)
             assertFalse(state.isAddedToErrorBook)
         }
 
@@ -105,18 +107,29 @@ class SolverViewModelTest {
     @Test
     fun `solveProblem returns error when questionText is empty and imageUri is null`() =
         runTest(testDispatcher) {
+            val errors = mutableListOf<String>()
+            val job =
+                launch {
+                    viewModel.errorEvents.toList(errors)
+                }
             viewModel.updateQuestionText("")
             viewModel.setImageUri(null)
 
             viewModel.solveProblem()
             advanceUntilIdle()
 
-            assertEquals("请输入题目或上传题目图片", viewModel.uiState.value.error)
+            assertTrue(errors.contains("请输入题目或上传题目图片"))
+            job.cancel()
         }
 
     @Test
     fun `solveProblem handles network timeout error`() =
         runTest(testDispatcher) {
+            val errors = mutableListOf<String>()
+            val job =
+                launch {
+                    viewModel.errorEvents.toList(errors)
+                }
             viewModel.updateQuestionText("三角形面积")
             whenever(repository.solveProblem(any(), any(), any(), any(), any(), org.mockito.kotlin.anyOrNull()))
                 .thenReturn(Result.failure(SocketTimeoutException("Timeout")))
@@ -125,12 +138,18 @@ class SolverViewModelTest {
             advanceUntilIdle()
 
             assertFalse(viewModel.uiState.value.isSolving)
-            assertEquals("网络请求超时，请稍后重试", viewModel.uiState.value.error)
+            assertTrue(errors.contains("网络请求超时，请稍后重试"))
+            job.cancel()
         }
 
     @Test
     fun `solveProblem handles unknown host error`() =
         runTest(testDispatcher) {
+            val errors = mutableListOf<String>()
+            val job =
+                launch {
+                    viewModel.errorEvents.toList(errors)
+                }
             viewModel.updateQuestionText("三角形面积")
             whenever(repository.solveProblem(any(), any(), any(), any(), any(), org.mockito.kotlin.anyOrNull()))
                 .thenReturn(Result.failure(UnknownHostException("Unknown host")))
@@ -139,7 +158,8 @@ class SolverViewModelTest {
             advanceUntilIdle()
 
             assertFalse(viewModel.uiState.value.isSolving)
-            assertEquals("无法连接到服务器，请检查网络设置", viewModel.uiState.value.error)
+            assertTrue(errors.contains("无法连接到服务器，请检查网络设置"))
+            job.cancel()
         }
 
     @Test
@@ -154,7 +174,6 @@ class SolverViewModelTest {
 
             assertFalse(viewModel.uiState.value.isSolving)
             assertEquals("面积为10", viewModel.uiState.value.solutionResult)
-            assertEquals(null, viewModel.uiState.value.error)
             verify(solveHistoryDao).insert(any())
         }
 

@@ -27,14 +27,16 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.canhub.cropper.CropImageContract
 import com.canhub.cropper.CropImageContractOptions
 import com.canhub.cropper.CropImageOptions
+import com.example.common.R
 import com.example.common.database.models.SolveHistoryEntity
 import com.example.common.ui.components.SafeMarkdownText
 import com.example.common.utils.DateFormatUtils
@@ -47,14 +49,27 @@ fun SolverScreen(
     viewModel: SolverViewModel,
     onCameraClick: () -> Unit = {},
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var showErrorBookDialog by remember { mutableStateOf(false) }
     var showAllHistory by remember { mutableStateOf(false) }
     var selectedHistory: SolveHistoryEntity? by remember { mutableStateOf(null) }
-    val recentHistory by viewModel.recentHistory.collectAsState(initial = emptyList())
-    val allHistory by viewModel.allHistory.collectAsState(initial = emptyList())
+    val recentHistory by viewModel.recentHistory.collectAsStateWithLifecycle(initialValue = emptyList())
+    val allHistory by viewModel.allHistory.collectAsStateWithLifecycle(initialValue = emptyList())
 
+    val snackbarHostState = remember { SnackbarHostState() }
+    val errorEvent by viewModel.errorEvents.collectAsStateWithLifecycle(initialValue = null)
+
+    LaunchedEffect(errorEvent) {
+        errorEvent?.let { errorMsg ->
+            snackbarHostState.showSnackbar(
+                message = errorMsg,
+                duration = SnackbarDuration.Short,
+            )
+        }
+    }
+
+    val imageCropFailedMsg = stringResource(R.string.image_crop_failed)
     val cropImageLauncher =
         rememberLauncherForActivityResult(CropImageContract()) { result ->
             if (result.isSuccessful) {
@@ -65,7 +80,7 @@ fun SolverScreen(
                 }
             } else {
                 val exception = result.error
-                Toast.makeText(context, "图片裁剪失败", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, imageCropFailedMsg, Toast.LENGTH_SHORT).show()
             }
         }
 
@@ -94,6 +109,7 @@ fun SolverScreen(
         )
     }
 
+    val cameraPermissionReqMsg = stringResource(R.string.camera_permission_required_for_photo)
     val permissionLauncher =
         rememberLauncherForActivityResult(
             ActivityResultContracts.RequestPermission(),
@@ -102,16 +118,17 @@ fun SolverScreen(
             if (isGranted) {
                 onCameraClick()
             } else {
-                Toast.makeText(context, "需要相机权限才能拍照", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, cameraPermissionReqMsg, Toast.LENGTH_SHORT).show()
             }
         }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("智能解题") },
+                title = { Text(stringResource(R.string.smart_problem_solving)) },
             )
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { paddingValues ->
         Column(
             modifier =
@@ -128,33 +145,6 @@ fun SolverScreen(
                         .animateContentSize(),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                AnimatedVisibility(
-                    visible = uiState.error != null,
-                    enter = fadeIn() + expandVertically(),
-                    exit = fadeOut() + shrinkVertically(),
-                ) {
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-                        modifier = Modifier.fillMaxWidth().shadow(2.dp, RoundedCornerShape(12.dp)),
-                        shape = RoundedCornerShape(12.dp),
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(16.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(
-                                text = uiState.error ?: "",
-                                color = MaterialTheme.colorScheme.onErrorContainer,
-                                modifier = Modifier.weight(1f),
-                            )
-                            IconButton(onClick = { viewModel.clearError() }) {
-                                Icon(Icons.Default.Clear, contentDescription = "清除错误", tint = MaterialTheme.colorScheme.onErrorContainer)
-                            }
-                        }
-                    }
-                }
-
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -181,12 +171,16 @@ fun SolverScreen(
                         ) {
                             Icon(
                                 Icons.Default.PhotoCamera,
-                                contentDescription = "拍照解题",
+                                contentDescription = stringResource(R.string.photo_problem_solving),
                                 modifier = Modifier.size(40.dp),
                                 tint = MaterialTheme.colorScheme.onPrimaryContainer,
                             )
                             Spacer(modifier = Modifier.height(12.dp))
-                            Text("拍照解题", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                            Text(
+                                stringResource(R.string.photo_problem_solving),
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            )
                         }
                     }
                     ElevatedCard(
@@ -205,13 +199,13 @@ fun SolverScreen(
                         ) {
                             Icon(
                                 Icons.Default.Image,
-                                contentDescription = "上传题目",
+                                contentDescription = stringResource(R.string.upload_question),
                                 modifier = Modifier.size(40.dp),
                                 tint = MaterialTheme.colorScheme.onSecondaryContainer,
                             )
                             Spacer(modifier = Modifier.height(12.dp))
                             Text(
-                                "上传题目",
+                                stringResource(R.string.upload_question),
                                 style = MaterialTheme.typography.titleMedium,
                                 color = MaterialTheme.colorScheme.onSecondaryContainer,
                             )
@@ -224,7 +218,7 @@ fun SolverScreen(
                     onValueChange = {
                         viewModel.updateQuestionText(it)
                     },
-                    label = { Text("题目补充描述（可选）") },
+                    label = { Text(stringResource(R.string.question_supplementary_description_optional)) },
                     shape = RoundedCornerShape(16.dp),
                     modifier =
                         Modifier
@@ -246,7 +240,7 @@ fun SolverScreen(
                         ) {
                             AsyncImage(
                                 model = uiState.imageUri,
-                                contentDescription = "题目图片",
+                                contentDescription = stringResource(R.string.question_image),
                                 modifier =
                                     Modifier
                                         .fillMaxWidth()
@@ -258,7 +252,7 @@ fun SolverScreen(
                             TextButton(onClick = { viewModel.setImageUri(null) }) {
                                 Icon(Icons.Default.Clear, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text("移除图片")
+                                Text(stringResource(R.string.remove_image))
                             }
                         }
                     }
@@ -277,15 +271,15 @@ fun SolverScreen(
                             strokeWidth = 2.dp,
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("正在解析中...")
+                        Text(stringResource(R.string.parsing))
                     } else {
-                        Text(
-                            "开始解题（自动识别题型：${when (uiState.selectedTab) {
-                                0 -> "几何"
-                                1 -> "代数"
-                                else -> "综合"
-                            } }）",
-                        )
+                        val typeName =
+                            when (uiState.selectedTab) {
+                                0 -> stringResource(R.string.geometry)
+                                1 -> stringResource(R.string.algebra)
+                                else -> stringResource(R.string.comprehensive)
+                            }
+                        Text(stringResource(R.string.start_solving_auto_recognize, typeName))
                     }
                 }
 
@@ -305,7 +299,7 @@ fun SolverScreen(
                                     .padding(16.dp),
                         ) {
                             Text(
-                                text = "解题结果",
+                                text = stringResource(R.string.problem_solving_result),
                                 style = MaterialTheme.typography.titleMedium,
                                 color = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.padding(bottom = 8.dp),
@@ -317,7 +311,7 @@ fun SolverScreen(
                             )
                             if (uiState.selectedTab == 0 && uiState.drawingSteps.isNotEmpty()) {
                                 Spacer(modifier = Modifier.height(12.dp))
-                                Text("几何绘图", style = MaterialTheme.typography.titleMedium)
+                                Text(stringResource(R.string.geometry_drawing), style = MaterialTheme.typography.titleMedium)
                                 Spacer(modifier = Modifier.height(8.dp))
                                 val prev = mutableListOf<Map<String, Any>>()
                                 uiState.drawingSteps.forEach { step ->
@@ -333,7 +327,7 @@ fun SolverScreen(
                                 }
                             } else if (uiState.selectedTab == 1 && uiState.isFunction && uiState.drawingSteps.isNotEmpty()) {
                                 Spacer(modifier = Modifier.height(12.dp))
-                                Text("函数绘图", style = MaterialTheme.typography.titleMedium)
+                                Text(stringResource(R.string.function_drawing), style = MaterialTheme.typography.titleMedium)
                                 Spacer(modifier = Modifier.height(8.dp))
                                 val prev = mutableListOf<Map<String, Any>>()
                                 uiState.drawingSteps.forEach { step ->
@@ -351,10 +345,10 @@ fun SolverScreen(
                                 Spacer(modifier = Modifier.height(12.dp))
                                 val title =
                                     when (uiState.comprehensiveType) {
-                                        "物理" -> "物理示意图"
-                                        "化学" -> "化学示意图"
-                                        "生物" -> "生物示意图"
-                                        else -> "综合示意图"
+                                        stringResource(R.string.physics) -> stringResource(R.string.physics_diagram)
+                                        stringResource(R.string.chemistry) -> stringResource(R.string.chemistry_diagram)
+                                        stringResource(R.string.biology) -> stringResource(R.string.biology_diagram)
+                                        else -> stringResource(R.string.comprehensive_diagram)
                                     }
                                 Text(title, style = MaterialTheme.typography.titleMedium)
                                 Spacer(modifier = Modifier.height(8.dp))
@@ -377,14 +371,22 @@ fun SolverScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 enabled = !uiState.isAddedToErrorBook,
                             ) {
-                                Text(if (uiState.isAddedToErrorBook) "已收录至错题本" else "收录至错题本")
+                                Text(
+                                    if (uiState.isAddedToErrorBook) {
+                                        stringResource(
+                                            R.string.added_to_error_book,
+                                        )
+                                    } else {
+                                        stringResource(R.string.add_to_error_book)
+                                    },
+                                )
                             }
                         }
                     }
                 }
 
                 Text(
-                    text = "历史解题",
+                    text = stringResource(R.string.historical_problem_solving),
                     style = MaterialTheme.typography.titleMedium,
                 )
                 if (!showAllHistory) {
@@ -411,7 +413,7 @@ fun SolverScreen(
                                         Text(item.questionContent.take(30))
                                     }
                                     if (item.isInErrorBook) {
-                                        AssistChip(onClick = {}, label = { Text("已入错题本") })
+                                        AssistChip(onClick = {}, label = { Text(stringResource(R.string.already_in_error_book)) })
                                     }
                                 }
                             }
@@ -422,7 +424,7 @@ fun SolverScreen(
                         ) {
                             Icon(Icons.Default.MoreHoriz, contentDescription = null)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("查看更多")
+                            Text(stringResource(R.string.view_more))
                         }
                     }
                 }
@@ -455,7 +457,7 @@ fun SolverScreen(
                                         Text(item.questionContent)
                                     }
                                     if (item.isInErrorBook) {
-                                        AssistChip(onClick = {}, label = { Text("已入错题本") })
+                                        AssistChip(onClick = {}, label = { Text(stringResource(R.string.already_in_error_book)) })
                                     }
                                 }
                             }
@@ -464,7 +466,7 @@ fun SolverScreen(
                             onClick = { showAllHistory = false },
                             modifier = Modifier.fillMaxWidth(),
                         ) {
-                            Text("收起")
+                            Text(stringResource(R.string.collapse))
                         }
                     }
                 }
@@ -472,12 +474,15 @@ fun SolverScreen(
         }
 
         if (showErrorBookDialog) {
+            val geometryStr = stringResource(R.string.geometry)
+            val algebraStr = stringResource(R.string.algebra)
+            val comprehensiveStr = stringResource(R.string.comprehensive)
             var subject by remember {
                 mutableStateOf(
                     when (uiState.selectedTab) {
-                        0 -> "几何"
-                        1 -> "代数"
-                        else -> "综合"
+                        0 -> geometryStr
+                        1 -> algebraStr
+                        else -> comprehensiveStr
                     },
                 )
             }
@@ -485,20 +490,20 @@ fun SolverScreen(
 
             AlertDialog(
                 onDismissRequest = { showErrorBookDialog = false },
-                title = { Text("收录至错题本") },
+                title = { Text(stringResource(R.string.add_to_error_book)) },
                 text = {
                     Column {
                         OutlinedTextField(
                             value = subject,
                             onValueChange = { subject = it },
-                            label = { Text("科目") },
+                            label = { Text(stringResource(R.string.subject)) },
                             modifier = Modifier.fillMaxWidth(),
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         OutlinedTextField(
                             value = errorReason,
                             onValueChange = { errorReason = it },
-                            label = { Text("错误原因/考点") },
+                            label = { Text(stringResource(R.string.error_reason_or_knowledge_point)) },
                             modifier = Modifier.fillMaxWidth(),
                         )
                     }
@@ -508,12 +513,12 @@ fun SolverScreen(
                         viewModel.addToErrorBook(subject, errorReason)
                         showErrorBookDialog = false
                     }) {
-                        Text("保存")
+                        Text(stringResource(R.string.save))
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { showErrorBookDialog = false }) {
-                        Text("取消")
+                        Text(stringResource(R.string.cancel))
                     }
                 },
             )
@@ -522,7 +527,7 @@ fun SolverScreen(
         selectedHistory?.let { item ->
             AlertDialog(
                 onDismissRequest = { selectedHistory = null },
-                title = { Text("解题详情") },
+                title = { Text(stringResource(R.string.problem_solving_details)) },
                 text = {
                     Column {
                         Text("${item.subject}｜${DateFormatUtils.format(item.timestamp)}")
@@ -530,7 +535,7 @@ fun SolverScreen(
                         if (item.imageUri != null) {
                             AsyncImage(
                                 model = item.imageUri,
-                                contentDescription = "题目图片",
+                                contentDescription = stringResource(R.string.question_image),
                                 modifier =
                                     Modifier
                                         .fillMaxWidth()
@@ -538,12 +543,12 @@ fun SolverScreen(
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                         }
-                        Text("题目：")
+                        Text(stringResource(R.string.question_colon))
                         Text(item.questionContent)
                         Spacer(modifier = Modifier.height(8.dp))
                         HorizontalDivider()
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text("解析：")
+                        Text(stringResource(R.string.analysis_colon))
                         SafeMarkdownText(
                             markdown = item.solution,
                         )
@@ -551,7 +556,7 @@ fun SolverScreen(
                 },
                 confirmButton = {
                     TextButton(onClick = { selectedHistory = null }) {
-                        Text("关闭")
+                        Text(stringResource(R.string.close))
                     }
                 },
             )

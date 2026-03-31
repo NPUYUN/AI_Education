@@ -27,18 +27,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.core.content.FileProvider
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
+import com.example.common.R
 import com.example.common.presentation.components.GlobalApiSettingsDialog
 import com.example.summarizer.videosummarizer.presentation.viewmodels.DownloadTask
 import com.example.summarizer.videosummarizer.presentation.viewmodels.SummaryStatus
@@ -50,7 +53,7 @@ import java.io.File
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun VideoDownloadScreen(viewModel: VideoDownloadViewModel) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val downloadTasks = uiState.downloadTasks
     val context = LocalContext.current
 
@@ -69,6 +72,28 @@ fun VideoDownloadScreen(viewModel: VideoDownloadViewModel) {
     var playingFile by remember { mutableStateOf<File?>(null) }
     var showSettings by remember { mutableStateOf(false) }
 
+    val snackbarHostState = remember { SnackbarHostState() }
+    val errorEvent by viewModel.errorEvents.collectAsStateWithLifecycle(initialValue = null)
+    val successEvent by viewModel.successEvents.collectAsStateWithLifecycle(initialValue = null)
+
+    LaunchedEffect(errorEvent) {
+        errorEvent?.let { errorMsg ->
+            snackbarHostState.showSnackbar(
+                message = errorMsg,
+                duration = SnackbarDuration.Long,
+            )
+        }
+    }
+
+    LaunchedEffect(successEvent) {
+        successEvent?.let { successMsg ->
+            snackbarHostState.showSnackbar(
+                message = successMsg,
+                duration = SnackbarDuration.Short,
+            )
+        }
+    }
+
     if (showSettings || uiState.showApiSettings) {
         GlobalApiSettingsDialog(
             onDismiss = {
@@ -79,16 +104,17 @@ fun VideoDownloadScreen(viewModel: VideoDownloadViewModel) {
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text("视频下载") },
+                title = { Text(stringResource(R.string.video_download)) },
                 colors =
                     TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.primaryContainer,
                     ),
                 actions = {
                     IconButton(onClick = { showSettings = true }) {
-                        Icon(Icons.Default.Settings, contentDescription = "设置")
+                        Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.settings))
                     }
                 },
             )
@@ -129,41 +155,11 @@ fun VideoDownloadScreen(viewModel: VideoDownloadViewModel) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            AnimatedVisibility(
-                visible = uiState.error != null,
-                enter = fadeIn() + expandVertically(),
-                exit = fadeOut() + shrinkVertically(),
-            ) {
-                uiState.error?.let { error ->
-                    Column {
-                        ErrorCard(
-                            message = error,
-                            onDismiss = viewModel::clearError,
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                    }
-                }
-            }
-
-            AnimatedVisibility(
-                visible = uiState.successMessage != null,
-                enter = fadeIn() + expandVertically(),
-                exit = fadeOut() + shrinkVertically(),
-            ) {
-                uiState.successMessage?.let { message ->
-                    Column {
-                        SuccessCard(
-                            message = message,
-                            onDismiss = viewModel::clearSuccess,
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                    }
-                }
-            }
+            // Error and Success handling moved to Snackbar
 
             if (downloadTasks.isNotEmpty()) {
                 Text(
-                    text = "下载任务 (${downloadTasks.size})",
+                    text = stringResource(R.string.download_tasks_count, downloadTasks.size),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(bottom = 8.dp),
@@ -225,7 +221,7 @@ fun VideoDownloadScreen(viewModel: VideoDownloadViewModel) {
                                         } catch (_: Exception) {
                                             Toast.makeText(
                                                 context,
-                                                "无法打开文件夹：${parent.absolutePath}",
+                                                context.getString(R.string.cannot_open_folder, parent.absolutePath),
                                                 Toast.LENGTH_LONG,
                                             ).show()
                                         }
@@ -269,6 +265,8 @@ fun VideoPlayerDialog(
         }
     var playbackError by remember { mutableStateOf<String?>(null) }
 
+    val cannotOpenPlayerMsg = stringResource(R.string.cannot_open_system_player)
+    val cannotPlayVideoMsg = stringResource(R.string.cannot_play_video_in_app)
     val openExternalPlayer =
         remember(videoUri) {
             {
@@ -282,7 +280,7 @@ fun VideoPlayerDialog(
                 } catch (_: Exception) {
                     Toast.makeText(
                         context,
-                        "无法打开系统播放器",
+                        cannotOpenPlayerMsg,
                         Toast.LENGTH_LONG,
                     ).show()
                 }
@@ -303,7 +301,7 @@ fun VideoPlayerDialog(
         val listener =
             object : Player.Listener {
                 override fun onPlayerError(error: PlaybackException) {
-                    playbackError = "无法在应用内播放该视频"
+                    playbackError = cannotPlayVideoMsg
                     openExternalPlayer()
                     onDismiss()
                 }
@@ -358,7 +356,7 @@ fun UrlInputCard(
             modifier = Modifier.padding(16.dp),
         ) {
             Text(
-                text = "添加下载任务",
+                text = stringResource(R.string.add_download_task),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
             )
@@ -369,14 +367,14 @@ fun UrlInputCard(
                 value = url,
                 onValueChange = onUrlChange,
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("请粘贴B站、YouTube、抖音等视频链接") },
+                placeholder = { Text(stringResource(R.string.paste_video_link_hint)) },
                 leadingIcon = {
                     Icon(Icons.Default.Link, contentDescription = null)
                 },
                 trailingIcon = {
                     if (url.isNotBlank()) {
                         IconButton(onClick = { onUrlChange("") }) {
-                            Icon(Icons.Default.Clear, contentDescription = "清除")
+                            Icon(Icons.Default.Clear, contentDescription = stringResource(R.string.clear))
                         }
                     }
                 },
@@ -400,7 +398,7 @@ fun UrlInputCard(
                     Icon(Icons.Default.Download, contentDescription = null)
                 }
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("开始下载")
+                Text(stringResource(R.string.start_download))
             }
         }
     }
@@ -417,7 +415,7 @@ fun LocalVideoInputCard(onPickVideo: () -> Unit) {
             modifier = Modifier.padding(16.dp),
         ) {
             Text(
-                text = "本地视频上传",
+                text = stringResource(R.string.local_video_upload),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
             )
@@ -435,7 +433,7 @@ fun LocalVideoInputCard(onPickVideo: () -> Unit) {
             ) {
                 Icon(Icons.Default.UploadFile, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("选择本地视频并生成摘要")
+                Text(stringResource(R.string.select_local_video_and_summarize))
             }
         }
     }
@@ -523,18 +521,11 @@ fun DownloadTaskCard(
                 Column {
                     Spacer(modifier = Modifier.height(12.dp))
                     SummaryStatusBadge(status = task.summary.status)
-                    task.summary.error?.let { error ->
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = error,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error,
-                        )
-                    }
+                    val summaryText = stringResource(R.string.summary)
                     if (task.summary.summary.isNotBlank()) {
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "摘要",
+                            text = summaryText,
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
                         )
@@ -557,7 +548,7 @@ fun DownloadTaskCard(
                     TextButton(onClick = onCancel) {
                         Icon(Icons.Default.Close, contentDescription = null)
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("取消")
+                        Text(stringResource(R.string.cancel))
                     }
                 }
 
@@ -566,23 +557,31 @@ fun DownloadTaskCard(
                         TextButton(onClick = onPlay) {
                             Icon(Icons.Default.PlayArrow, contentDescription = null)
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("在线播放")
+                            Text(stringResource(R.string.play_online))
                         }
                         TextButton(onClick = onOpenFolder) {
                             Icon(Icons.Default.FolderOpen, contentDescription = null)
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("打开文件夹")
+                            Text(stringResource(R.string.open_folder))
                         }
                         TextButton(onClick = onSummarize) {
                             Icon(Icons.Default.AutoAwesome, contentDescription = null)
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text(if (task.summary.status == SummaryStatus.COMPLETED) "重新摘要" else "生成摘要")
+                            Text(
+                                if (task.summary.status == SummaryStatus.COMPLETED) {
+                                    stringResource(
+                                        R.string.re_summarize,
+                                    )
+                                } else {
+                                    stringResource(R.string.generate_summary)
+                                },
+                            )
                         }
                     }
                     TextButton(onClick = onRemove) {
                         Icon(Icons.Default.Delete, contentDescription = null)
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("移除")
+                        Text(stringResource(R.string.remove))
                     }
                 }
 
@@ -592,7 +591,7 @@ fun DownloadTaskCard(
                     TextButton(onClick = onRemove) {
                         Icon(Icons.Default.Delete, contentDescription = null)
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("移除")
+                        Text(stringResource(R.string.remove))
                     }
                 }
             }
@@ -604,12 +603,12 @@ fun DownloadTaskCard(
 fun TaskStatusBadge(status: DownloadStatus) {
     val (color, text) =
         when (status) {
-            DownloadStatus.IDLE -> MaterialTheme.colorScheme.onSurfaceVariant to "等待中"
-            DownloadStatus.PREPARING -> MaterialTheme.colorScheme.primary to "准备中"
-            DownloadStatus.DOWNLOADING -> MaterialTheme.colorScheme.primary to "下载中"
-            DownloadStatus.COMPLETED -> MaterialTheme.colorScheme.primary to "已完成"
-            DownloadStatus.FAILED -> MaterialTheme.colorScheme.error to "失败"
-            DownloadStatus.CANCELLED -> MaterialTheme.colorScheme.secondary to "已取消"
+            DownloadStatus.IDLE -> MaterialTheme.colorScheme.onSurfaceVariant to stringResource(R.string.waiting)
+            DownloadStatus.PREPARING -> MaterialTheme.colorScheme.primary to stringResource(R.string.preparing)
+            DownloadStatus.DOWNLOADING -> MaterialTheme.colorScheme.primary to stringResource(R.string.downloading)
+            DownloadStatus.COMPLETED -> MaterialTheme.colorScheme.primary to stringResource(R.string.completed)
+            DownloadStatus.FAILED -> MaterialTheme.colorScheme.error to stringResource(R.string.failed)
+            DownloadStatus.CANCELLED -> MaterialTheme.colorScheme.secondary to stringResource(R.string.cancelled)
         }
 
     Surface(
@@ -630,12 +629,12 @@ fun TaskStatusBadge(status: DownloadStatus) {
 fun SummaryStatusBadge(status: SummaryStatus) {
     val (color, text) =
         when (status) {
-            SummaryStatus.IDLE -> MaterialTheme.colorScheme.onSurfaceVariant to "未开始"
-            SummaryStatus.PREPARING -> MaterialTheme.colorScheme.primary to "准备中"
-            SummaryStatus.TRANSCRIBING -> MaterialTheme.colorScheme.primary to "转写中"
-            SummaryStatus.SUMMARIZING -> MaterialTheme.colorScheme.primary to "摘要中"
-            SummaryStatus.COMPLETED -> MaterialTheme.colorScheme.primary to "摘要完成"
-            SummaryStatus.FAILED -> MaterialTheme.colorScheme.error to "摘要失败"
+            SummaryStatus.IDLE -> MaterialTheme.colorScheme.onSurfaceVariant to stringResource(R.string.not_started)
+            SummaryStatus.PREPARING -> MaterialTheme.colorScheme.primary to stringResource(R.string.preparing)
+            SummaryStatus.TRANSCRIBING -> MaterialTheme.colorScheme.primary to stringResource(R.string.transcribing)
+            SummaryStatus.SUMMARIZING -> MaterialTheme.colorScheme.primary to stringResource(R.string.summarizing)
+            SummaryStatus.COMPLETED -> MaterialTheme.colorScheme.primary to stringResource(R.string.summary_completed)
+            SummaryStatus.FAILED -> MaterialTheme.colorScheme.error to stringResource(R.string.summary_failed)
         }
 
     Surface(
@@ -682,7 +681,7 @@ fun ErrorCard(
             IconButton(onClick = onDismiss) {
                 Icon(
                     Icons.Default.Close,
-                    contentDescription = "关闭",
+                    contentDescription = stringResource(R.string.close),
                     tint = MaterialTheme.colorScheme.onErrorContainer,
                 )
             }
@@ -720,7 +719,7 @@ fun SuccessCard(
             IconButton(onClick = onDismiss) {
                 Icon(
                     Icons.Default.Close,
-                    contentDescription = "关闭",
+                    contentDescription = stringResource(R.string.close),
                     tint = MaterialTheme.colorScheme.onPrimaryContainer,
                 )
             }
@@ -752,13 +751,13 @@ fun EmptyStateCard() {
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "暂无下载任务",
+                text = stringResource(R.string.no_download_tasks),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "粘贴视频链接即可开始下载",
+                text = stringResource(R.string.paste_video_link_to_start_download),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

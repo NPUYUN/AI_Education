@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.common.config.GlobalConfigRepository
 import com.example.common.dispatchers.DispatcherProvider
 import com.example.common.utils.NetworkMonitor
+import com.example.common.utils.toUserFriendlyMessage
 import com.example.summarizer.audio_summarizer.services.AudioSummaryRepository
 import com.example.summarizer.videosummarizer.services.SherpaAsrManager
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -15,6 +16,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -28,7 +30,6 @@ data class AudioSummaryUiState(
     val isSummarizing: Boolean = false,
     val transcriptResult: String = "",
     val summaryResult: String = "",
-    val error: String? = null,
 )
 
 @HiltViewModel
@@ -45,6 +46,9 @@ class AudioSummaryViewModel
         private val _uiState = MutableStateFlow(AudioSummaryUiState())
         val uiState: StateFlow<AudioSummaryUiState> = _uiState.asStateFlow()
 
+        private val _errorEvents = kotlinx.coroutines.channels.Channel<String>()
+        val errorEvents = _errorEvents.receiveAsFlow()
+
         fun handleAudioUri(uri: Uri) {
             val name = getFileName(uri)
             _uiState.value =
@@ -53,7 +57,6 @@ class AudioSummaryViewModel
                     selectedAudioName = name,
                     transcriptResult = "",
                     summaryResult = "",
-                    error = null,
                 )
         }
 
@@ -73,14 +76,13 @@ class AudioSummaryViewModel
         fun processAudio() {
             val uri = _uiState.value.selectedAudioUri
             if (uri == null) {
-                _uiState.value = _uiState.value.copy(error = "请先选择一个音频文件")
+                viewModelScope.launch { _errorEvents.send("请先选择一个音频文件") }
                 return
             }
 
             _uiState.value =
                 _uiState.value.copy(
                     isTranscribing = true,
-                    error = null,
                     transcriptResult = "",
                     summaryResult = "",
                 )
@@ -128,8 +130,8 @@ class AudioSummaryViewModel
                         _uiState.value =
                             _uiState.value.copy(
                                 isSummarizing = false,
-                                error = "当前处于无网络环境，离线转写已完成，但无法进行大模型总结。\n您可以复制转写结果，待网络恢复后重试。",
                             )
+                        _errorEvents.send("当前处于无网络环境，离线转写已完成，但无法进行大模型总结。\n您可以复制转写结果，待网络恢复后重试。")
                         return@launch
                     }
 
@@ -153,8 +155,8 @@ class AudioSummaryViewModel
                             _uiState.value =
                                 _uiState.value.copy(
                                     isSummarizing = false,
-                                    error = e.message ?: "生成总结时发生未知错误",
                                 )
+                            _errorEvents.send(e.toUserFriendlyMessage())
                         },
                     )
                 } catch (e: Exception) {
@@ -162,13 +164,9 @@ class AudioSummaryViewModel
                         _uiState.value.copy(
                             isTranscribing = false,
                             isSummarizing = false,
-                            error = e.message ?: "处理音频时发生异常",
                         )
+                    _errorEvents.send(e.toUserFriendlyMessage())
                 }
             }
-        }
-
-        fun clearError() {
-            _uiState.value = _uiState.value.copy(error = null)
         }
     }

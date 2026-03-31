@@ -16,13 +16,15 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.common.R
 import com.example.common.ui.components.SafeMarkdownText
 import com.example.summarizer.dialogue_summarizer.presentation.viewmodels.DialogueSummaryViewModel
 import java.text.SimpleDateFormat
@@ -35,19 +37,31 @@ fun DialogueSummaryScreen(
     viewModel: DialogueSummaryViewModel,
     onNavigateBack: () -> Unit,
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val errorEvent by viewModel.errorEvents.collectAsStateWithLifecycle(initialValue = null)
+    val snackbarHostState = androidx.compose.runtime.remember { SnackbarHostState() }
+
+    androidx.compose.runtime.LaunchedEffect(errorEvent) {
+        errorEvent?.let { errorMsg ->
+            snackbarHostState.showSnackbar(
+                message = errorMsg,
+                duration = SnackbarDuration.Short,
+            )
+        }
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("对话总结") },
+                title = { Text(stringResource(R.string.conversation_summary)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
             )
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         val screenHeight = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp.dp
 
@@ -60,41 +74,21 @@ fun DialogueSummaryScreen(
                     .heightIn(min = screenHeight),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            item {
-                AnimatedVisibility(
-                    visible = uiState.error != null,
-                    enter = fadeIn() + expandVertically(),
-                    exit = fadeOut() + shrinkVertically(),
-                ) {
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-                        modifier = Modifier.fillMaxWidth().shadow(2.dp, RoundedCornerShape(12.dp)),
-                        shape = RoundedCornerShape(12.dp),
-                    ) {
-                        Text(
-                            text = uiState.error ?: "",
-                            color = MaterialTheme.colorScheme.onErrorContainer,
-                            modifier = Modifier.padding(16.dp),
-                        )
-                    }
-                }
-            }
-
             if (uiState.selectedSession == null) {
                 item {
-                    Text("请选择要总结的对话：", style = MaterialTheme.typography.titleMedium)
+                    Text(stringResource(R.string.please_select_conversation_to_summarize), style = MaterialTheme.typography.titleMedium)
                 }
 
                 if (uiState.sessions.isEmpty()) {
                     item {
                         Box(modifier = Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
-                            Text("暂无对话记录", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(stringResource(R.string.no_conversation_records), color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 } else {
                     items(uiState.sessions) { session ->
                         SessionCard(
-                            title = session.title.ifEmpty { "新对话" },
+                            title = session.title.ifEmpty { stringResource(R.string.new_conversation) },
                             lastMessage = session.lastMessage,
                             timestamp = session.timestamp,
                             onClick = { viewModel.selectSession(session) },
@@ -109,9 +103,9 @@ fun DialogueSummaryScreen(
                         shape = RoundedCornerShape(16.dp),
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
-                            Text("当前选择对话：", style = MaterialTheme.typography.labelMedium)
+                            Text(stringResource(R.string.currently_selected_conversation), style = MaterialTheme.typography.labelMedium)
                             Text(
-                                text = uiState.selectedSession!!.title.ifEmpty { "新对话" },
+                                text = uiState.selectedSession!!.title.ifEmpty { stringResource(R.string.new_conversation) },
                                 style = MaterialTheme.typography.titleMedium,
                             )
                         }
@@ -131,9 +125,9 @@ fun DialogueSummaryScreen(
                                 strokeWidth = 2.dp,
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("正在生成总结...")
+                            Text(stringResource(R.string.generating_summary))
                         } else {
-                            Text("开始总结")
+                            Text(stringResource(R.string.start_summary))
                         }
                     }
                 }
@@ -158,7 +152,7 @@ fun DialogueSummaryScreen(
                                         .padding(16.dp),
                             ) {
                                 Text(
-                                    text = "总结结果",
+                                    text = stringResource(R.string.summary_result),
                                     style = MaterialTheme.typography.titleMedium,
                                     color = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.padding(bottom = 8.dp),

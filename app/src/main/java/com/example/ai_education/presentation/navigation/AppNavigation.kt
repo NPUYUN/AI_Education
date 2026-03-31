@@ -23,6 +23,10 @@ import com.example.common.presentation.camera.ImagePreviewScreen
 fun AppNavigation(
     authViewModel: AuthViewModel = hiltViewModel(),
     aiTutorViewModel: AiTutorViewModel = hiltViewModel(),
+    aiTutorFeatureApi: com.example.ai_tutor.navigation.AiTutorFeatureApi,
+    solverFeatureApi: com.example.solver.navigation.SolverFeatureApi,
+    summarizerFeatureApi: com.example.summarizer.navigation.SummarizerFeatureApi,
+    reviewFeatureApi: com.example.review.navigation.ReviewFeatureApi,
 ) {
     val navController = rememberNavController()
     val isLoggedIn = authViewModel.isLoggedIn.value
@@ -77,6 +81,10 @@ fun AppNavigation(
                 onNavigateToCamera = { source -> navController.navigate("camera?source=$source") },
                 viewModel = aiTutorViewModel,
                 outerSavedStateHandle = backStackEntry.savedStateHandle,
+                aiTutorFeatureApi = aiTutorFeatureApi,
+                solverFeatureApi = solverFeatureApi,
+                summarizerFeatureApi = summarizerFeatureApi,
+                reviewFeatureApi = reviewFeatureApi,
             )
         }
         composable("settings") {

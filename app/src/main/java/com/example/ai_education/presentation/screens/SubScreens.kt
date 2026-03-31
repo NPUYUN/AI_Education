@@ -10,10 +10,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.example.ai_tutor.timeline_map.presentation.screens.TimelineMapScreen
+import com.example.common.R
 import com.example.common.database.PreferencesManager
 import com.example.common.presentation.components.GlobalApiSettingsDialog
 import com.example.summarizer.videosummarizer.presentation.screens.VideoDownloadScreen
@@ -37,7 +41,7 @@ fun VideoSummaryScreen(
     viewModel: VideoDownloadViewModel,
     navController: NavController,
 ) {
-    SubScreenScaffold(title = "视频总结", onBack = { navController.popBackStack() }) {
+    SubScreenScaffold(title = stringResource(R.string.video_summary), onBack = { navController.popBackStack() }) {
         VideoDownloadScreen(viewModel = viewModel)
     }
 }
@@ -47,19 +51,20 @@ fun TextSummaryScreenWrapper(
     viewModel: com.example.summarizer.text_summarizer.presentation.viewmodels.TextSummaryViewModel,
     navController: NavController,
 ) {
-    SubScreenScaffold(title = "文本总结", onBack = { navController.popBackStack() }) {
-        com.example.summarizer.text_summarizer.presentation.screens.TextSummaryScreen(viewModel = viewModel)
+    SubScreenScaffold(title = stringResource(R.string.text_summary), onBack = { navController.popBackStack() }) {
+        com.example.summarizer.text_summarizer.presentation.screens.TextSummaryScreen(
+            viewModel = viewModel,
+        )
     }
 }
 
 @Composable
-fun AudioSummaryScreenWrapper(
-    viewModel: com.example.summarizer.audio_summarizer.presentation.viewmodels.AudioSummaryViewModel,
-    navController: NavController,
-) {
-    SubScreenScaffold(title = "音频总结", onBack = { navController.popBackStack() }) {
-        com.example.summarizer.audio_summarizer.presentation.screens.AudioSummaryScreen(viewModel = viewModel)
-    }
+fun AudioSummarySubScreen(navController: NavController) {
+    val viewModel: com.example.summarizer.audio_summarizer.presentation.viewmodels.AudioSummaryViewModel = hiltViewModel()
+    com.example.summarizer.audio_summarizer.presentation.screens.AudioSummaryScreen(
+        viewModel = viewModel,
+        onBack = { navController.popBackStack() },
+    )
 }
 
 @Composable
@@ -67,14 +72,14 @@ fun SettingsScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val preferencesManager = remember { PreferencesManager(context) }
-    val themeMode by preferencesManager.getString("theme_mode", "auto").collectAsState(initial = "auto")
+    val themeMode by preferencesManager.getString("theme_mode", "auto").collectAsStateWithLifecycle(initialValue = "auto")
     var showApiSettings by remember { mutableStateOf(false) }
 
     if (showApiSettings) {
         GlobalApiSettingsDialog(onDismiss = { showApiSettings = false })
     }
 
-    SubScreenScaffold(title = "设置", onBack = onBack) {
+    SubScreenScaffold(title = stringResource(R.string.settings), onBack = onBack) {
         Column(
             modifier =
                 Modifier
@@ -82,13 +87,13 @@ fun SettingsScreen(onBack: () -> Unit) {
                     .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text("主题设置", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.theme_settings), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
 
             val themes =
                 listOf(
-                    "auto" to "跟随系统",
-                    "light" to "浅色模式",
-                    "dark" to "深色模式",
+                    "auto" to stringResource(R.string.follow_system),
+                    "light" to stringResource(R.string.light_mode),
+                    "dark" to stringResource(R.string.dark_mode),
                 )
 
             themes.forEach { (mode, label) ->
@@ -125,9 +130,13 @@ fun SettingsScreen(onBack: () -> Unit) {
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Column {
-                    Text("全局大模型设置", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     Text(
-                        "配置各模块的 API Key、模型和 Base URL",
+                        stringResource(R.string.global_llm_settings),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Text(
+                        stringResource(R.string.config_api_key_model_base_url),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -136,8 +145,12 @@ fun SettingsScreen(onBack: () -> Unit) {
 
             HorizontalDivider()
 
-            Text("关于", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            Text("版本: 1.0.0", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.about), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(
+                stringResource(R.string.version_1_0_0),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

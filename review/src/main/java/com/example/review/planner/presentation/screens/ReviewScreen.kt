@@ -12,15 +12,17 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.common.R
 import com.example.common.database.models.ErrorBookEntity
 import com.example.common.ui.components.SafeMarkdownText
 import com.example.review.planner.presentation.viewmodels.ReviewViewModel
@@ -31,15 +33,30 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReviewScreen(viewModel: ReviewViewModel) {
-    val uiState by viewModel.uiState.collectAsState()
-    val tabs = listOf("智能复习计划", "知识点巩固", "错题本")
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val errorEvent by viewModel.errorEvents.collectAsStateWithLifecycle(initialValue = null)
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(errorEvent) {
+        errorEvent?.let {
+            snackbarHostState.showSnackbar(it)
+        }
+    }
+
+    val tabs =
+        listOf(
+            stringResource(R.string.smart_review_plan),
+            stringResource(R.string.knowledge_point_consolidation),
+            stringResource(R.string.error_book),
+        )
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("智能复习", fontWeight = FontWeight.Bold) },
+                title = { Text(stringResource(R.string.smart_review), fontWeight = FontWeight.Bold) },
             )
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { paddingValues ->
         Column(
             modifier =
@@ -54,33 +71,6 @@ fun ReviewScreen(viewModel: ReviewViewModel) {
                         onClick = { viewModel.setTab(index) },
                         text = { Text(title, fontWeight = if (uiState.selectedTab == index) FontWeight.Bold else FontWeight.Normal) },
                     )
-                }
-            }
-
-            AnimatedVisibility(
-                visible = uiState.error != null,
-                enter = fadeIn() + expandVertically(),
-                exit = fadeOut() + shrinkVertically(),
-            ) {
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-                    modifier = Modifier.fillMaxWidth().padding(16.dp).shadow(2.dp, RoundedCornerShape(12.dp)),
-                    shape = RoundedCornerShape(12.dp),
-                ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text = uiState.error ?: "",
-                            color = MaterialTheme.colorScheme.onErrorContainer,
-                            modifier = Modifier.weight(1f),
-                        )
-                        IconButton(onClick = { viewModel.clearError() }) {
-                            Icon(Icons.Default.Clear, contentDescription = "清除错误", tint = MaterialTheme.colorScheme.onErrorContainer)
-                        }
-                    }
                 }
             }
 
@@ -140,7 +130,7 @@ fun SmartReviewPlannerView(
         OutlinedTextField(
             value = subjectInput,
             onValueChange = { viewModel.updateSubjectInput(it) },
-            label = { Text("复习科目 (用逗号分隔)") },
+            label = { Text(stringResource(R.string.review_subjects_comma_separated)) },
             modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
             enabled = !isGenerating,
             shape = RoundedCornerShape(12.dp),
@@ -156,10 +146,14 @@ fun SmartReviewPlannerView(
                     verticalArrangement = Arrangement.Center,
                     modifier = Modifier.fillMaxSize(),
                 ) {
-                    Text(text = "艾宾浩斯智能复习计划", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    Text(
+                        text = stringResource(R.string.ebbinghaus_smart_review_plan),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                    )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "根据遗忘曲线自动为您安排最佳复习时间",
+                        text = stringResource(R.string.auto_arrange_review_time),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -169,7 +163,7 @@ fun SmartReviewPlannerView(
                         shape = RoundedCornerShape(20.dp),
                         contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp),
                     ) {
-                        Text("生成今日复习任务")
+                        Text(stringResource(R.string.generate_todays_review_tasks))
                     }
                 }
             } else {
@@ -188,9 +182,9 @@ fun SmartReviewPlannerView(
                                 strokeWidth = 2.dp,
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("正在生成计划...")
+                            Text(stringResource(R.string.generating_plan))
                         } else {
-                            Text("重新生成计划")
+                            Text(stringResource(R.string.regenerate_plan))
                         }
                     }
 
@@ -239,7 +233,7 @@ fun KnowledgeReinforcementView(
         OutlinedTextField(
             value = input,
             onValueChange = { viewModel.updateKnowledgePointInput(it) },
-            label = { Text("输入薄弱知识点 (如：二次函数)") },
+            label = { Text(stringResource(R.string.input_weak_knowledge_point)) },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             shape = RoundedCornerShape(12.dp),
@@ -257,9 +251,9 @@ fun KnowledgeReinforcementView(
             if (isGenerating) {
                 CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("正在生成专项练习...")
+                Text(stringResource(R.string.generating_special_practice))
             } else {
-                Text("开始专项突破")
+                Text(stringResource(R.string.start_special_breakthrough))
             }
         }
 
@@ -305,12 +299,20 @@ fun ErrorBookView(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("错题本统计：共 ${records.size} 题", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(
+                stringResource(R.string.error_book_stats_total, records.size),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+            )
             IconButton(
                 onClick = { viewModel.addMockErrorRecord() },
                 modifier = Modifier.background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(12.dp)),
             ) {
-                Icon(Icons.Default.Add, contentDescription = "添加测试数据", tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                Icon(
+                    Icons.Default.Add,
+                    contentDescription = stringResource(R.string.add_test_data),
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
             }
         }
 
@@ -322,7 +324,11 @@ fun ErrorBookView(
         ) { isEmpty ->
             if (isEmpty) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("暂无错题记录", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        stringResource(R.string.no_error_records),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
                 }
             } else {
                 LazyColumn(
@@ -363,14 +369,18 @@ fun ErrorBookView(
                                         onClick = { viewModel.deleteErrorRecord(record) },
                                         modifier = Modifier.size(28.dp),
                                     ) {
-                                        Icon(Icons.Default.Delete, contentDescription = "删除", tint = MaterialTheme.colorScheme.error)
+                                        Icon(
+                                            Icons.Default.Delete,
+                                            contentDescription = stringResource(R.string.delete),
+                                            tint = MaterialTheme.colorScheme.error,
+                                        )
                                     }
                                 }
 
                                 Spacer(modifier = Modifier.height(12.dp))
 
                                 Text(
-                                    "题目：",
+                                    stringResource(R.string.question_colon),
                                     fontWeight = FontWeight.Bold,
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurface,
@@ -384,7 +394,7 @@ fun ErrorBookView(
                                 Spacer(modifier = Modifier.height(8.dp))
 
                                 Text(
-                                    "错误原因：",
+                                    stringResource(R.string.error_reason_colon),
                                     fontWeight = FontWeight.Bold,
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.error,
@@ -398,7 +408,7 @@ fun ErrorBookView(
                                 Spacer(modifier = Modifier.height(8.dp))
 
                                 Text(
-                                    "正确解析：",
+                                    stringResource(R.string.correct_analysis_colon),
                                     fontWeight = FontWeight.Bold,
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.primary,
@@ -412,7 +422,7 @@ fun ErrorBookView(
                                 Spacer(modifier = Modifier.height(12.dp))
                                 val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
                                 Text(
-                                    text = "收录时间：${sdf.format(Date(record.timestamp))}",
+                                    text = stringResource(R.string.recording_time, sdf.format(Date(record.timestamp))),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
                                 )

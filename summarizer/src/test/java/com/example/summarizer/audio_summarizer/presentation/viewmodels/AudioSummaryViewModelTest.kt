@@ -8,11 +8,14 @@ import android.provider.OpenableColumns
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import com.example.common.config.GlobalConfigRepository
 import com.example.common.dispatchers.DispatcherProvider
+import com.example.common.utils.NetworkMonitor
 import com.example.summarizer.audio_summarizer.services.AudioSummaryRepository
 import com.example.summarizer.videosummarizer.services.SherpaAsrManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -68,6 +71,9 @@ class AudioSummaryViewModelTest {
     @Mock
     private lateinit var globalConfigRepository: GlobalConfigRepository
 
+    @Mock
+    private lateinit var networkMonitor: NetworkMonitor
+
     private lateinit var viewModel: AudioSummaryViewModel
 
     @Before
@@ -79,6 +85,7 @@ class AudioSummaryViewModelTest {
         `when`(globalConfigRepository.getEffectiveVideoSummaryApiKey()).thenReturn(flowOf("test_key"))
         `when`(globalConfigRepository.getVideoSummaryBaseUrl()).thenReturn(flowOf("test_url"))
         `when`(globalConfigRepository.getVideoSummaryModelName()).thenReturn(flowOf("test_model"))
+        `when`(networkMonitor.isConnected).thenReturn(kotlinx.coroutines.flow.MutableStateFlow(true))
 
         viewModel =
             AudioSummaryViewModel(
@@ -87,6 +94,7 @@ class AudioSummaryViewModelTest {
                 sherpaAsrManager,
                 globalConfigRepository,
                 dispatcherProvider,
+                networkMonitor,
             )
     }
 
@@ -108,18 +116,27 @@ class AudioSummaryViewModelTest {
 
         assertEquals(uri, viewModel.uiState.value.selectedAudioUri)
         assertEquals("test_audio.mp3", viewModel.uiState.value.selectedAudioName)
-        assertEquals(null, viewModel.uiState.value.error)
     }
 
     @Test
-    fun `processAudio with no uri sets error`() {
-        viewModel.processAudio()
-        assertEquals("请先选择一个音频文件", viewModel.uiState.value.error)
-    }
+    fun `processAudio with no uri sets error`() =
+        runTest(testDispatcher) {
+            val errors = mutableListOf<String>()
+            val job = launch { viewModel.errorEvents.toList(errors) }
+
+            viewModel.processAudio()
+            advanceUntilIdle()
+
+            assertTrue(errors.contains("请先选择一个音频文件"))
+            job.cancel()
+        }
 
     @Test
     fun `processAudio successful flow updates state`() =
         runTest(testDispatcher) {
+            val errors = mutableListOf<String>()
+            val job = launch { viewModel.errorEvents.toList(errors) }
+
             val uri = mock<Uri>()
             `when`(contentResolver.query(uri, null, null, null, null)).thenReturn(null)
             viewModel.handleAudioUri(uri)
@@ -148,12 +165,16 @@ class AudioSummaryViewModelTest {
             assertFalse(viewModel.uiState.value.isSummarizing)
             assertEquals(transcript, viewModel.uiState.value.transcriptResult)
             assertEquals(summaryResult, viewModel.uiState.value.summaryResult)
-            assertEquals(null, viewModel.uiState.value.error)
+            assertTrue(errors.isEmpty())
+            job.cancel()
         }
 
     @Test
     fun `processAudio empty transcript sets error`() =
         runTest(testDispatcher) {
+            val errors = mutableListOf<String>()
+            val job = launch { viewModel.errorEvents.toList(errors) }
+
             val uri = mock<Uri>()
             `when`(contentResolver.query(uri, null, null, null, null)).thenReturn(null)
             viewModel.handleAudioUri(uri)
@@ -172,15 +193,7 @@ class AudioSummaryViewModelTest {
 
             assertFalse(viewModel.uiState.value.isTranscribing)
             assertFalse(viewModel.uiState.value.isSummarizing)
-            assertEquals("音频转写结果为空", viewModel.uiState.value.error)
+            assertTrue(errors.contains("音频转写结果为空"))
+            job.cancel()
         }
-
-    @Test
-    fun `clearError sets error to null`() {
-        viewModel.processAudio()
-        assertEquals("请先选择一个音频文件", viewModel.uiState.value.error)
-
-        viewModel.clearError()
-        assertEquals(null, viewModel.uiState.value.error)
-    }
 }

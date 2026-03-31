@@ -22,7 +22,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.example.common.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,7 +44,7 @@ fun SummaryMenuScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("智能总结") },
+                title = { Text(stringResource(R.string.smart_summary)) },
             )
         },
     ) { paddingValues ->
@@ -68,11 +70,11 @@ fun SummaryMenuScreen(
                         slideInVertically(animationSpec = tween(durationMillis = 300), initialOffsetY = { it / 2 }),
             ) {
                 SummaryOptionCard(
-                    title = "视频总结",
+                    title = stringResource(R.string.video_summary),
                     icon = {
                         Icon(
                             Icons.Default.VideoLibrary,
-                            contentDescription = "视频总结",
+                            contentDescription = stringResource(R.string.video_summary),
                             modifier = Modifier.size(32.dp),
                             tint = MaterialTheme.colorScheme.onPrimaryContainer,
                         )
@@ -88,11 +90,11 @@ fun SummaryMenuScreen(
                         slideInVertically(animationSpec = tween(durationMillis = 300, delayMillis = 100), initialOffsetY = { it / 2 }),
             ) {
                 SummaryOptionCard(
-                    title = "文本总结",
+                    title = stringResource(R.string.text_summary),
                     icon = {
                         Icon(
                             Icons.AutoMirrored.Filled.Article,
-                            contentDescription = "文本总结",
+                            contentDescription = stringResource(R.string.text_summary),
                             modifier = Modifier.size(32.dp),
                             tint = MaterialTheme.colorScheme.onPrimaryContainer,
                         )
@@ -108,11 +110,11 @@ fun SummaryMenuScreen(
                         slideInVertically(animationSpec = tween(durationMillis = 300, delayMillis = 200), initialOffsetY = { it / 2 }),
             ) {
                 SummaryOptionCard(
-                    title = "音频总结",
+                    title = stringResource(R.string.audio_summary),
                     icon = {
                         Icon(
                             Icons.Default.Audiotrack,
-                            contentDescription = "音频总结",
+                            contentDescription = stringResource(R.string.audio_summary),
                             modifier = Modifier.size(32.dp),
                             tint = MaterialTheme.colorScheme.onPrimaryContainer,
                         )
@@ -128,11 +130,11 @@ fun SummaryMenuScreen(
                         slideInVertically(animationSpec = tween(durationMillis = 300, delayMillis = 300), initialOffsetY = { it / 2 }),
             ) {
                 SummaryOptionCard(
-                    title = "对话总结",
+                    title = stringResource(R.string.conversation_summary),
                     icon = {
                         Icon(
                             Icons.Default.ChatBubble,
-                            contentDescription = "对话总结",
+                            contentDescription = stringResource(R.string.conversation_summary),
                             modifier = Modifier.size(32.dp),
                             tint = MaterialTheme.colorScheme.onPrimaryContainer,
                         )
@@ -148,11 +150,11 @@ fun SummaryMenuScreen(
                         slideInVertically(animationSpec = tween(durationMillis = 300, delayMillis = 400), initialOffsetY = { it / 2 }),
             ) {
                 SummaryOptionCard(
-                    title = "知识卡片管理",
+                    title = stringResource(R.string.knowledge_card_management),
                     icon = {
                         Icon(
                             Icons.Default.Style,
-                            contentDescription = "知识卡片管理",
+                            contentDescription = stringResource(R.string.knowledge_card_management),
                             modifier = Modifier.size(32.dp),
                             tint = MaterialTheme.colorScheme.onPrimaryContainer,
                         )

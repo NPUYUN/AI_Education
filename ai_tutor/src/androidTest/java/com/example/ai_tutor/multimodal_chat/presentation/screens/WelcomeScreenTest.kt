@@ -1,8 +1,10 @@
 package com.example.ai_tutor.multimodal_chat.presentation.screens
 
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import com.example.common.R
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -14,7 +16,12 @@ class WelcomeScreenTest {
     @Test
     fun welcomeScreen_displaysSuggestionsAndHandlesClicks() {
         var clickedSuggestion = ""
-        val suggestions = listOf("如何解一元二次方程？", "推荐几本课外阅读书籍", "解释一下牛顿第一定律")
+        val suggestions =
+            listOf(
+                stringResource(R.string.how_to_solve_quadratic_equation),
+                stringResource(R.string.recommend_extracurricular_books),
+                stringResource(R.string.explain_newtons_first_law),
+            )
 
         composeTestRule.setContent {
             WelcomeScreen(
@@ -24,8 +31,8 @@ class WelcomeScreenTest {
         }
 
         // Verify that the title is displayed
-        composeTestRule.onNodeWithText("欢迎使用 AI 辅导").assertExists()
-        composeTestRule.onNodeWithText("你可以尝试问我：").assertExists()
+        composeTestRule.onNodeWithText(stringResource(R.string.welcome_to_ai_tutor)).assertExists()
+        composeTestRule.onNodeWithText(stringResource(R.string.you_can_try_asking_me)).assertExists()
 
         // Verify that all suggestions are displayed
         suggestions.forEach { suggestion ->

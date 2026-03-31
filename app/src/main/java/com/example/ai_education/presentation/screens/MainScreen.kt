@@ -25,11 +25,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
@@ -37,18 +37,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
-import com.example.ai_tutor.multimodal_chat.presentation.screens.ChatScreen
 import com.example.ai_tutor.multimodal_chat.presentation.viewmodels.AiTutorViewModel
-import com.example.review.planner.presentation.screens.ReviewScreen
-import com.example.solver.comprehensive.presentation.screens.SolverScreen
-import com.example.summarizer.audio_summarizer.presentation.viewmodels.AudioSummaryViewModel
-import com.example.summarizer.core.presentation.screens.SummaryMenuScreen
-import com.example.summarizer.dialogue_summarizer.presentation.screens.DialogueSummaryScreen
-import com.example.summarizer.dialogue_summarizer.presentation.viewmodels.DialogueSummaryViewModel
-import com.example.summarizer.knowledge_cards.presentation.screens.KnowledgeCardScreen
-import com.example.summarizer.knowledge_cards.presentation.viewmodels.KnowledgeCardViewModel
-import com.example.summarizer.text_summarizer.presentation.viewmodels.TextSummaryViewModel
-import com.example.summarizer.videosummarizer.presentation.viewmodels.VideoDownloadViewModel
+import com.example.common.R
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -60,31 +50,38 @@ fun MainScreen(
     onLogout: () -> Unit,
     onNavigateToCamera: (String) -> Unit,
     viewModel: AiTutorViewModel,
-    videoViewModel: VideoDownloadViewModel = hiltViewModel(),
     outerSavedStateHandle: androidx.lifecycle.SavedStateHandle? = null,
+    aiTutorFeatureApi: com.example.ai_tutor.navigation.AiTutorFeatureApi,
+    solverFeatureApi: com.example.solver.navigation.SolverFeatureApi,
+    summarizerFeatureApi: com.example.summarizer.navigation.SummarizerFeatureApi,
+    reviewFeatureApi: com.example.review.navigation.ReviewFeatureApi,
 ) {
     val navController = rememberNavController()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val context = androidx.compose.ui.platform.LocalContext.current
     val preferencesManager = remember { com.example.common.database.PreferencesManager(context) }
-    val savedNickname by preferencesManager.getString("user_nickname", "用户昵称").collectAsState(initial = "用户昵称")
-    val savedAvatar by preferencesManager.getString("user_avatar", "").collectAsState(initial = "")
+    val savedNickname by preferencesManager.getString(
+        "user_nickname",
+        stringResource(R.string.user_nickname),
+    ).collectAsStateWithLifecycle(initialValue = stringResource(R.string.user_nickname))
+    val savedAvatar by preferencesManager.getString("user_avatar", "").collectAsStateWithLifecycle(initialValue = "")
 
-    val sessions by viewModel.sessions.collectAsState(initial = emptyList())
-    val textSummaryViewModel: TextSummaryViewModel = hiltViewModel()
-    val audioSummaryViewModel: AudioSummaryViewModel = hiltViewModel()
+    val sessions by viewModel.sessions.collectAsStateWithLifecycle(
+        initialValue = emptyList(),
+    )
 
     // Bottom Navigation Items
     // Order: AI Tutor, Solver, Summary, Review
     val items =
         listOf(
-            Triple("home", Icons.Default.Face, "AI辅导"),
-            Triple("solver", Icons.Default.Edit, "解题"),
-            Triple("summary", Icons.Default.Summarize, "总结"),
-            Triple("review", Icons.Default.RateReview, "复习"),
+            Triple("home", Icons.Default.Face, stringResource(R.string.ai_tutor_alt)),
+            Triple("solver", Icons.Default.Edit, stringResource(R.string.problem_solving)),
+            Triple("summary", Icons.Default.Summarize, stringResource(R.string.summarize)),
+            Triple("review", Icons.Default.RateReview, stringResource(R.string.review)),
         )
 
+    val searchFeatureComingSoonMsg = stringResource(R.string.search_feature_coming_soon)
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
@@ -107,7 +104,11 @@ fun MainScreen(
                                 .fillMaxWidth()
                                 .height(48.dp)
                                 .clickable {
-                                    android.widget.Toast.makeText(context, "搜索功能即将上线", android.widget.Toast.LENGTH_SHORT).show()
+                                    android.widget.Toast.makeText(
+                                        context,
+                                        searchFeatureComingSoonMsg,
+                                        android.widget.Toast.LENGTH_SHORT,
+                                    ).show()
                                 },
                     ) {
                         Row(
@@ -116,7 +117,7 @@ fun MainScreen(
                         ) {
                             Icon(Icons.Default.Search, contentDescription = "Search", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("搜索", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(stringResource(R.string.search), color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Spacer(modifier = Modifier.weight(1f))
                             Icon(
                                 Icons.Default.Add,
@@ -176,7 +177,7 @@ fun MainScreen(
                         }
                         Spacer(modifier = Modifier.width(16.dp))
                         Text(
-                            text = savedNickname.ifBlank { "用户昵称" },
+                            text = savedNickname.ifBlank { stringResource(R.string.user_nickname) },
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                             color = MaterialTheme.colorScheme.onSurface,
                             maxLines = 1,
@@ -194,7 +195,7 @@ fun MainScreen(
                     ) {
                         items(sessions) { session ->
                             Text(
-                                text = if (session.title.isEmpty()) "新对话" else session.title,
+                                text = if (session.title.isEmpty()) stringResource(R.string.new_conversation) else session.title,
                                 style = MaterialTheme.typography.bodyMedium,
                                 maxLines = 1,
                                 modifier =
@@ -216,7 +217,7 @@ fun MainScreen(
 
                         item {
                             Text(
-                                text = "设置",
+                                text = stringResource(R.string.settings),
                                 style = MaterialTheme.typography.bodyMedium,
                                 modifier =
                                     Modifier
@@ -230,8 +231,9 @@ fun MainScreen(
                         }
 
                         item {
+                            val noNewNotificationsMsg = stringResource(R.string.no_new_notifications)
                             Text(
-                                text = "通知",
+                                text = stringResource(R.string.notifications),
                                 style = MaterialTheme.typography.bodyMedium,
                                 modifier =
                                     Modifier
@@ -239,14 +241,18 @@ fun MainScreen(
                                         .padding(vertical = 12.dp)
                                         .clickable {
                                             scope.launch { drawerState.close() }
-                                            android.widget.Toast.makeText(context, "暂无新通知", android.widget.Toast.LENGTH_SHORT).show()
+                                            android.widget.Toast.makeText(
+                                                context,
+                                                noNewNotificationsMsg,
+                                                android.widget.Toast.LENGTH_SHORT,
+                                            ).show()
                                         },
                             )
                         }
 
                         item {
                             Text(
-                                text = "退出登录",
+                                text = stringResource(R.string.logout),
                                 style = MaterialTheme.typography.bodyMedium,
                                 modifier =
                                     Modifier
@@ -261,6 +267,7 @@ fun MainScreen(
                     }
 
                     // Bottom Section (Footer)
+                    val noNewNotificationsMsg = stringResource(R.string.no_new_notifications)
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
                         verticalAlignment = Alignment.CenterVertically,
@@ -269,15 +276,19 @@ fun MainScreen(
                         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                             Icon(
                                 Icons.Outlined.Notifications,
-                                contentDescription = "通知",
+                                contentDescription = stringResource(R.string.notifications),
                                 modifier =
                                     Modifier.clickable {
-                                        android.widget.Toast.makeText(context, "暂无新通知", android.widget.Toast.LENGTH_SHORT).show()
+                                        android.widget.Toast.makeText(
+                                            context,
+                                            noNewNotificationsMsg,
+                                            android.widget.Toast.LENGTH_SHORT,
+                                        ).show()
                                     },
                             )
                             Icon(
                                 Icons.Outlined.Settings,
-                                contentDescription = "设置",
+                                contentDescription = stringResource(R.string.settings),
                                 modifier =
                                     Modifier.clickable {
                                         scope.launch { drawerState.close() }
@@ -304,13 +315,20 @@ fun MainScreen(
                 if ((items.any { it.first == currentRoute } && currentRoute != "timeline" && currentRoute != "video") || currentRoute == "profile") {
                     CenterAlignedTopAppBar(
                         title = {
-                            val label = if (currentRoute == "profile") "个人主页" else items.find { it.first == currentRoute }?.third ?: "AI Tutor"
+                            val label =
+                                if (currentRoute == "profile") {
+                                    stringResource(R.string.personal_homepage)
+                                } else {
+                                    items.find {
+                                        it.first == currentRoute
+                                    }?.third ?: "AI Tutor"
+                                }
                             Text(label)
                         },
                         navigationIcon = {
                             if (items.any { it.first == currentRoute }) {
                                 IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                                    Icon(Icons.Default.Menu, contentDescription = "打开菜单")
+                                    Icon(Icons.Default.Menu, contentDescription = stringResource(R.string.open_menu))
                                 }
                             } else {
                                 IconButton(onClick = {
@@ -327,12 +345,13 @@ fun MainScreen(
                                         navController.popBackStack()
                                     }
                                 }) {
-                                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                                 }
                             }
                         },
                         actions = {
                             if (currentRoute == "home") {
+                                val shareConversationMsg = stringResource(R.string.share_conversation)
                                 IconButton(onClick = {
                                     val latest = viewModel.uiState.value.messages.lastOrNull { it.role == "assistant" }
                                     val shareText =
@@ -352,7 +371,7 @@ fun MainScreen(
                                                 type = "text/plain"
                                                 addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
                                             }
-                                        val chooser = android.content.Intent.createChooser(sendIntent, "分享对话内容")
+                                        val chooser = android.content.Intent.createChooser(sendIntent, shareConversationMsg)
                                         chooser.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
                                         try {
                                             context.startActivity(chooser)
@@ -361,13 +380,13 @@ fun MainScreen(
                                         }
                                     }
                                 }) {
-                                    Icon(Icons.Default.Share, contentDescription = "分享")
+                                    Icon(Icons.Default.Share, contentDescription = stringResource(R.string.share))
                                 }
                             } else if (currentRoute == "profile") {
                                 IconButton(onClick = {
                                     onNavigateToSettings()
                                 }) {
-                                    Icon(Icons.Outlined.Settings, contentDescription = "设置")
+                                    Icon(Icons.Outlined.Settings, contentDescription = stringResource(R.string.settings))
                                 }
                             }
                         },
@@ -473,113 +492,39 @@ fun MainScreen(
                     }
                 },
             ) {
-                composable("home") {
-                    ChatScreen(
-                        viewModel = viewModel,
-                        onCameraClick = { onNavigateToCamera("home") },
-                        onNavigateToTimeline = { query ->
-                            navController.navigate("timeline?query=${android.net.Uri.encode(query)}")
-                        },
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                }
-                composable("solver") {
-                    val solverViewModel: com.example.solver.comprehensive.presentation.viewmodels.SolverViewModel = hiltViewModel()
+                aiTutorFeatureApi.registerGraph(
+                    navGraphBuilder = this,
+                    navController = navController,
+                    onNavigateToCamera = onNavigateToCamera,
+                    outerSavedStateHandle = outerSavedStateHandle,
+                    sharedViewModel = viewModel,
+                )
 
-                    // Observe the image URI returned from the outer NavHost (Camera/Preview flow)
-                    val solverImageUri = outerSavedStateHandle?.getStateFlow<String?>("solver_image_uri", null)?.collectAsState()
-                    LaunchedEffect(solverImageUri?.value) {
-                        solverImageUri?.value?.let { uriString ->
-                            solverViewModel.setImageUri(android.net.Uri.parse(uriString))
-                            solverViewModel.solveProblem()
-                            // Clear the saved state so it doesn't trigger again
-                            outerSavedStateHandle?.remove<String>("solver_image_uri")
-                        }
-                    }
+                solverFeatureApi.registerGraph(
+                    navGraphBuilder = this,
+                    navController = navController,
+                    onNavigateToCamera = onNavigateToCamera,
+                    outerSavedStateHandle = outerSavedStateHandle,
+                )
 
-                    SolverScreen(
-                        viewModel = solverViewModel,
-                        onCameraClick = { onNavigateToCamera("solver") },
-                    )
+                summarizerFeatureApi.registerGraph(
+                    navGraphBuilder = this,
+                    navController = navController,
+                    onNavigateToCamera = onNavigateToCamera,
+                    outerSavedStateHandle = outerSavedStateHandle,
+                )
+
+                reviewFeatureApi.registerGraph(
+                    navGraphBuilder = this,
+                    navController = navController,
+                    onNavigateToCamera = onNavigateToCamera,
+                    outerSavedStateHandle = outerSavedStateHandle,
+                )
+
+                composable("profile") {
+                    ProfileScreen()
                 }
-                composable("summary") {
-                    SummaryMenuScreen(
-                        onNavigateToVideoSummary = { navController.navigate("video") },
-                        onNavigateToTextSummary = { navController.navigate("text_summary") },
-                        onNavigateToAudioSummary = { navController.navigate("audio_summary") },
-                        onNavigateToChatSummary = { navController.navigate("dialogue_summary") },
-                        onNavigateToKnowledgeCards = { navController.navigate("knowledge_cards") },
-                    )
-                }
-                composable("review") {
-                    val reviewViewModel: com.example.review.planner.presentation.viewmodels.ReviewViewModel = hiltViewModel()
-                    ReviewScreen(reviewViewModel)
-                }
-                composable(
-                    route = "timeline?query={query}",
-                    arguments =
-                        listOf(
-                            androidx.navigation.navArgument("query") {
-                                type = androidx.navigation.NavType.StringType
-                                nullable = true
-                            },
-                        ),
-                ) { backStackEntry ->
-                    val query = backStackEntry.arguments?.getString("query")
-                    com.example.ai_tutor.timeline_map.presentation.screens.TimelineMapScreen(
-                        initialQuery = query,
-                        onNavigateBack = { navController.popBackStack() },
-                    )
-                }
-                composable("video") { com.example.summarizer.videosummarizer.presentation.screens.VideoDownloadScreen(videoViewModel) }
-                composable("text_summary") { TextSummaryScreenWrapper(textSummaryViewModel, navController) }
-                composable("audio_summary") { AudioSummaryScreenWrapper(audioSummaryViewModel, navController) }
-                composable("dialogue_summary") { DialogueSummaryScreenWrapper(navController) }
-                composable("knowledge_cards") { KnowledgeCardScreenWrapper(navController) }
-                composable("profile") { ProfileScreen() }
             }
         }
     }
-}
-
-@Composable
-fun TextSummaryScreenWrapper(
-    viewModel: TextSummaryViewModel,
-    navController: androidx.navigation.NavHostController,
-) {
-    com.example.summarizer.text_summarizer.presentation.screens.TextSummaryScreen(
-        viewModel = viewModel,
-    )
-}
-
-@Composable
-fun AudioSummaryScreenWrapper(
-    viewModel: AudioSummaryViewModel,
-    navController: androidx.navigation.NavHostController,
-) {
-    com.example.summarizer.audio_summarizer.presentation.screens.AudioSummaryScreen(
-        viewModel = viewModel,
-    )
-}
-
-@Composable
-fun KnowledgeCardScreenWrapper(
-    navController: androidx.navigation.NavHostController,
-    viewModel: KnowledgeCardViewModel = hiltViewModel(),
-) {
-    KnowledgeCardScreen(
-        viewModel = viewModel,
-        onNavigateBack = { navController.popBackStack() },
-    )
-}
-
-@Composable
-fun DialogueSummaryScreenWrapper(
-    navController: androidx.navigation.NavHostController,
-    viewModel: DialogueSummaryViewModel = hiltViewModel(),
-) {
-    DialogueSummaryScreen(
-        viewModel = viewModel,
-        onNavigateBack = { navController.popBackStack() },
-    )
 }

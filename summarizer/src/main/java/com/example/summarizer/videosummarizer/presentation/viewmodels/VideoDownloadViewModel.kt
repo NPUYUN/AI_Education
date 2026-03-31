@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -55,14 +56,11 @@ data class SummaryState(
     val status: SummaryStatus = SummaryStatus.IDLE,
     val transcript: String = "",
     val summary: String = "",
-    val error: String? = null,
 )
 
 data class VideoDownloadUiState(
     val inputUrl: String = "",
     val isLoading: Boolean = false,
-    val error: String? = null,
-    val successMessage: String? = null,
     val apiKey: String = "",
     val modelName: String = AppConstants.DEFAULT_MODEL_NAME,
     val baseUrl: String = AppConstants.BASE_URL,
@@ -89,6 +87,12 @@ class VideoDownloadViewModel
 
         private val _uiState = MutableStateFlow(VideoDownloadUiState())
         val uiState: StateFlow<VideoDownloadUiState> = _uiState.asStateFlow()
+
+        private val _errorEvents = kotlinx.coroutines.channels.Channel<String>()
+        val errorEvents = _errorEvents.receiveAsFlow()
+
+        private val _successEvents = kotlinx.coroutines.channels.Channel<String>()
+        val successEvents = _successEvents.receiveAsFlow()
 
         private val cancelledTasks = mutableSetOf<String>()
 
@@ -151,7 +155,7 @@ class VideoDownloadViewModel
         }
 
         fun updateInputUrl(url: String) {
-            _uiState.value = _uiState.value.copy(inputUrl = url, error = null)
+            _uiState.value = _uiState.value.copy(inputUrl = url)
         }
 
         fun setApiSettingsVisible(visible: Boolean) {
@@ -257,11 +261,11 @@ class VideoDownloadViewModel
         }
 
         fun clearError() {
-            _uiState.value = _uiState.value.copy(error = null)
+            // Deprecated
         }
 
         fun clearSuccess() {
-            _uiState.value = _uiState.value.copy(successMessage = null)
+            // Deprecated
         }
 
         fun startVideoSummary(
@@ -283,7 +287,7 @@ class VideoDownloadViewModel
             viewModelScope.launch(dispatcherProvider.io) {
                 if (!networkMonitor.isConnected.value) {
                     val errorMsg = "当前处于无网络环境，无法使用大模型总结视频。\n您可以继续使用本地视频提取音频及离线转写功能。"
-                    updateTaskSummary(taskId) { it.copy(status = SummaryStatus.FAILED, error = errorMsg) }
+                    updateTaskSummary(taskId) { it.copy(status = SummaryStatus.FAILED) }
                     showError(errorMsg)
                     return@launch
                 }
@@ -293,7 +297,7 @@ class VideoDownloadViewModel
                 val baseUrl = _uiState.value.baseUrl
 
                 if (apiKey.isBlank()) {
-                    updateTaskSummary(taskId) { it.copy(status = SummaryStatus.FAILED, error = "尚未配置 API Key，请在弹出的设置中进行配置。") }
+                    updateTaskSummary(taskId) { it.copy(status = SummaryStatus.FAILED) }
                     showError("尚未配置 API Key，请在弹出的设置中进行配置。")
                     _uiState.value = _uiState.value.copy(showApiSettings = true)
                     return@launch
@@ -304,14 +308,13 @@ class VideoDownloadViewModel
                         status = SummaryStatus.PREPARING,
                         transcript = "",
                         summary = "",
-                        error = null,
                     )
                 }
 
                 val localFile = localPath?.let { File(it) }
                 if (localFile == null) {
                     val errorMsg = "未找到本地文件，无法上传转写"
-                    updateTaskSummary(taskId) { it.copy(status = SummaryStatus.FAILED, error = errorMsg) }
+                    updateTaskSummary(taskId) { it.copy(status = SummaryStatus.FAILED) }
                     showError(errorMsg)
                     return@launch
                 }
@@ -335,7 +338,7 @@ class VideoDownloadViewModel
                     },
                     onFailure = { error ->
                         val message = error.message ?: "处理失败"
-                        updateTaskSummary(taskId) { it.copy(status = SummaryStatus.FAILED, error = message) }
+                        updateTaskSummary(taskId) { it.copy(status = SummaryStatus.FAILED) }
                         showError(message)
                         if (message.contains("API Key 无效或未授权") || message.contains("尚未配置 API Key")) {
                             _uiState.value = _uiState.value.copy(showApiSettings = true)
@@ -388,11 +391,17 @@ class VideoDownloadViewModel
         }
 
         private fun showError(message: String) {
-            _uiState.value = _uiState.value.copy(error = message, isLoading = false)
+            _uiState.value = _uiState.value.copy(isLoading = false)
+            viewModelScope.launch {
+                _errorEvents.send(message)
+            }
         }
 
         private fun showSuccess(message: String) {
-            _uiState.value = _uiState.value.copy(successMessage = message, isLoading = false)
+            _uiState.value = _uiState.value.copy(isLoading = false)
+            viewModelScope.launch {
+                _successEvents.send(message)
+            }
         }
 
         private fun extractVideoTitle(url: String): String {
@@ -403,15 +412,6 @@ class VideoDownloadViewModel
                 url.contains("tiktok.com") -> "TikTok 视频"
                 url.contains("xiaohongshu.com") -> "小红书视频"
                 else -> "视频下载任务"
-            }
-        }
-
-        override fun onCleared() {
-            super.onCleared()
-            // Release resources in a separate scope to ensure it completes even if ViewModel is cleared
-            // and to avoid blocking the main thread
-            kotlinx.coroutines.CoroutineScope(dispatcherProvider.io).launch {
-                sherpaAsrManager.release()
             }
         }
 

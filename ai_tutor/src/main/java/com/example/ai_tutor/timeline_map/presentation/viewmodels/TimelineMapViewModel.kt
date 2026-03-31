@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -52,6 +53,9 @@ class TimelineMapViewModel
 
         private val _uiState = MutableStateFlow(TimelineMapUiState())
         val uiState: StateFlow<TimelineMapUiState> = _uiState.asStateFlow()
+
+        private val _errorEvents = kotlinx.coroutines.channels.Channel<String>()
+        val errorEvents = _errorEvents.receiveAsFlow()
 
         init {
             voskVoiceManager.init(viewModelScope)
@@ -136,7 +140,7 @@ class TimelineMapViewModel
         }
 
         fun clearError() {
-            _uiState.update { it.copy(errorMessage = null) }
+            // Deprecated: error events are now handled via Channel
         }
 
         fun setApiSettingsVisible(visible: Boolean) {
@@ -175,8 +179,10 @@ class TimelineMapViewModel
                 _uiState.update {
                     it.copy(
                         isLoading = true,
-                        errorMessage = if (!networkMonitor.isConnected.value) "当前处于无网络环境，无法生成大模型内容。\n将使用本地示例数据展示。" else null,
                     )
+                }
+                if (!networkMonitor.isConnected.value) {
+                    _errorEvents.send("当前处于无网络环境，无法生成大模型内容。\n将使用本地示例数据展示。")
                 }
 
                 val modelName = globalConfigRepository.getTimelineMapModelName().first()
@@ -203,19 +209,16 @@ class TimelineMapViewModel
                     state.copy(
                         events = sortedEvents,
                         selectedEventId = sortedEvents.firstOrNull()?.id,
-                        errorMessage =
-                            if (result.isFailure) {
-                                val reason = result.exceptionOrNull()?.message?.takeIf { it.isNotBlank() } ?: "请求失败"
-                                if (currentApiKey.isEmpty()) {
-                                    "未配置API Key，已使用内置示例数据"
-                                } else {
-                                    "已使用内置示例数据（原因：$reason）"
-                                }
-                            } else {
-                                null
-                            },
                         isLoading = false,
                     )
+                }
+                if (result.isFailure) {
+                    val reason = result.exceptionOrNull()?.message?.takeIf { it.isNotBlank() } ?: "请求失败"
+                    if (currentApiKey.isEmpty()) {
+                        _errorEvents.send("未配置API Key，已使用内置示例数据")
+                    } else {
+                        _errorEvents.send("已使用内置示例数据（原因：$reason）")
+                    }
                 }
             }
         }

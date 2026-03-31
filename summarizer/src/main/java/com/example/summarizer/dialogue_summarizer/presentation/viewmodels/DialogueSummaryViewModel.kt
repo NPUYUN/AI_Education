@@ -6,6 +6,7 @@ import com.example.common.config.GlobalConfigRepository
 import com.example.common.database.dao.ChatDao
 import com.example.common.database.models.ChatSessionEntity
 import com.example.common.utils.NetworkMonitor
+import com.example.common.utils.toUserFriendlyMessage
 import com.example.summarizer.dialogue_summarizer.services.DialogueSummaryRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -13,6 +14,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -21,7 +23,6 @@ data class DialogueSummaryUiState(
     val selectedSession: ChatSessionEntity? = null,
     val isSummarizing: Boolean = false,
     val summaryResult: String = "",
-    val error: String? = null,
 )
 
 @HiltViewModel
@@ -36,6 +37,9 @@ class DialogueSummaryViewModel
         private val _uiState = MutableStateFlow(DialogueSummaryUiState())
         val uiState: StateFlow<DialogueSummaryUiState> = _uiState.asStateFlow()
 
+        private val _errorEvents = kotlinx.coroutines.channels.Channel<String>()
+        val errorEvents = _errorEvents.receiveAsFlow()
+
         init {
             loadSessions()
         }
@@ -45,7 +49,7 @@ class DialogueSummaryViewModel
                 // Assuming "default_user" for now as used elsewhere
                 chatDao.getSessions("default_user")
                     .catch { e ->
-                        _uiState.value = _uiState.value.copy(error = "加载会话记录失败: ${e.message}")
+                        _errorEvents.send("加载会话记录失败: ${e.message}")
                     }
                     .collect { sessions ->
                         _uiState.value = _uiState.value.copy(sessions = sessions)
@@ -58,23 +62,21 @@ class DialogueSummaryViewModel
                 _uiState.value.copy(
                     selectedSession = session,
                     summaryResult = "",
-                    error = null,
                 )
         }
 
         fun summarizeSelectedSession() {
             val session = _uiState.value.selectedSession
             if (session == null) {
-                _uiState.value = _uiState.value.copy(error = "请先选择一个对话")
+                viewModelScope.launch { _errorEvents.send("请先选择要总结的对话") }
                 return
             }
-
             if (!networkMonitor.isConnected.value) {
-                _uiState.value = _uiState.value.copy(error = "当前处于无网络环境，大模型总结服务暂不可用。\n您可以继续查看本地历史对话列表。")
+                viewModelScope.launch { _errorEvents.send("当前处于无网络环境，大模型总结服务暂不可用。\n请检查网络连接后重试。") }
                 return
             }
 
-            _uiState.value = _uiState.value.copy(isSummarizing = true, error = null, summaryResult = "")
+            _uiState.value = _uiState.value.copy(isSummarizing = true, summaryResult = "")
 
             viewModelScope.launch {
                 try {
@@ -94,8 +96,8 @@ class DialogueSummaryViewModel
                         _uiState.value =
                             _uiState.value.copy(
                                 isSummarizing = false,
-                                error = "该对话没有内容",
                             )
+                        _errorEvents.send("该对话没有内容")
                         return@launch
                     }
 
@@ -111,20 +113,16 @@ class DialogueSummaryViewModel
                         _uiState.value =
                             _uiState.value.copy(
                                 isSummarizing = false,
-                                error = result.exceptionOrNull()?.message ?: "未知错误",
                             )
+                        _errorEvents.send(result.exceptionOrNull()?.toUserFriendlyMessage() ?: "未知错误")
                     }
                 } catch (e: Exception) {
                     _uiState.value =
                         _uiState.value.copy(
                             isSummarizing = false,
-                            error = e.localizedMessage ?: "处理失败",
                         )
+                    _errorEvents.send(e.toUserFriendlyMessage())
                 }
             }
-        }
-
-        fun clearError() {
-            _uiState.value = _uiState.value.copy(error = null)
         }
     }

@@ -5,9 +5,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.common.R
 
 @Composable
 fun LoginScreen(
@@ -20,20 +22,20 @@ fun LoginScreen(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text("AI Tutor 登录", style = MaterialTheme.typography.headlineMedium)
+        Text(stringResource(R.string.ai_tutor_login), style = MaterialTheme.typography.headlineMedium)
         Spacer(Modifier.height(32.dp))
 
         OutlinedTextField(
             value = viewModel.username.value,
             onValueChange = { viewModel.username.value = it },
-            label = { Text("用户名") },
+            label = { Text(stringResource(R.string.username)) },
             modifier = Modifier.fillMaxWidth(),
         )
         Spacer(Modifier.height(16.dp))
         OutlinedTextField(
             value = viewModel.password.value,
             onValueChange = { viewModel.password.value = it },
-            label = { Text("密码") },
+            label = { Text(stringResource(R.string.password)) },
             visualTransformation = PasswordVisualTransformation(),
             modifier = Modifier.fillMaxWidth(),
         )
@@ -47,11 +49,11 @@ fun LoginScreen(
             onClick = { viewModel.login(onLoginSuccess) },
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Text("登录")
+            Text(stringResource(R.string.login))
         }
         Spacer(Modifier.height(16.dp))
         TextButton(onClick = onNavigateToRegister) {
-            Text("注册新账号")
+            Text(stringResource(R.string.register_new_account))
         }
     }
 }

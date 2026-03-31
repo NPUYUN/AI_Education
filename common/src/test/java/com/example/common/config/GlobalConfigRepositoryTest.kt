@@ -19,6 +19,13 @@ class GlobalConfigRepositoryTest {
     fun setup() {
         preferencesManager = mock()
         repository = GlobalConfigRepository(preferencesManager)
+
+        whenever(preferencesManager.getBoolean("use_global_api", false)).thenReturn(flowOf(false))
+        whenever(preferencesManager.getString("global_api_key", "")).thenReturn(flowOf(""))
+        whenever(preferencesManager.getString("global_base_url", AppConstants.BASE_URL)).thenReturn(flowOf(AppConstants.BASE_URL))
+        whenever(
+            preferencesManager.getString("global_model_name", AppConstants.DEFAULT_MODEL_NAME),
+        ).thenReturn(flowOf(AppConstants.DEFAULT_MODEL_NAME))
     }
 
     // --- getEffectiveAiTutorApiKey ---

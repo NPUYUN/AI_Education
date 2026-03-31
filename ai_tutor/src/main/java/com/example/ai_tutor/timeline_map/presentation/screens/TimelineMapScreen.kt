@@ -16,12 +16,12 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -30,8 +30,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ai_tutor.timeline_map.models.HistoricalEvent
 import com.example.ai_tutor.timeline_map.presentation.viewmodels.TimelineMapViewModel
+import com.example.common.R
 import com.example.common.presentation.components.GlobalApiSettingsDialog
 import org.osmdroid.util.BoundingBox
 import org.osmdroid.util.GeoPoint
@@ -46,7 +48,7 @@ fun TimelineMapScreen(
     viewModel: TimelineMapViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit = {},
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var showDetails by remember { mutableStateOf(false) }
 
@@ -58,7 +60,6 @@ fun TimelineMapScreen(
     }
 
     val loading = uiState.isLoading
-    val error = uiState.errorMessage
     val events = uiState.events
     val selectedId = uiState.selectedEventId
     val zoom = uiState.timelineZoom
@@ -66,15 +67,16 @@ fun TimelineMapScreen(
     val showSettings = uiState.showApiSettings
 
     val snackbarHostState = remember { SnackbarHostState() }
+    val errorEvent by viewModel.errorEvents.collectAsStateWithLifecycle(initialValue = null)
+    val iGotItStr = stringResource(R.string.i_got_it)
 
-    LaunchedEffect(error) {
-        if (error != null) {
+    LaunchedEffect(errorEvent) {
+        errorEvent?.let { errorMsg ->
             snackbarHostState.showSnackbar(
-                message = error,
+                message = errorMsg,
                 duration = SnackbarDuration.Long,
-                actionLabel = "我知道了",
+                actionLabel = iGotItStr,
             )
-            viewModel.clearError()
         }
     }
 
@@ -82,15 +84,26 @@ fun TimelineMapScreen(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text(if (initialQuery != null) "$initialQuery 时间轴" else "时间轴地图") },
+                title = {
+                    Text(
+                        if (initialQuery != null) {
+                            stringResource(
+                                R.string.initial_query_timeline,
+                                initialQuery,
+                            )
+                        } else {
+                            stringResource(R.string.timeline_map)
+                        },
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
                 actions = {
                     IconButton(onClick = { viewModel.setApiSettingsVisible(true) }) {
-                        Icon(Icons.Default.Settings, contentDescription = "设置")
+                        Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.settings))
                     }
                 },
             )
@@ -112,7 +125,7 @@ fun TimelineMapScreen(
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text("正在生成时间轴地图...", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.generating_timeline_map), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
 
@@ -186,7 +199,7 @@ fun TimelineMapScreen(
                                         onClick = { showDetails = true },
                                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
                                     ) {
-                                        Text("查看详情")
+                                        Text(stringResource(R.string.view_details))
                                     }
                                 }
                             }
@@ -203,7 +216,7 @@ fun TimelineMapScreen(
                     ) {
                         Column(modifier = Modifier.padding(12.dp)) {
                             Text(
-                                text = "时间轴",
+                                text = stringResource(R.string.timeline),
                                 style = MaterialTheme.typography.titleMedium,
                                 color = MaterialTheme.colorScheme.primary,
                             )
@@ -240,18 +253,24 @@ fun TimelineMapScreen(
                 if (selected != null) {
                     AlertDialog(
                         onDismissRequest = { showDetails = false },
-                        title = { Text("事件详情") },
+                        title = { Text(stringResource(R.string.event_details)) },
                         text = {
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Text("时间：${selected.time}", style = MaterialTheme.typography.bodyMedium)
-                                Text("地点：${selected.location}", style = MaterialTheme.typography.bodyMedium)
-                                Text("人物：${selected.people.joinToString("、")}", style = MaterialTheme.typography.bodyMedium)
+                                Text(stringResource(R.string.time_selected, selected.time), style = MaterialTheme.typography.bodyMedium)
+                                Text(
+                                    stringResource(R.string.location_selected, selected.location),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                )
+                                Text(
+                                    stringResource(R.string.people_selected, selected.people.joinToString("、")),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                )
                                 Text(selected.description, style = MaterialTheme.typography.bodyLarge)
                             }
                         },
                         confirmButton = {
                             TextButton(onClick = { showDetails = false }) {
-                                Text("返回")
+                                Text(stringResource(R.string.back))
                             }
                         },
                     )
@@ -272,6 +291,7 @@ private fun MapSection(
     var lastSelectedId by remember { mutableStateOf<String?>(null) }
     var hasInitializedBounds by remember { mutableStateOf(false) }
     var isMapLaidOut by remember { mutableStateOf(false) }
+    val contentDesc = stringResource(R.string.historical_event_map_count, events.size)
 
     Box(modifier = modifier) {
         AndroidView(
@@ -279,7 +299,7 @@ private fun MapSection(
                 Modifier
                     .fillMaxSize()
                     .semantics {
-                        contentDescription = "历史事件地图，包含 ${events.size} 个事件标记"
+                        contentDescription = contentDesc
                     },
             factory = {
                 mapView.apply {

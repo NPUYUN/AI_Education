@@ -80,6 +80,7 @@ dependencies {
     // Networking
     api(libs.retrofit)
     api(libs.retrofit.converter.gson)
+    api(libs.gson)
     api(libs.okhttp)
     api(libs.okhttp.sse)
     api(libs.okhttp.logging)
@@ -96,6 +97,7 @@ dependencies {
     api(libs.androidx.compose.material3)
     api(libs.androidx.compose.material.icons.extended)
     api(libs.androidx.activity.compose)
+    api(libs.androidx.lifecycle.runtime.compose)
 
     // CameraX
     api(libs.androidx.camera.core)
@@ -112,6 +114,10 @@ dependencies {
     // Hilt
     api(libs.hilt.android)
     ksp(libs.hilt.compiler)
+    api(libs.androidx.hilt.navigation.compose)
+
+    // Navigation
+    api(libs.androidx.navigation.compose)
 
     // AI/ML
     // api(libs.mnn) // TODO: MNN dependency com.taobao.android:mnn:2.7.0 is not resolvable. Please check the correct coordinate or add the AAR manually.

@@ -3,11 +3,15 @@ package com.example.summarizer.text_summarizer.presentation.viewmodels
 import android.net.Uri
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import com.example.common.config.GlobalConfigRepository
+import com.example.common.utils.NetworkMonitor
 import com.example.summarizer.text_summarizer.services.TextExtractionService
 import com.example.summarizer.text_summarizer.services.TextSummaryRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -43,6 +47,9 @@ class TextSummaryViewModelTest {
     @Mock
     private lateinit var globalConfigRepository: GlobalConfigRepository
 
+    @Mock
+    private lateinit var networkMonitor: NetworkMonitor
+
     private lateinit var viewModel: TextSummaryViewModel
 
     @Before
@@ -51,8 +58,9 @@ class TextSummaryViewModelTest {
         `when`(globalConfigRepository.getEffectiveVideoSummaryApiKey()).thenReturn(flowOf("test_key"))
         `when`(globalConfigRepository.getVideoSummaryBaseUrl()).thenReturn(flowOf("test_url"))
         `when`(globalConfigRepository.getVideoSummaryModelName()).thenReturn(flowOf("test_model"))
+        `when`(networkMonitor.isConnected).thenReturn(MutableStateFlow(true))
 
-        viewModel = TextSummaryViewModel(repository, textExtractionService, globalConfigRepository)
+        viewModel = TextSummaryViewModel(repository, textExtractionService, globalConfigRepository, networkMonitor)
     }
 
     @After
@@ -64,16 +72,25 @@ class TextSummaryViewModelTest {
     fun `updateInputText updates uiState correctly`() {
         viewModel.updateInputText("Hello World")
         assertEquals("Hello World", viewModel.uiState.value.inputText)
-        assertEquals(null, viewModel.uiState.value.error)
     }
 
     @Test
-    fun `summarize with empty input sets error`() {
-        viewModel.updateInputText("   ")
-        viewModel.summarize()
-        assertEquals("输入文本不能为空", viewModel.uiState.value.error)
-        assertFalse(viewModel.uiState.value.isSummarizing)
-    }
+    fun `summarize with empty input sets error`() =
+        runTest(testDispatcher) {
+            val errors = mutableListOf<String>()
+            val job =
+                launch {
+                    viewModel.errorEvents.toList(errors)
+                }
+
+            viewModel.updateInputText("   ")
+            viewModel.summarize()
+            advanceUntilIdle()
+
+            assertTrue(errors.contains("输入文本不能为空"))
+            assertFalse(viewModel.uiState.value.isSummarizing)
+            job.cancel()
+        }
 
     @Test
     fun `summarize successful updates summaryResult`() =
@@ -93,12 +110,17 @@ class TextSummaryViewModelTest {
 
             assertFalse(viewModel.uiState.value.isSummarizing)
             assertEquals(summaryResult, viewModel.uiState.value.summaryResult)
-            assertEquals(null, viewModel.uiState.value.error)
         }
 
     @Test
     fun `summarize failure sets error`() =
         runTest(testDispatcher) {
+            val errors = mutableListOf<String>()
+            val job =
+                launch {
+                    viewModel.errorEvents.toList(errors)
+                }
+
             val inputText = "Some text"
             val errorMsg = "Network Error"
             viewModel.updateInputText(inputText)
@@ -110,7 +132,8 @@ class TextSummaryViewModelTest {
             advanceUntilIdle()
 
             assertFalse(viewModel.uiState.value.isSummarizing)
-            assertEquals(errorMsg, viewModel.uiState.value.error)
+            assertTrue(errors.contains(errorMsg))
+            job.cancel()
         }
 
     @Test
@@ -130,12 +153,17 @@ class TextSummaryViewModelTest {
 
             assertFalse(viewModel.uiState.value.isExtractingFile)
             assertEquals(extractedText, viewModel.uiState.value.inputText)
-            assertEquals(null, viewModel.uiState.value.error)
         }
 
     @Test
     fun `handleFileUri failure sets error`() =
         runTest(testDispatcher) {
+            val errors = mutableListOf<String>()
+            val job =
+                launch {
+                    viewModel.errorEvents.toList(errors)
+                }
+
             val uri = mock<Uri>()
             val errorMsg = "File read error"
 
@@ -146,16 +174,7 @@ class TextSummaryViewModelTest {
             advanceUntilIdle()
 
             assertFalse(viewModel.uiState.value.isExtractingFile)
-            assertEquals(errorMsg, viewModel.uiState.value.error)
+            assertTrue(errors.contains(errorMsg))
+            job.cancel()
         }
-
-    @Test
-    fun `clearError sets error to null`() {
-        viewModel.updateInputText("  ")
-        viewModel.summarize()
-        assertEquals("输入文本不能为空", viewModel.uiState.value.error)
-
-        viewModel.clearError()
-        assertEquals(null, viewModel.uiState.value.error)
-    }
 }

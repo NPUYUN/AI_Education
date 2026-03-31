@@ -9,9 +9,11 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.example.common.R
 import com.example.common.config.AppConstants
 import com.example.common.database.PreferencesManager
 import kotlinx.coroutines.flow.first
@@ -151,7 +153,7 @@ fun GlobalApiSettingsDialog(onDismiss: () -> Unit) {
                         .padding(16.dp),
             ) {
                 Text(
-                    text = "全局 API 设置",
+                    text = stringResource(R.string.global_api_settings),
                     style = MaterialTheme.typography.titleLarge,
                     modifier = Modifier.padding(bottom = 8.dp),
                 )
@@ -165,7 +167,7 @@ fun GlobalApiSettingsDialog(onDismiss: () -> Unit) {
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
                     Text(
-                        text = "统一使用全局配置",
+                        text = stringResource(R.string.use_global_config),
                         style = MaterialTheme.typography.bodyLarge,
                     )
                     Switch(
@@ -183,7 +185,7 @@ fun GlobalApiSettingsDialog(onDismiss: () -> Unit) {
                 ) {
                     if (useGlobalApi) {
                         ApiSettingSection(
-                            title = "全局配置 (所有模块统一使用)",
+                            title = stringResource(R.string.global_config_used_by_all_modules),
                             apiKey = globalApiKey,
                             onApiKeyChange = { globalApiKey = it },
                             modelName = globalModel,
@@ -195,7 +197,7 @@ fun GlobalApiSettingsDialog(onDismiss: () -> Unit) {
                     }
 
                     ApiSettingSection(
-                        title = "AI 辅导",
+                        title = stringResource(R.string.ai_tutor),
                         apiKey = if (useGlobalApi) globalApiKey else tutorApiKey,
                         onApiKeyChange = { tutorApiKey = it },
                         modelName = if (useGlobalApi) globalModel else tutorModel,
@@ -208,7 +210,7 @@ fun GlobalApiSettingsDialog(onDismiss: () -> Unit) {
                     HorizontalDivider()
 
                     ApiSettingSection(
-                        title = "视频总结",
+                        title = stringResource(R.string.video_summary),
                         apiKey = if (useGlobalApi) globalApiKey else videoApiKey,
                         onApiKeyChange = { videoApiKey = it },
                         modelName = if (useGlobalApi) globalModel else videoModel,
@@ -221,7 +223,7 @@ fun GlobalApiSettingsDialog(onDismiss: () -> Unit) {
                     HorizontalDivider()
 
                     ApiSettingSection(
-                        title = "时间轴地图",
+                        title = stringResource(R.string.timeline_map),
                         apiKey = if (useGlobalApi) globalApiKey else timelineApiKey,
                         onApiKeyChange = { timelineApiKey = it },
                         modelName = if (useGlobalApi) globalModel else timelineModel,
@@ -240,7 +242,7 @@ fun GlobalApiSettingsDialog(onDismiss: () -> Unit) {
                     horizontalArrangement = Arrangement.End,
                 ) {
                     TextButton(onClick = onDismiss) {
-                        Text("取消")
+                        Text(stringResource(R.string.cancel))
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(
@@ -275,7 +277,7 @@ fun GlobalApiSettingsDialog(onDismiss: () -> Unit) {
                             }
                         },
                     ) {
-                        Text("保存")
+                        Text(stringResource(R.string.save))
                     }
                 }
             }
@@ -303,7 +305,7 @@ fun ApiSettingSection(
         OutlinedTextField(
             value = apiKey,
             onValueChange = onApiKeyChange,
-            label = { Text(if (enabled) "API Key" else "API Key (全局)") },
+            label = { Text(if (enabled) "API Key" else stringResource(R.string.api_key_global)) },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             enabled = enabled,
@@ -316,7 +318,7 @@ fun ApiSettingSection(
             OutlinedTextField(
                 value = modelName,
                 onValueChange = onModelNameChange,
-                label = { Text(if (enabled) "模型名称" else "模型名称 (全局)") },
+                label = { Text(if (enabled) stringResource(R.string.model_name) else stringResource(R.string.model_name_global)) },
                 modifier =
                     Modifier
                         .fillMaxWidth()
@@ -346,7 +348,7 @@ fun ApiSettingSection(
         OutlinedTextField(
             value = baseUrl,
             onValueChange = onBaseUrlChange,
-            label = { Text(if (enabled) "Base URL" else "Base URL (全局)") },
+            label = { Text(if (enabled) "Base URL" else stringResource(R.string.base_url_global)) },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             enabled = enabled,

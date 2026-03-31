@@ -22,10 +22,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.example.common.R
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -44,14 +46,20 @@ fun ChatInputArea(
 
     // Permission for voice
     val context = LocalContext.current
+    // Pre-fetch strings for use in callbacks
+    val permissionGrantedMsg = stringResource(R.string.permission_granted_press_to_speak)
+    val micPermissionReqMsg = stringResource(R.string.microphone_permission_required)
+    val holdToSpeakMsg = stringResource(R.string.please_hold_to_speak)
+    val inputChatContentMsg = stringResource(R.string.input_chat_content)
+
     val voicePermissionLauncher =
         rememberLauncherForActivityResult(
             ActivityResultContracts.RequestPermission(),
         ) { isGranted: Boolean ->
             if (isGranted) {
-                android.widget.Toast.makeText(context, "权限已获取，请长按说话", android.widget.Toast.LENGTH_SHORT).show()
+                android.widget.Toast.makeText(context, permissionGrantedMsg, android.widget.Toast.LENGTH_SHORT).show()
             } else {
-                android.widget.Toast.makeText(context, "需要麦克风权限才能使用语音功能", android.widget.Toast.LENGTH_SHORT).show()
+                android.widget.Toast.makeText(context, micPermissionReqMsg, android.widget.Toast.LENGTH_SHORT).show()
             }
         }
 
@@ -79,7 +87,7 @@ fun ChatInputArea(
                         .pointerInput(Unit) {
                             detectTapGestures(
                                 onTap = {
-                                    android.widget.Toast.makeText(context, "请按住说话", android.widget.Toast.LENGTH_SHORT).show()
+                                    android.widget.Toast.makeText(context, holdToSpeakMsg, android.widget.Toast.LENGTH_SHORT).show()
                                 },
                                 onPress = {
                                     // Check permission logic
@@ -117,24 +125,31 @@ fun ChatInputArea(
             ) {
                 Icon(
                     Icons.Default.Mic,
-                    contentDescription = if (isRecording) "正在录音" else "长按开始语音输入",
+                    contentDescription =
+                        if (isRecording) {
+                            stringResource(
+                                R.string.recording,
+                            )
+                        } else {
+                            stringResource(R.string.long_press_to_speak)
+                        },
                     tint = if (isRecording) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(24.dp),
                 )
             }
 
             TextField(
-                value = if (isRecording) "松开结束..." else text,
+                value = if (isRecording) stringResource(R.string.release_to_end) else text,
                 onValueChange = { if (!isRecording) onTextChanged(it) },
                 modifier =
                     Modifier
                         .weight(1f)
                         .semantics {
-                            contentDescription = "输入聊天内容"
+                            contentDescription = inputChatContentMsg
                         },
                 placeholder = {
                     Text(
-                        "发消息或按住说话...",
+                        stringResource(R.string.send_message_or_hold_to_speak),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         softWrap = false,
@@ -158,14 +173,26 @@ fun ChatInputArea(
 
             if (text.isNotEmpty() && !isRecording) {
                 IconButton(onClick = onSend, enabled = !isLoading) {
-                    Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "发送消息", tint = MaterialTheme.colorScheme.primary)
+                    Icon(
+                        Icons.AutoMirrored.Filled.Send,
+                        contentDescription = stringResource(R.string.send_message),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
                 }
             } else if (!isRecording) {
                 IconButton(onClick = onCameraClick) {
-                    Icon(Icons.Default.CameraAlt, contentDescription = "拍照", tint = MaterialTheme.colorScheme.primary)
+                    Icon(
+                        Icons.Default.CameraAlt,
+                        contentDescription = stringResource(R.string.take_photo),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
                 }
                 IconButton(onClick = onGalleryClick) {
-                    Icon(Icons.Default.Add, contentDescription = "选择图片", tint = MaterialTheme.colorScheme.primary)
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = stringResource(R.string.select_image),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
                 }
             }
         }
