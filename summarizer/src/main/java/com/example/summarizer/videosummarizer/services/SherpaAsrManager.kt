@@ -73,24 +73,8 @@ class SherpaAsrManager(
             var stream: OfflineStream? = null
             try {
                 Log.d(tag, "Starting transcription for: ${audioFile.name}")
-                // 0. Check if file has audio stream
-                try {
-                    val mediaInfoSession = FFprobeKit.getMediaInformation(audioFile.absolutePath)
-                    val mediaInformation = mediaInfoSession.mediaInformation
-                    if (mediaInformation == null) {
-                        throw IllegalStateException("无法获取媒体信息：${audioFile.absolutePath}")
-                    }
-                    val streams = mediaInformation.streams
-                    val hasAudio = streams.any { it.type == "audio" }
-                    if (!hasAudio) {
-                        throw IllegalStateException("视频文件不包含音频流，无法进行语音转写")
-                    }
-                } catch (e: Exception) {
-                    if (e is IllegalStateException) throw e
-                    throw IllegalStateException("媒体文件检查失败: ${e.message}")
-                }
 
-                // 1. Convert to 16kHz wav
+                // 1. Convert to 16kHz wav (this will fail naturally if no audio stream exists)
                 wavFile = convertToWav(audioFile)
 
                 // 2. Use recognizer safely with Mutex

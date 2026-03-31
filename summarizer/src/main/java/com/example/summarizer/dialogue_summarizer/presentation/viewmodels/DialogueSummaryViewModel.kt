@@ -46,8 +46,7 @@ class DialogueSummaryViewModel
 
         private fun loadSessions() {
             viewModelScope.launch {
-                // Assuming "default_user" for now as used elsewhere
-                chatDao.getSessions("default_user")
+                chatDao.getSessions("current_user")
                     .catch { e ->
                         _errorEvents.send("加载会话记录失败: ${e.message}")
                     }

@@ -43,6 +43,8 @@ import com.example.common.utils.DateFormatUtils
 import com.example.solver.comprehensive.presentation.viewmodels.SolverViewModel
 import com.example.solver.geometry_solver.presentation.components.GeometryStepCard
 
+import androidx.activity.compose.BackHandler
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SolverScreen(
@@ -56,6 +58,8 @@ fun SolverScreen(
     var selectedHistory: SolveHistoryEntity? by remember { mutableStateOf(null) }
     val recentHistory by viewModel.recentHistory.collectAsStateWithLifecycle(initialValue = emptyList())
     val allHistory by viewModel.allHistory.collectAsStateWithLifecycle(initialValue = emptyList())
+    
+    var isDetailScreen by remember { mutableStateOf(false) }
 
     val snackbarHostState = remember { SnackbarHostState() }
     val errorEvent by viewModel.errorEvents.collectAsStateWithLifecycle(initialValue = null)
@@ -68,6 +72,12 @@ fun SolverScreen(
             )
         }
     }
+    
+    LaunchedEffect(uiState.imageUri) {
+        if (uiState.imageUri != null) {
+            isDetailScreen = true
+        }
+    }
 
     val imageCropFailedMsg = stringResource(R.string.image_crop_failed)
     val cropImageLauncher =
@@ -76,6 +86,7 @@ fun SolverScreen(
                 val uriContent = result.uriContent
                 viewModel.setImageUri(uriContent)
                 if (uriContent != null) {
+                    isDetailScreen = true
                     viewModel.solveProblem()
                 }
             } else {
@@ -122,10 +133,27 @@ fun SolverScreen(
             }
         }
 
+    BackHandler(enabled = isDetailScreen) {
+        isDetailScreen = false
+        viewModel.setImageUri(null)
+        viewModel.updateQuestionText("")
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.smart_problem_solving)) },
+                title = { Text(if (isDetailScreen) stringResource(R.string.smart_problem_solving) else stringResource(R.string.smart_problem_solving)) },
+                navigationIcon = {
+                    if (isDetailScreen) {
+                        IconButton(onClick = { 
+                            isDetailScreen = false
+                            viewModel.setImageUri(null)
+                            viewModel.updateQuestionText("")
+                        }) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+                        }
+                    }
+                }
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -136,337 +164,354 @@ fun SolverScreen(
                     .fillMaxSize()
                     .padding(paddingValues),
         ) {
-            Column(
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .padding(16.dp)
-                        .verticalScroll(rememberScrollState())
-                        .animateContentSize(),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                ) {
-                    ElevatedCard(
-                        modifier = Modifier.weight(1f).height(120.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-                        onClick = {
-                            if (hasCameraPermission) {
-                                onCameraClick()
-                            } else {
-                                permissionLauncher.launch(Manifest.permission.CAMERA)
-                            }
-                        },
-                    ) {
-                        Column(
-                            modifier =
-                                Modifier
-                                    .fillMaxSize()
-                                    .padding(16.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center,
-                        ) {
-                            Icon(
-                                Icons.Default.PhotoCamera,
-                                contentDescription = stringResource(R.string.photo_problem_solving),
-                                modifier = Modifier.size(40.dp),
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Text(
-                                stringResource(R.string.photo_problem_solving),
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            )
-                        }
-                    }
-                    ElevatedCard(
-                        modifier = Modifier.weight(1f).height(120.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
-                        onClick = { imagePickerLauncher.launch("image/*") },
-                    ) {
-                        Column(
-                            modifier =
-                                Modifier
-                                    .fillMaxSize()
-                                    .padding(16.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center,
-                        ) {
-                            Icon(
-                                Icons.Default.Image,
-                                contentDescription = stringResource(R.string.upload_question),
-                                modifier = Modifier.size(40.dp),
-                                tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Text(
-                                stringResource(R.string.upload_question),
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer,
-                            )
-                        }
-                    }
-                }
-
-                OutlinedTextField(
-                    value = uiState.questionText,
-                    onValueChange = {
-                        viewModel.updateQuestionText(it)
-                    },
-                    label = { Text(stringResource(R.string.question_supplementary_description_optional)) },
-                    shape = RoundedCornerShape(16.dp),
+            if (!isDetailScreen) {
+                // Main Screen: Photo, Upload, History
+                Column(
                     modifier =
                         Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 100.dp, max = 160.dp),
-                    maxLines = 8,
-                )
-
-                // Image Preview
-                if (uiState.imageUri != null) {
-                    Card(
+                            .fillMaxSize()
+                            .padding(16.dp)
+                            .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    Row(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.padding(12.dp),
+                        ElevatedCard(
+                            modifier = Modifier.weight(1f).height(120.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+                            onClick = {
+                                if (hasCameraPermission) {
+                                    onCameraClick()
+                                } else {
+                                    permissionLauncher.launch(Manifest.permission.CAMERA)
+                                }
+                            },
                         ) {
-                            AsyncImage(
-                                model = uiState.imageUri,
-                                contentDescription = stringResource(R.string.question_image),
+                            Column(
                                 modifier =
                                     Modifier
-                                        .fillMaxWidth()
-                                        .height(200.dp)
-                                        .clip(RoundedCornerShape(12.dp)),
-                                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            TextButton(onClick = { viewModel.setImageUri(null) }) {
-                                Icon(Icons.Default.Clear, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(stringResource(R.string.remove_image))
+                                        .fillMaxSize()
+                                        .padding(16.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center,
+                            ) {
+                                Icon(
+                                    Icons.Default.PhotoCamera,
+                                    contentDescription = stringResource(R.string.photo_problem_solving),
+                                    modifier = Modifier.size(40.dp),
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Text(
+                                    stringResource(R.string.photo_problem_solving),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                )
                             }
                         }
-                    }
-                }
-
-                Button(
-                    onClick = { viewModel.solveProblem() },
-                    modifier = Modifier.fillMaxWidth().height(56.dp),
-                    shape = RoundedCornerShape(28.dp),
-                    enabled = !uiState.isSolving && (uiState.questionText.isNotBlank() || uiState.imageUri != null),
-                ) {
-                    if (uiState.isSolving) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp),
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            strokeWidth = 2.dp,
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(stringResource(R.string.parsing))
-                    } else {
-                        val typeName =
-                            when (uiState.selectedTab) {
-                                0 -> stringResource(R.string.geometry)
-                                1 -> stringResource(R.string.algebra)
-                                else -> stringResource(R.string.comprehensive)
-                            }
-                        Text(stringResource(R.string.start_solving_auto_recognize, typeName))
-                    }
-                }
-
-                AnimatedVisibility(
-                    visible = uiState.solutionResult.isNotBlank(),
-                    enter = fadeIn() + expandVertically(),
-                    exit = fadeOut() + shrinkVertically(),
-                ) {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                    ) {
-                        Column(
-                            modifier =
-                                Modifier
-                                    .fillMaxSize()
-                                    .padding(16.dp),
+                        ElevatedCard(
+                            modifier = Modifier.weight(1f).height(120.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+                            onClick = { imagePickerLauncher.launch("image/*") },
                         ) {
-                            Text(
-                                text = stringResource(R.string.problem_solving_result),
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.padding(bottom = 8.dp),
-                            )
-                            HorizontalDivider(modifier = Modifier.padding(bottom = 8.dp))
-                            SafeMarkdownText(
-                                markdown = uiState.solutionResult,
-                                modifier = Modifier.fillMaxWidth(),
-                            )
-                            if (uiState.selectedTab == 0 && uiState.drawingSteps.isNotEmpty()) {
-                                Spacer(modifier = Modifier.height(12.dp))
-                                Text(stringResource(R.string.geometry_drawing), style = MaterialTheme.typography.titleMedium)
-                                Spacer(modifier = Modifier.height(8.dp))
-                                val prev = mutableListOf<Map<String, Any>>()
-                                uiState.drawingSteps.forEach { step ->
-                                    GeometryStepCard(
-                                        step,
-                                        prevShapes = prev.toList(),
-                                        modifier =
-                                            Modifier
-                                                .fillMaxWidth()
-                                                .padding(bottom = 12.dp),
-                                    )
-                                    prev += step.shapes
-                                }
-                            } else if (uiState.selectedTab == 1 && uiState.isFunction && uiState.drawingSteps.isNotEmpty()) {
-                                Spacer(modifier = Modifier.height(12.dp))
-                                Text(stringResource(R.string.function_drawing), style = MaterialTheme.typography.titleMedium)
-                                Spacer(modifier = Modifier.height(8.dp))
-                                val prev = mutableListOf<Map<String, Any>>()
-                                uiState.drawingSteps.forEach { step ->
-                                    GeometryStepCard(
-                                        step,
-                                        prevShapes = prev.toList(),
-                                        modifier =
-                                            Modifier
-                                                .fillMaxWidth()
-                                                .padding(bottom = 12.dp),
-                                    )
-                                    prev += step.shapes
-                                }
-                            } else if (uiState.selectedTab == 2 && uiState.drawingSteps.isNotEmpty()) {
-                                Spacer(modifier = Modifier.height(12.dp))
-                                val title =
-                                    when (uiState.comprehensiveType) {
-                                        stringResource(R.string.physics) -> stringResource(R.string.physics_diagram)
-                                        stringResource(R.string.chemistry) -> stringResource(R.string.chemistry_diagram)
-                                        stringResource(R.string.biology) -> stringResource(R.string.biology_diagram)
-                                        else -> stringResource(R.string.comprehensive_diagram)
-                                    }
-                                Text(title, style = MaterialTheme.typography.titleMedium)
-                                Spacer(modifier = Modifier.height(8.dp))
-                                val prev = mutableListOf<Map<String, Any>>()
-                                uiState.drawingSteps.forEach { step ->
-                                    GeometryStepCard(
-                                        step,
-                                        prevShapes = prev.toList(),
-                                        modifier =
-                                            Modifier
-                                                .fillMaxWidth()
-                                                .padding(bottom = 12.dp),
-                                    )
-                                    prev += step.shapes
-                                }
-                            }
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Button(
-                                onClick = { showErrorBookDialog = true },
-                                modifier = Modifier.fillMaxWidth(),
-                                enabled = !uiState.isAddedToErrorBook,
+                            Column(
+                                modifier =
+                                    Modifier
+                                        .fillMaxSize()
+                                        .padding(16.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center,
                             ) {
+                                Icon(
+                                    Icons.Default.Image,
+                                    contentDescription = stringResource(R.string.upload_question),
+                                    modifier = Modifier.size(40.dp),
+                                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
                                 Text(
-                                    if (uiState.isAddedToErrorBook) {
-                                        stringResource(
-                                            R.string.added_to_error_book,
-                                        )
-                                    } else {
-                                        stringResource(R.string.add_to_error_book)
-                                    },
+                                    stringResource(R.string.upload_question),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
                                 )
                             }
                         }
                     }
-                }
 
-                Text(
-                    text = stringResource(R.string.historical_problem_solving),
-                    style = MaterialTheme.typography.titleMedium,
-                )
-                if (!showAllHistory) {
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        recentHistory.forEach { item ->
-                            ElevatedCard(
-                                onClick = { selectedHistory = item },
-                                modifier = Modifier.fillMaxWidth(),
-                            ) {
-                                Row(
-                                    modifier =
-                                        Modifier
-                                            .fillMaxWidth()
-                                            .padding(12.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically,
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    Text(
+                        text = stringResource(R.string.historical_problem_solving),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    if (!showAllHistory) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            recentHistory.forEach { item ->
+                                ElevatedCard(
+                                    onClick = { selectedHistory = item },
+                                    modifier = Modifier.fillMaxWidth(),
                                 ) {
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text("${item.subject}｜${DateFormatUtils.format(item.timestamp)}")
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        Text(item.questionContent.take(30))
-                                    }
-                                    if (item.isInErrorBook) {
-                                        AssistChip(onClick = {}, label = { Text(stringResource(R.string.already_in_error_book)) })
+                                    Row(
+                                        modifier =
+                                            Modifier
+                                                .fillMaxWidth()
+                                                .padding(12.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text("${item.subject}｜${DateFormatUtils.format(item.timestamp)}")
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text(item.questionContent.take(30))
+                                        }
+                                        if (item.isInErrorBook) {
+                                            AssistChip(onClick = {}, label = { Text(stringResource(R.string.already_in_error_book)) })
+                                        }
                                     }
                                 }
                             }
+                            if (allHistory.size > recentHistory.size) {
+                                OutlinedButton(
+                                    onClick = { showAllHistory = true },
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Icon(Icons.Default.MoreHoriz, contentDescription = null)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(stringResource(R.string.view_more))
+                                }
+                            }
                         }
-                        OutlinedButton(
-                            onClick = { showAllHistory = true },
+                    }
+
+                    AnimatedVisibility(
+                        visible = showAllHistory,
+                        enter = fadeIn() + expandVertically(),
+                        exit = fadeOut() + shrinkVertically(),
+                    ) {
+                        Column(
                             modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
-                            Icon(Icons.Default.MoreHoriz, contentDescription = null)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(stringResource(R.string.view_more))
+                            allHistory.forEach { item ->
+                                ElevatedCard(
+                                    onClick = { selectedHistory = item },
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Row(
+                                        modifier =
+                                            Modifier
+                                                .fillMaxWidth()
+                                                .padding(12.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text("${item.subject}｜${DateFormatUtils.format(item.timestamp)}")
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text(item.questionContent)
+                                        }
+                                        if (item.isInErrorBook) {
+                                            AssistChip(onClick = {}, label = { Text(stringResource(R.string.already_in_error_book)) })
+                                        }
+                                    }
+                                }
+                            }
+                            OutlinedButton(
+                                onClick = { showAllHistory = false },
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text(stringResource(R.string.collapse))
+                            }
                         }
                     }
                 }
-
-                AnimatedVisibility(
-                    visible = uiState.solutionResult.isBlank(),
-                    enter = fadeIn() + expandVertically(),
-                    exit = fadeOut() + shrinkVertically(),
+            } else {
+                // Detail Screen: Question text, Image preview, Solve button, Results
+                Column(
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .padding(16.dp)
+                            .verticalScroll(rememberScrollState())
+                            .animateContentSize(),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        allHistory.forEach { item ->
-                            ElevatedCard(
-                                onClick = { selectedHistory = item },
-                                modifier = Modifier.fillMaxWidth(),
+                    OutlinedTextField(
+                        value = uiState.questionText,
+                        onValueChange = {
+                            viewModel.updateQuestionText(it)
+                        },
+                        label = { Text(stringResource(R.string.question_supplementary_description_optional)) },
+                        shape = RoundedCornerShape(16.dp),
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 100.dp, max = 160.dp),
+                        maxLines = 8,
+                    )
+
+                    // Image Preview
+                    if (uiState.imageUri != null) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.padding(12.dp),
                             ) {
-                                Row(
+                                AsyncImage(
+                                    model = uiState.imageUri,
+                                    contentDescription = stringResource(R.string.question_image),
                                     modifier =
                                         Modifier
                                             .fillMaxWidth()
-                                            .padding(12.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text("${item.subject}｜${DateFormatUtils.format(item.timestamp)}")
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        Text(item.questionContent)
-                                    }
-                                    if (item.isInErrorBook) {
-                                        AssistChip(onClick = {}, label = { Text(stringResource(R.string.already_in_error_book)) })
-                                    }
+                                            .height(200.dp)
+                                            .clip(RoundedCornerShape(12.dp)),
+                                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                TextButton(onClick = { viewModel.setImageUri(null) }) {
+                                    Icon(Icons.Default.Clear, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(stringResource(R.string.remove_image))
                                 }
                             }
                         }
-                        OutlinedButton(
-                            onClick = { showAllHistory = false },
+                    }
+
+                    Button(
+                        onClick = { viewModel.solveProblem() },
+                        modifier = Modifier.fillMaxWidth().height(56.dp),
+                        shape = RoundedCornerShape(28.dp),
+                        enabled = !uiState.isSolving && (uiState.questionText.isNotBlank() || uiState.imageUri != null),
+                    ) {
+                        if (uiState.isSolving) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                strokeWidth = 2.dp,
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(stringResource(R.string.parsing))
+                        } else {
+                            val typeName =
+                                when (uiState.selectedTab) {
+                                    0 -> stringResource(R.string.geometry)
+                                    1 -> stringResource(R.string.algebra)
+                                    else -> stringResource(R.string.comprehensive)
+                                }
+                            Text(stringResource(R.string.start_solving_auto_recognize, typeName))
+                        }
+                    }
+
+                    AnimatedVisibility(
+                        visible = uiState.solutionResult.isNotBlank(),
+                        enter = fadeIn() + expandVertically(),
+                        exit = fadeOut() + shrinkVertically(),
+                    ) {
+                        Card(
                             modifier = Modifier.fillMaxWidth(),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                         ) {
-                            Text(stringResource(R.string.collapse))
+                            Column(
+                                modifier =
+                                    Modifier
+                                        .fillMaxSize()
+                                        .padding(16.dp),
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.problem_solving_result),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(bottom = 8.dp),
+                                )
+                                HorizontalDivider(modifier = Modifier.padding(bottom = 8.dp))
+                                SafeMarkdownText(
+                                    markdown = uiState.solutionResult,
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                                if (uiState.selectedTab == 0 && uiState.drawingSteps.isNotEmpty()) {
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    Text(stringResource(R.string.geometry_drawing), style = MaterialTheme.typography.titleMedium)
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    val prev = mutableListOf<Map<String, Any>>()
+                                    uiState.drawingSteps.forEach { step ->
+                                        GeometryStepCard(
+                                            step,
+                                            prevShapes = prev.toList(),
+                                            modifier =
+                                                Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(bottom = 12.dp),
+                                        )
+                                        prev += step.shapes
+                                    }
+                                } else if (uiState.selectedTab == 1 && uiState.isFunction && uiState.drawingSteps.isNotEmpty()) {
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    Text(stringResource(R.string.function_drawing), style = MaterialTheme.typography.titleMedium)
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    val prev = mutableListOf<Map<String, Any>>()
+                                    uiState.drawingSteps.forEach { step ->
+                                        GeometryStepCard(
+                                            step,
+                                            prevShapes = prev.toList(),
+                                            modifier =
+                                                Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(bottom = 12.dp),
+                                        )
+                                        prev += step.shapes
+                                    }
+                                } else if (uiState.selectedTab == 2 && uiState.drawingSteps.isNotEmpty()) {
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    val title =
+                                        when (uiState.comprehensiveType) {
+                                            stringResource(R.string.physics) -> stringResource(R.string.physics_diagram)
+                                            stringResource(R.string.chemistry) -> stringResource(R.string.chemistry_diagram)
+                                            stringResource(R.string.biology) -> stringResource(R.string.biology_diagram)
+                                            else -> stringResource(R.string.comprehensive_diagram)
+                                        }
+                                    Text(title, style = MaterialTheme.typography.titleMedium)
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    val prev = mutableListOf<Map<String, Any>>()
+                                    uiState.drawingSteps.forEach { step ->
+                                        GeometryStepCard(
+                                            step,
+                                            prevShapes = prev.toList(),
+                                            modifier =
+                                                Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(bottom = 12.dp),
+                                        )
+                                        prev += step.shapes
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Button(
+                                    onClick = { showErrorBookDialog = true },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    enabled = !uiState.isAddedToErrorBook,
+                                ) {
+                                    Text(
+                                        if (uiState.isAddedToErrorBook) {
+                                            stringResource(
+                                                R.string.added_to_error_book,
+                                            )
+                                        } else {
+                                            stringResource(R.string.add_to_error_book)
+                                        },
+                                    )
+                                }
+                            }
                         }
                     }
                 }

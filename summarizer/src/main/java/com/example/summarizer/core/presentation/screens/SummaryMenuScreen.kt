@@ -142,26 +142,6 @@ fun SummaryMenuScreen(
                     onClick = onNavigateToChatSummary,
                 )
             }
-
-            AnimatedVisibility(
-                visible = visible,
-                enter =
-                    fadeIn(animationSpec = tween(durationMillis = 300, delayMillis = 400)) +
-                        slideInVertically(animationSpec = tween(durationMillis = 300, delayMillis = 400), initialOffsetY = { it / 2 }),
-            ) {
-                SummaryOptionCard(
-                    title = stringResource(R.string.knowledge_card_management),
-                    icon = {
-                        Icon(
-                            Icons.Default.Style,
-                            contentDescription = stringResource(R.string.knowledge_card_management),
-                            modifier = Modifier.size(32.dp),
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                        )
-                    },
-                    onClick = onNavigateToKnowledgeCards,
-                )
-            }
         }
     }
 }

@@ -176,6 +176,7 @@ class SolverViewModel
                                 }
                         }
 
+                    var effectiveModelName = modelName
                     var base64Image: String? = null
                     if (state.imageUri != null) {
                         base64Image = encodeImage(state.imageUri)
@@ -187,13 +188,17 @@ class SolverViewModel
                             _errorEvents.send("图片处理失败，请尝试重新选择或拍摄")
                             return@launch
                         }
+                        // Force using vision model if image is provided
+                        if (effectiveModelName.contains("qwen") && !effectiveModelName.contains("vl")) {
+                            effectiveModelName = "qwen-vl-plus"
+                        }
                     }
 
                     val result =
                         repository.solveProblem(
                             apiKey = apiKey,
                             baseUrl = baseUrl,
-                            modelName = modelName,
+                            modelName = effectiveModelName,
                             systemPrompt = systemPrompt,
                             questionText = state.questionText,
                             base64Image = base64Image,
@@ -258,51 +263,13 @@ class SolverViewModel
             val t = text.replace("\\s+".toRegex(), "").lowercase()
             val physicsKeywords =
                 listOf(
-                    "物理",
-                    "力",
-                    "速度",
-                    "加速度",
-                    "质量",
-                    "动能",
-                    "势能",
-                    "电场",
-                    "磁场",
-                    "电路",
-                    "电阻",
-                    "电压",
-                    "电流",
-                    "做功",
-                    "功率",
-                    "折射",
-                    "反射",
-                    "透镜",
-                    "滑块",
-                    "斜面",
+                    "物理", "力", "速度", "加速度", "质量", "动能", "势能", "电场", "磁场", "电路", "电阻", "电压", "电流", "做功", "功率", "折射", "反射", "透镜", "滑块", "斜面", "匀速", "牛顿", "摩擦", "碰撞", "波", "动量"
                 )
             val chemistryKeywords =
                 listOf(
-                    "化学",
-                    "反应",
-                    "溶液",
-                    "沉淀",
-                    "摩尔",
-                    "氧化",
-                    "还原",
-                    "酸",
-                    "碱",
-                    "ph",
-                    "离子",
-                    "原子",
-                    "分子",
-                    "气体",
-                    "催化剂",
-                    "实验",
-                    "试管",
-                    "烧杯",
-                    "方程式",
-                    "浓度",
+                    "化学", "反应", "溶液", "沉淀", "摩尔", "氧化", "还原", "酸", "碱", "ph", "离子", "原子", "分子", "气体", "催化剂", "实验", "试管", "烧杯", "方程式", "浓度", "有机", "无机", "结晶", "滴定", "溶解度"
                 )
-            val biologyKeywords = listOf("生物", "细胞", "基因", "遗传", "光合作用", "呼吸作用", "蛋白质", "氨基酸", "染色体", "进化", "生态", "植物", "动物")
+            val biologyKeywords = listOf("生物", "细胞", "基因", "遗传", "光合作用", "呼吸作用", "蛋白质", "氨基酸", "染色体", "进化", "生态", "植物", "动物", "孟德尔", "DNA", "RNA", "酶", "激素", "免疫", "神经", "代谢")
 
             return when {
                 physicsKeywords.any { t.contains(it) } -> "物理"
@@ -314,8 +281,8 @@ class SolverViewModel
 
         private fun classify(text: String): Int {
             val t = text.lowercase()
-            val geometryKeywords = listOf("角", "三角", "圆", "半径", "周长", "面积", "几何", "垂线", "相似", "勾股", "坐标", "图形")
-            val algebraKeywords = listOf("方程", "一次", "二次", "函数", "求值", "解", "x", "y", "代数", "不等式", "因式分解", "化简")
+            val geometryKeywords = listOf("角", "三角", "圆", "半径", "周长", "面积", "几何", "垂线", "相似", "勾股", "坐标", "图形", "直线", "曲线", "相切", "相交", "内切", "外接", "体积", "表面积", "平行", "垂直")
+            val algebraKeywords = listOf("方程", "一次", "二次", "函数", "求值", "解", "x", "y", "代数", "不等式", "因式分解", "化简", "数列", "等差", "等比", "多项式", "根", "极值", "单调", "导数", "对数", "指数")
             return when {
                 geometryKeywords.any { t.contains(it) } -> 0
                 algebraKeywords.any { t.contains(it) } -> 1

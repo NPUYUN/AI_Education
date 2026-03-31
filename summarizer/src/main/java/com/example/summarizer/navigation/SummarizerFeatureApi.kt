@@ -36,7 +36,7 @@ class SummarizerFeatureApi
                     onNavigateToTextSummary = { navController.navigate("text_summary") },
                     onNavigateToAudioSummary = { navController.navigate("audio_summary") },
                     onNavigateToChatSummary = { navController.navigate("dialogue_summary") },
-                    onNavigateToKnowledgeCards = { navController.navigate("knowledge_cards") },
+                    onNavigateToKnowledgeCards = { }, // Removed
                 )
             }
 
@@ -62,14 +62,6 @@ class SummarizerFeatureApi
                 val dialogueSummaryViewModel: DialogueSummaryViewModel = hiltViewModel()
                 DialogueSummaryScreen(
                     viewModel = dialogueSummaryViewModel,
-                    onNavigateBack = { navController.popBackStack() },
-                )
-            }
-
-            navGraphBuilder.composable("knowledge_cards") {
-                val knowledgeCardViewModel: KnowledgeCardViewModel = hiltViewModel()
-                KnowledgeCardScreen(
-                    viewModel = knowledgeCardViewModel,
                     onNavigateBack = { navController.popBackStack() },
                 )
             }

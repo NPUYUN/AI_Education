@@ -332,18 +332,7 @@ fun MainScreen(
                                 }
                             } else {
                                 IconButton(onClick = {
-                                    if (currentRoute == "profile") {
-                                        // Specific requirement: return to AI tutor
-                                        navController.navigate("home") {
-                                            popUpTo(navController.graph.findStartDestination().id) {
-                                                saveState = true
-                                            }
-                                            launchSingleTop = true
-                                            restoreState = true
-                                        }
-                                    } else {
-                                        navController.popBackStack()
-                                    }
+                                    navController.popBackStack()
                                 }) {
                                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                                 }

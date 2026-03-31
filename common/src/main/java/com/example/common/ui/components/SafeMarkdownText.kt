@@ -8,6 +8,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.TextStyle
 import dev.jeziellago.compose.markdowntext.MarkdownText
 
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.graphics.Color
+
 @Composable
 fun SafeMarkdownText(
     markdown: String,
@@ -28,7 +31,7 @@ fun SafeMarkdownText(
 
     MarkdownText(
         markdown = safeMarkdown,
-        style = style,
+        color = MaterialTheme.colorScheme.onSurface,
         modifier = modifier.fillMaxWidth(),
         isTextSelectable = true,
         disableLinkMovementMethod = true, // Prevents crashes from malformed links
