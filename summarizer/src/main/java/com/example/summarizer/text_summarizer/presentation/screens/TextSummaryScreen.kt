@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material3.*
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
@@ -26,6 +27,8 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.Alignment
+import kotlinx.coroutines.launch
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.common.R
 import com.example.common.ui.components.SafeMarkdownText
@@ -148,21 +151,33 @@ fun TextSummaryScreen(viewModel: TextSummaryViewModel) {
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = stringResource(R.string.summary_result),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(bottom = 12.dp),
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = stringResource(R.string.summary_result),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                            val context = androidx.compose.ui.platform.LocalContext.current
+                            val scope = androidx.compose.runtime.rememberCoroutineScope()
+                            IconButton(
+                                onClick = {
+                                    scope.launch {
+                                        com.example.common.utils.PdfExporter.exportToPdf(context, "文本总结", uiState.summaryResult)
+                                    }
+                                }
+                            ) {
+                                Icon(Icons.Default.Download, contentDescription = "Export PDF", tint = MaterialTheme.colorScheme.primary)
+                            }
+                        }
                         HorizontalDivider(modifier = Modifier.padding(bottom = 12.dp))
 
                         SafeMarkdownText(
                             markdown = uiState.summaryResult,
-                            style =
-                                MaterialTheme.typography.bodyLarge.copy(
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                ),
                             modifier = Modifier.fillMaxWidth(),
                         )
                     }

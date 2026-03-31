@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -17,6 +18,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.MoreHoriz
@@ -43,8 +45,6 @@ import com.example.common.utils.DateFormatUtils
 import com.example.solver.comprehensive.presentation.viewmodels.SolverViewModel
 import com.example.solver.geometry_solver.presentation.components.GeometryStepCard
 
-import androidx.activity.compose.BackHandler
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SolverScreen(
@@ -58,7 +58,7 @@ fun SolverScreen(
     var selectedHistory: SolveHistoryEntity? by remember { mutableStateOf(null) }
     val recentHistory by viewModel.recentHistory.collectAsStateWithLifecycle(initialValue = emptyList())
     val allHistory by viewModel.allHistory.collectAsStateWithLifecycle(initialValue = emptyList())
-    
+
     var isDetailScreen by remember { mutableStateOf(false) }
 
     val snackbarHostState = remember { SnackbarHostState() }
@@ -72,7 +72,7 @@ fun SolverScreen(
             )
         }
     }
-    
+
     LaunchedEffect(uiState.imageUri) {
         if (uiState.imageUri != null) {
             isDetailScreen = true
@@ -142,10 +142,16 @@ fun SolverScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (isDetailScreen) stringResource(R.string.smart_problem_solving) else stringResource(R.string.smart_problem_solving)) },
+                title = {
+                    Text(
+                        if (isDetailScreen) stringResource(
+                            R.string.smart_problem_solving,
+                        ) else stringResource(R.string.smart_problem_solving),
+                    )
+                },
                 navigationIcon = {
                     if (isDetailScreen) {
-                        IconButton(onClick = { 
+                        IconButton(onClick = {
                             isDetailScreen = false
                             viewModel.setImageUri(null)
                             viewModel.updateQuestionText("")
@@ -153,7 +159,7 @@ fun SolverScreen(
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                         }
                     }
-                }
+                },
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -243,7 +249,7 @@ fun SolverScreen(
                     }
 
                     Spacer(modifier = Modifier.height(8.dp))
-                    
+
                     Text(
                         text = stringResource(R.string.historical_problem_solving),
                         style = MaterialTheme.typography.titleMedium,

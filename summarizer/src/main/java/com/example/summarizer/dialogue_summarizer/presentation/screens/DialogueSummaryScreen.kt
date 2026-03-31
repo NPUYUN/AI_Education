@@ -13,10 +13,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material3.*
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
@@ -151,12 +154,28 @@ fun DialogueSummaryScreen(
                                         .fillMaxWidth()
                                         .padding(16.dp),
                             ) {
-                                Text(
-                                    text = stringResource(R.string.summary_result),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.padding(bottom = 8.dp),
-                                )
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.summary_result),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.primary,
+                                    )
+                                    val context = androidx.compose.ui.platform.LocalContext.current
+                                    val scope = rememberCoroutineScope()
+                                    IconButton(
+                                        onClick = {
+                                            scope.launch {
+                                                com.example.common.utils.PdfExporter.exportToPdf(context, "对话总结", uiState.summaryResult)
+                                            }
+                                        }
+                                    ) {
+                                        Icon(Icons.Default.Download, contentDescription = "Export PDF", tint = MaterialTheme.colorScheme.primary)
+                                    }
+                                }
                                 HorizontalDivider(modifier = Modifier.padding(bottom = 8.dp))
                                 SafeMarkdownText(
                                     markdown = uiState.summaryResult,

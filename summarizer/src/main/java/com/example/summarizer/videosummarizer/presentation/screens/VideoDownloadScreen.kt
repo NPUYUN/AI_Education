@@ -35,6 +35,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
@@ -56,11 +57,6 @@ fun VideoDownloadScreen(viewModel: VideoDownloadViewModel) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val downloadTasks = uiState.downloadTasks
     val context = LocalContext.current
-
-    val permissionLauncher =
-        rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.RequestMultiplePermissions(),
-        ) { }
 
     val localVideoLauncher =
         rememberLauncherForActivityResult(
@@ -142,13 +138,6 @@ fun VideoDownloadScreen(viewModel: VideoDownloadViewModel) {
 
             LocalVideoInputCard(
                 onPickVideo = {
-                    val permissions =
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                            arrayOf(Manifest.permission.READ_MEDIA_VIDEO)
-                        } else {
-                            arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
-                        }
-                    permissionLauncher.launch(permissions)
                     localVideoLauncher.launch("video/*")
                 },
             )
@@ -524,11 +513,28 @@ fun DownloadTaskCard(
                     val summaryText = stringResource(R.string.summary)
                     if (task.summary.summary.isNotBlank()) {
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = summaryText,
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold,
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = summaryText,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                            )
+                            val context = LocalContext.current
+                            val scope = rememberCoroutineScope()
+                            IconButton(
+                                onClick = {
+                                    scope.launch {
+                                        com.example.common.utils.PdfExporter.exportToPdf(context, task.title, task.summary.summary)
+                                    }
+                                }
+                            ) {
+                                Icon(Icons.Default.Download, contentDescription = "Export PDF", tint = MaterialTheme.colorScheme.primary)
+                            }
+                        }
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = task.summary.summary,

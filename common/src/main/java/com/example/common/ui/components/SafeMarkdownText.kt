@@ -2,14 +2,14 @@ package com.example.common.ui.components
 
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
+import coil.imageLoader
 import dev.jeziellago.compose.markdowntext.MarkdownText
-
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.ui.graphics.Color
 
 @Composable
 fun SafeMarkdownText(
@@ -17,6 +17,7 @@ fun SafeMarkdownText(
     modifier: Modifier = Modifier,
     style: TextStyle = LocalTextStyle.current,
 ) {
+    val context = LocalContext.current
     // Basic sanitization: Sometimes LLMs return markdown with leading/trailing spaces or unclosed tags
     // that might crash the renderer.
     val safeMarkdown =
@@ -35,5 +36,6 @@ fun SafeMarkdownText(
         modifier = modifier.fillMaxWidth(),
         isTextSelectable = true,
         disableLinkMovementMethod = true, // Prevents crashes from malformed links
+        imageLoader = context.imageLoader,
     )
 }

@@ -3,7 +3,6 @@ package com.example.summarizer.videosummarizer.services
 import android.content.Context
 import android.util.Log
 import com.arthenica.ffmpegkit.FFmpegKit
-import com.arthenica.ffmpegkit.FFprobeKit
 import com.arthenica.ffmpegkit.ReturnCode
 import com.example.common.dispatchers.DispatcherProvider
 import com.k2fsa.sherpa.onnx.OfflineModelConfig

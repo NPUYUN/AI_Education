@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCut
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.RotateRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -202,6 +203,42 @@ fun ImagePreviewScreen(
                         } else {
                             Icon(Icons.Default.Download, contentDescription = "Download", tint = MaterialTheme.colorScheme.onBackground)
                         }
+                    }
+
+                    // Rotate Button
+                    IconButton(
+                        onClick = {
+                            if (currentBitmap != null) {
+                                scope.launch(Dispatchers.IO) {
+                                    try {
+                                        val matrix = android.graphics.Matrix()
+                                        matrix.postRotate(90f)
+                                        val rotatedBitmap = Bitmap.createBitmap(
+                                            currentBitmap!!,
+                                            0, 0,
+                                            currentBitmap!!.width, currentBitmap!!.height,
+                                            matrix, true
+                                        )
+                                        
+                                        // Save rotated bitmap to temp file
+                                        val file = File(context.cacheDir, "rotated_${System.currentTimeMillis()}.jpg")
+                                        val stream = FileOutputStream(file)
+                                        rotatedBitmap.compress(Bitmap.CompressFormat.JPEG, 100, stream)
+                                        stream.flush()
+                                        stream.close()
+                                        
+                                        withContext(Dispatchers.Main) {
+                                            currentBitmap = rotatedBitmap
+                                            currentUri = Uri.fromFile(file).toString()
+                                        }
+                                    } catch (e: Exception) {
+                                        e.printStackTrace()
+                                    }
+                                }
+                            }
+                        }
+                    ) {
+                        Icon(Icons.Default.RotateRight, contentDescription = "Rotate", tint = MaterialTheme.colorScheme.onBackground)
                     }
 
                     // Crop Button

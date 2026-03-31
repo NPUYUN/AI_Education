@@ -11,8 +11,6 @@ import com.example.summarizer.audio_summarizer.presentation.viewmodels.AudioSumm
 import com.example.summarizer.core.presentation.screens.SummaryMenuScreen
 import com.example.summarizer.dialogue_summarizer.presentation.screens.DialogueSummaryScreen
 import com.example.summarizer.dialogue_summarizer.presentation.viewmodels.DialogueSummaryViewModel
-import com.example.summarizer.knowledge_cards.presentation.screens.KnowledgeCardScreen
-import com.example.summarizer.knowledge_cards.presentation.viewmodels.KnowledgeCardViewModel
 import com.example.summarizer.text_summarizer.presentation.screens.TextSummaryScreen
 import com.example.summarizer.text_summarizer.presentation.viewmodels.TextSummaryViewModel
 import com.example.summarizer.videosummarizer.presentation.screens.VideoDownloadScreen
