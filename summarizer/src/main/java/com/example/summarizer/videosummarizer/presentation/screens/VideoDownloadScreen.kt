@@ -260,32 +260,33 @@ fun VideoDownloadScreen(
                     LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp)) {
                         items(items = uiState.historyList) { history ->
                             Card(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp),
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 4.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                             ) {
                                 Column(modifier = Modifier.padding(12.dp)) {
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
+                                        verticalAlignment = Alignment.CenterVertically,
                                     ) {
                                         val sdf = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault())
                                         Text(
                                             text = sdf.format(java.util.Date(history.timestamp)),
                                             style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.primary
+                                            color = MaterialTheme.colorScheme.primary,
                                         )
                                         IconButton(
                                             onClick = { viewModel.deleteHistory(history) },
-                                            modifier = Modifier.size(24.dp)
+                                            modifier = Modifier.size(24.dp),
                                         ) {
                                             Icon(
                                                 Icons.Default.Delete,
                                                 contentDescription = "Delete",
                                                 tint = MaterialTheme.colorScheme.error,
-                                                modifier = Modifier.size(16.dp)
+                                                modifier = Modifier.size(16.dp),
                                             )
                                         }
                                     }
@@ -294,14 +295,14 @@ fun VideoDownloadScreen(
                                         text = history.sourceTitle,
                                         style = MaterialTheme.typography.titleSmall,
                                         maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
+                                        overflow = TextOverflow.Ellipsis,
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(
                                         text = history.summaryResult,
                                         style = MaterialTheme.typography.bodySmall,
                                         maxLines = 2,
-                                        overflow = TextOverflow.Ellipsis
+                                        overflow = TextOverflow.Ellipsis,
                                     )
                                 }
                             }
@@ -313,7 +314,7 @@ fun VideoDownloadScreen(
                 TextButton(onClick = { showHistoryDialog = false }) {
                     Text(stringResource(R.string.close))
                 }
-            }
+            },
         )
     }
 }

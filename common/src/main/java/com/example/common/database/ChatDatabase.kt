@@ -7,8 +7,8 @@ import androidx.room.RoomDatabase
 import com.example.common.database.dao.ChatDao
 import com.example.common.database.dao.ErrorBookDao
 import com.example.common.database.dao.KnowledgeCardDao
-import com.example.common.database.dao.SolveHistoryDao
 import com.example.common.database.dao.ReviewHistoryDao
+import com.example.common.database.dao.SolveHistoryDao
 import com.example.common.database.dao.SummaryHistoryDao
 import com.example.common.database.models.ChatSessionEntity
 import com.example.common.database.models.ErrorBookEntity
@@ -33,7 +33,7 @@ abstract class ChatDatabase : RoomDatabase() {
     abstract fun solveHistoryDao(): SolveHistoryDao
 
     abstract fun reviewHistoryDao(): ReviewHistoryDao
-    
+
     abstract fun summaryHistoryDao(): SummaryHistoryDao
 
     companion object {

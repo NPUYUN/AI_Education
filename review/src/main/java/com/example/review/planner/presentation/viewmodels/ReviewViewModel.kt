@@ -33,7 +33,6 @@ data class ReviewUiState(
     // Error Book
     val errorRecords: List<ErrorBookEntity> = emptyList(),
     val selectedErrorIds: Set<Long> = emptySet(),
-    
     // Practice Screen
     val isGeneratingPractice: Boolean = false,
     val practiceContent: String = "",
@@ -41,7 +40,6 @@ data class ReviewUiState(
     val isGradingPractice: Boolean = false,
     val practiceGradingResult: String = "",
     val showPracticeScreen: Boolean = false,
-
     // History
     val plannerHistory: List<ReviewHistoryEntity> = emptyList(),
     val reinforcementHistory: List<ReviewHistoryEntity> = emptyList(),
@@ -179,15 +177,15 @@ class ReviewViewModel
                     if (result.isSuccess) {
                         val planContent = result.getOrNull() ?: ""
                         _uiState.update { it.copy(isGeneratingPlan = false, reviewPlan = planContent) }
-                        
+
                         // Save history
                         val inputParams = if (useRecent) "科目需求: $subjectsInput\n[包含最近学习记录]" else "科目需求: $subjectsInput"
                         reviewHistoryDao.insertHistory(
                             ReviewHistoryEntity(
                                 type = "planner",
                                 inputParameters = inputParams,
-                                resultContent = planContent
-                            )
+                                resultContent = planContent,
+                            ),
                         )
                     } else {
                         val exception = result.exceptionOrNull()
@@ -229,15 +227,15 @@ class ReviewViewModel
                     if (result.isSuccess) {
                         val quizContent = result.getOrNull() ?: ""
                         _uiState.update { it.copy(isGeneratingQuiz = false, reinforcementQuiz = quizContent) }
-                        
+
                         // Save history
                         val inputParams = if (useRecent) "知识点/需求: $kp\n[包含最近学习记录]" else "知识点/需求: $kp"
                         reviewHistoryDao.insertHistory(
                             ReviewHistoryEntity(
                                 type = "reinforcement",
                                 inputParameters = inputParams,
-                                resultContent = quizContent
-                            )
+                                resultContent = quizContent,
+                            ),
                         )
                     } else {
                         val exception = result.exceptionOrNull()
@@ -266,7 +264,7 @@ class ReviewViewModel
                 reviewHistoryDao.deleteHistory(historyEntity)
             }
         }
-        
+
         // For demonstration, adding a mock error record
         fun addMockErrorRecord() {
             viewModelScope.launch {

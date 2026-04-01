@@ -606,7 +606,7 @@ fun SolverScreen(
                         Text(stringResource(R.string.analysis_colon))
                         SafeMarkdownText(
                             markdown = item.solution,
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
                         )
                     }
                 },

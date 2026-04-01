@@ -85,7 +85,7 @@ fun TextSummaryScreen(
                     IconButton(onClick = { showHistoryDialog = true }) {
                         Icon(Icons.Default.History, contentDescription = "History")
                     }
-                }
+                },
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -230,36 +230,37 @@ fun TextSummaryScreen(
                     LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp)) {
                         items(uiState.historyList) { history ->
                             Card(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp)
-                                    .clickable { 
-                                        viewModel.loadHistory(history)
-                                        showHistoryDialog = false
-                                    },
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 4.dp)
+                                        .clickable {
+                                            viewModel.loadHistory(history)
+                                            showHistoryDialog = false
+                                        },
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                             ) {
                                 Column(modifier = Modifier.padding(12.dp)) {
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
+                                        verticalAlignment = Alignment.CenterVertically,
                                     ) {
                                         val sdf = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault())
                                         Text(
                                             text = sdf.format(java.util.Date(history.timestamp)),
                                             style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.primary
+                                            color = MaterialTheme.colorScheme.primary,
                                         )
                                         IconButton(
                                             onClick = { viewModel.deleteHistory(history) },
-                                            modifier = Modifier.size(24.dp)
+                                            modifier = Modifier.size(24.dp),
                                         ) {
                                             Icon(
                                                 Icons.Default.Delete,
                                                 contentDescription = "Delete",
                                                 tint = MaterialTheme.colorScheme.error,
-                                                modifier = Modifier.size(16.dp)
+                                                modifier = Modifier.size(16.dp),
                                             )
                                         }
                                     }
@@ -268,7 +269,7 @@ fun TextSummaryScreen(
                                         text = history.sourceTitle,
                                         style = MaterialTheme.typography.bodySmall,
                                         maxLines = 2,
-                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                                     )
                                 }
                             }
@@ -280,7 +281,7 @@ fun TextSummaryScreen(
                 TextButton(onClick = { showHistoryDialog = false }) {
                     Text(stringResource(R.string.close))
                 }
-            }
+            },
         )
     }
 }

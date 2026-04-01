@@ -4,8 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.common.config.GlobalConfigRepository
 import com.example.common.database.dao.ChatDao
-import com.example.common.database.models.ChatSessionEntity
 import com.example.common.database.dao.SummaryHistoryDao
+import com.example.common.database.models.ChatSessionEntity
 import com.example.common.database.models.SummaryHistoryEntity
 import com.example.common.utils.NetworkMonitor
 import com.example.common.utils.toUserFriendlyMessage
@@ -124,8 +124,8 @@ class DialogueSummaryViewModel
                                 SummaryHistoryEntity(
                                     type = "dialogue",
                                     sourceTitle = title,
-                                    summaryResult = summary
-                                )
+                                    summaryResult = summary,
+                                ),
                             )
                         }
                     } else {
@@ -146,9 +146,10 @@ class DialogueSummaryViewModel
         }
 
         fun loadHistory(history: SummaryHistoryEntity) {
-            _uiState.value = _uiState.value.copy(
-                summaryResult = history.summaryResult
-            )
+            _uiState.value =
+                _uiState.value.copy(
+                    summaryResult = history.summaryResult,
+                )
         }
 
         fun deleteHistory(history: SummaryHistoryEntity) {

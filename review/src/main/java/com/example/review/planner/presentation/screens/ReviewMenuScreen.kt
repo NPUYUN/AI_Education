@@ -41,12 +41,13 @@ fun ReviewMenuScreen(
         val screenHeight = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp.dp
 
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(16.dp)
-                .verticalScroll(rememberScrollState())
-                .heightIn(min = screenHeight),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(16.dp)
+                    .verticalScroll(rememberScrollState())
+                    .heightIn(min = screenHeight),
             verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
@@ -54,7 +55,8 @@ fun ReviewMenuScreen(
 
             AnimatedVisibility(
                 visible = visible,
-                enter = fadeIn(animationSpec = tween(durationMillis = 300)) +
+                enter =
+                    fadeIn(animationSpec = tween(durationMillis = 300)) +
                         slideInVertically(animationSpec = tween(durationMillis = 300), initialOffsetY = { it / 2 }),
             ) {
                 ReviewOptionCard(
@@ -73,7 +75,8 @@ fun ReviewMenuScreen(
 
             AnimatedVisibility(
                 visible = visible,
-                enter = fadeIn(animationSpec = tween(durationMillis = 300, delayMillis = 100)) +
+                enter =
+                    fadeIn(animationSpec = tween(durationMillis = 300, delayMillis = 100)) +
                         slideInVertically(animationSpec = tween(durationMillis = 300, delayMillis = 100), initialOffsetY = { it / 2 }),
             ) {
                 ReviewOptionCard(
@@ -92,7 +95,8 @@ fun ReviewMenuScreen(
 
             AnimatedVisibility(
                 visible = visible,
-                enter = fadeIn(animationSpec = tween(durationMillis = 300, delayMillis = 200)) +
+                enter =
+                    fadeIn(animationSpec = tween(durationMillis = 300, delayMillis = 200)) +
                         slideInVertically(animationSpec = tween(durationMillis = 300, delayMillis = 200), initialOffsetY = { it / 2 }),
             ) {
                 ReviewOptionCard(
@@ -119,9 +123,10 @@ fun ReviewOptionCard(
     onClick: () -> Unit,
 ) {
     ElevatedCard(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(100.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .height(100.dp),
         onClick = onClick,
         shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
         elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp),

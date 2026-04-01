@@ -1,7 +1,5 @@
 package com.example.common.ui.components
 
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -18,26 +16,15 @@ fun SafeMarkdownText(
     style: TextStyle? = null,
 ) {
     val context = LocalContext.current
-    val currentStyle = style ?: MaterialTheme.typography.bodyLarge.copy(
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        lineHeight = MaterialTheme.typography.bodyLarge.lineHeight * 1.5,
-    )
+    val currentStyle =
+        style ?: MaterialTheme.typography.bodyLarge.copy(
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            lineHeight = MaterialTheme.typography.bodyLarge.lineHeight * 1.5,
+        )
 
-    // Basic sanitization: Sometimes LLMs return markdown with leading/trailing spaces or unclosed tags
-    // that might crash the renderer.
     val safeMarkdown =
         remember(markdown) {
-            var text = markdown.trim()
-            // Ensure lists are properly formatted with newlines to avoid rendering issues
-            text = text.replace(Regex("([^\n])\n(-|\\*) "), "$1\n\n$2 ")
-            text = text.replace(Regex("([^\n])\n(\\d+\\.) "), "$1\n\n$2 ")
-            // Also ensure markdown blocks like headers have preceding empty lines if they don't
-            text = text.replace(Regex("([^\n])\n(#+) "), "$1\n\n$2 ")
-            // Simple fallback if text is somehow empty
-            if (text.isEmpty()) {
-                text = "暂无内容"
-            }
-            text
+            normalizeMarkdownForDisplay(markdown)
         }
 
     MarkdownText(
@@ -49,4 +36,69 @@ fun SafeMarkdownText(
         disableLinkMovementMethod = true, // Prevents crashes from malformed links
         imageLoader = context.imageLoader,
     )
+}
+
+private fun normalizeMarkdownForDisplay(rawMarkdown: String): String {
+    if (rawMarkdown.isBlank()) return "暂无内容"
+
+    var text =
+        rawMarkdown
+            .replace("\r\n", "\n")
+            .replace('\r', '\n')
+            .replace("\u200B", "")
+            .replace("\uFEFF", "")
+
+    // Some model responses return JSON-escaped newlines. Convert them only when text has
+    // almost no real line breaks, to avoid touching legitimate backslash content.
+    if (!text.contains('\n') && text.contains("\\n")) {
+        text = text.replace("\\n", "\n")
+    }
+
+    text = unwrapOuterMarkdownFence(text).trim()
+
+    val lines = text.lines()
+    val normalized = StringBuilder()
+    var inCodeBlock = false
+
+    for (line in lines) {
+        val trimmedStart = line.trimStart()
+        if (trimmedStart.startsWith("```")) {
+            inCodeBlock = !inCodeBlock
+        }
+
+        val isBlockStart =
+            !inCodeBlock &&
+                (
+                    trimmedStart.startsWith("#") ||
+                        trimmedStart.startsWith("- ") ||
+                        trimmedStart.startsWith("* ") ||
+                        trimmedStart.matches(Regex("^\\d+\\.\\s+.*"))
+                )
+
+        if (isBlockStart && normalized.isNotEmpty() && !normalized.endsWith("\n\n")) {
+            normalized.append('\n')
+        }
+
+        normalized.append(line).append('\n')
+    }
+
+    return normalized.toString().trim().ifEmpty { "暂无内容" }
+}
+
+private fun unwrapOuterMarkdownFence(input: String): String {
+    val trimmed = input.trim()
+    if (!trimmed.startsWith("```") || !trimmed.endsWith("```")) return input
+
+    val lines = trimmed.lines()
+    if (lines.size < 3) return input
+
+    val firstFence = lines.first().trim()
+    val lastFence = lines.last().trim()
+    if (lastFence != "```") return input
+
+    val lang = firstFence.removePrefix("```").trim().lowercase()
+    val allowedLangHints = setOf("", "markdown", "md", "text", "txt")
+    if (lang !in allowedLangHints) return input
+
+    return lines.subList(1, lines.lastIndex).joinToString("\n")
 }

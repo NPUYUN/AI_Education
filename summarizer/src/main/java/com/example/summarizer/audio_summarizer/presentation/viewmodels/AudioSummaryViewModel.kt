@@ -168,8 +168,8 @@ class AudioSummaryViewModel
                                     SummaryHistoryEntity(
                                         type = "audio",
                                         sourceTitle = title,
-                                        summaryResult = summary
-                                    )
+                                        summaryResult = summary,
+                                    ),
                                 )
                             }
                         },
@@ -191,12 +191,13 @@ class AudioSummaryViewModel
                 }
             }
         }
-    
+
         fun loadHistory(history: SummaryHistoryEntity) {
-            _uiState.value = _uiState.value.copy(
-                selectedAudioName = history.sourceTitle,
-                summaryResult = history.summaryResult
-            )
+            _uiState.value =
+                _uiState.value.copy(
+                    selectedAudioName = history.sourceTitle,
+                    summaryResult = history.summaryResult,
+                )
         }
 
         fun deleteHistory(history: SummaryHistoryEntity) {
@@ -204,4 +205,4 @@ class AudioSummaryViewModel
                 summaryHistoryDao.deleteHistory(history)
             }
         }
-}
+    }

@@ -2,7 +2,6 @@ package com.example.review.planner.presentation.screens
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -29,7 +28,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.common.R
-import com.example.common.database.models.ErrorBookEntity
 import com.example.common.database.models.ReviewHistoryEntity
 import com.example.common.ui.components.SafeMarkdownText
 import com.example.review.planner.presentation.viewmodels.ReviewViewModel
@@ -41,7 +39,7 @@ import java.util.Locale
 @Composable
 fun SmartReviewPlannerScreen(
     viewModel: ReviewViewModel,
-    onBack: () -> Unit
+    onBack: () -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val errorEvent by viewModel.errorEvents.collectAsStateWithLifecycle(initialValue = null)
@@ -68,10 +66,10 @@ fun SmartReviewPlannerScreen(
                     IconButton(onClick = { showHistoryDialog = true }) {
                         Icon(Icons.Default.History, contentDescription = "History")
                     }
-                }
+                },
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) }
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { paddingValues ->
         Box(modifier = Modifier.padding(paddingValues).padding(16.dp)) {
             SmartReviewPlannerView(viewModel, uiState)
@@ -83,11 +81,11 @@ fun SmartReviewPlannerScreen(
             title = "复习计划历史",
             historyList = uiState.plannerHistory,
             onDismiss = { showHistoryDialog = false },
-            onSelect = { 
+            onSelect = {
                 viewModel.loadPlannerHistory(it)
                 showHistoryDialog = false
             },
-            onDelete = { viewModel.deleteHistory(it) }
+            onDelete = { viewModel.deleteHistory(it) },
         )
     }
 }
@@ -96,7 +94,7 @@ fun SmartReviewPlannerScreen(
 @Composable
 fun KnowledgeReinforcementScreen(
     viewModel: ReviewViewModel,
-    onBack: () -> Unit
+    onBack: () -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val errorEvent by viewModel.errorEvents.collectAsStateWithLifecycle(initialValue = null)
@@ -123,10 +121,10 @@ fun KnowledgeReinforcementScreen(
                     IconButton(onClick = { showHistoryDialog = true }) {
                         Icon(Icons.Default.History, contentDescription = "History")
                     }
-                }
+                },
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) }
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { paddingValues ->
         Box(modifier = Modifier.padding(paddingValues).padding(16.dp)) {
             KnowledgeReinforcementView(viewModel, uiState)
@@ -138,11 +136,11 @@ fun KnowledgeReinforcementScreen(
             title = "知识巩固历史",
             historyList = uiState.reinforcementHistory,
             onDismiss = { showHistoryDialog = false },
-            onSelect = { 
+            onSelect = {
                 viewModel.loadReinforcementHistory(it)
                 showHistoryDialog = false
             },
-            onDelete = { viewModel.deleteHistory(it) }
+            onDelete = { viewModel.deleteHistory(it) },
         )
     }
 }
@@ -151,7 +149,7 @@ fun KnowledgeReinforcementScreen(
 @Composable
 fun ErrorBookScreen(
     viewModel: ReviewViewModel,
-    onBack: () -> Unit
+    onBack: () -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val errorEvent by viewModel.errorEvents.collectAsStateWithLifecycle(initialValue = null)
@@ -176,10 +174,10 @@ fun ErrorBookScreen(
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
-                }
+                },
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) }
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { paddingValues ->
         Box(modifier = Modifier.padding(paddingValues).padding(16.dp)) {
             ErrorBookView(viewModel, uiState)
@@ -193,7 +191,7 @@ fun HistoryDialog(
     historyList: List<ReviewHistoryEntity>,
     onDismiss: () -> Unit,
     onSelect: (ReviewHistoryEntity) -> Unit,
-    onDelete: (ReviewHistoryEntity) -> Unit
+    onDelete: (ReviewHistoryEntity) -> Unit,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -207,33 +205,34 @@ fun HistoryDialog(
                 LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp)) {
                     items(historyList) { history ->
                         Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp)
-                                .clickable { onSelect(history) },
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp)
+                                    .clickable { onSelect(history) },
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                         ) {
                             Column(modifier = Modifier.padding(12.dp)) {
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
+                                    verticalAlignment = Alignment.CenterVertically,
                                 ) {
                                     val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
                                     Text(
                                         text = sdf.format(Date(history.timestamp)),
                                         style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.primary
+                                        color = MaterialTheme.colorScheme.primary,
                                     )
                                     IconButton(
                                         onClick = { onDelete(history) },
-                                        modifier = Modifier.size(24.dp)
+                                        modifier = Modifier.size(24.dp),
                                     ) {
                                         Icon(
                                             Icons.Default.Delete,
                                             contentDescription = "Delete",
                                             tint = MaterialTheme.colorScheme.error,
-                                            modifier = Modifier.size(16.dp)
+                                            modifier = Modifier.size(16.dp),
                                         )
                                     }
                                 }
@@ -242,7 +241,7 @@ fun HistoryDialog(
                                     text = history.inputParameters,
                                     style = MaterialTheme.typography.bodySmall,
                                     maxLines = 2,
-                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                                 )
                             }
                         }
@@ -254,7 +253,7 @@ fun HistoryDialog(
             TextButton(onClick = onDismiss) {
                 Text(stringResource(R.string.close))
             }
-        }
+        },
     )
 }
 
@@ -369,7 +368,7 @@ fun SmartReviewPlannerView(
                             ) {
                                 SafeMarkdownText(
                                     markdown = plan,
-                                    modifier = Modifier.fillMaxWidth()
+                                    modifier = Modifier.fillMaxWidth(),
                                 )
                             }
                         }
@@ -457,7 +456,7 @@ fun KnowledgeReinforcementView(
                     item {
                         SafeMarkdownText(
                             markdown = quiz,
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
                         )
                     }
                 }
@@ -775,7 +774,7 @@ fun PracticeScreenOverlay(
                         item {
                             SafeMarkdownText(
                                 markdown = uiState.practiceContent,
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier.fillMaxWidth(),
                             )
 
                             Spacer(modifier = Modifier.height(24.dp))
@@ -823,11 +822,15 @@ fun PracticeScreenOverlay(
                                         shape = RoundedCornerShape(12.dp),
                                     ) {
                                         Column(modifier = Modifier.padding(16.dp)) {
-                                            Text("批改结果", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                                            Text(
+                                                "批改结果",
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                            )
                                             Spacer(modifier = Modifier.height(8.dp))
                                             SafeMarkdownText(
                                                 markdown = uiState.practiceGradingResult,
-                                                modifier = Modifier.fillMaxWidth()
+                                                modifier = Modifier.fillMaxWidth(),
                                             )
                                         }
                                     }

@@ -351,8 +351,8 @@ class VideoDownloadViewModel
                                 SummaryHistoryEntity(
                                     type = "video",
                                     sourceTitle = title,
-                                    summaryResult = summaryText
-                                )
+                                    summaryResult = summaryText,
+                                ),
                             )
                         }
                     },

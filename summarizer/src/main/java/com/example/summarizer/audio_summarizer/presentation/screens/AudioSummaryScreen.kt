@@ -28,8 +28,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
@@ -38,7 +38,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.common.R
-import com.example.common.database.models.SummaryHistoryEntity
 import com.example.common.ui.components.SafeMarkdownText
 import com.example.summarizer.audio_summarizer.presentation.viewmodels.AudioSummaryViewModel
 import kotlinx.coroutines.launch
@@ -275,36 +274,37 @@ fun AudioSummaryScreen(
                     LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp)) {
                         items(uiState.historyList) { history ->
                             Card(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp)
-                                    .clickable { 
-                                        viewModel.loadHistory(history)
-                                        showHistoryDialog = false
-                                    },
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 4.dp)
+                                        .clickable {
+                                            viewModel.loadHistory(history)
+                                            showHistoryDialog = false
+                                        },
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                             ) {
                                 Column(modifier = Modifier.padding(12.dp)) {
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
+                                        verticalAlignment = Alignment.CenterVertically,
                                     ) {
                                         val sdf = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault())
                                         Text(
                                             text = sdf.format(java.util.Date(history.timestamp)),
                                             style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.primary
+                                            color = MaterialTheme.colorScheme.primary,
                                         )
                                         IconButton(
                                             onClick = { viewModel.deleteHistory(history) },
-                                            modifier = Modifier.size(24.dp)
+                                            modifier = Modifier.size(24.dp),
                                         ) {
                                             Icon(
                                                 Icons.Default.Delete,
                                                 contentDescription = "Delete",
                                                 tint = MaterialTheme.colorScheme.error,
-                                                modifier = Modifier.size(16.dp)
+                                                modifier = Modifier.size(16.dp),
                                             )
                                         }
                                     }
@@ -313,7 +313,7 @@ fun AudioSummaryScreen(
                                         text = history.sourceTitle,
                                         style = MaterialTheme.typography.bodySmall,
                                         maxLines = 2,
-                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                                     )
                                 }
                             }
@@ -325,7 +325,7 @@ fun AudioSummaryScreen(
                 TextButton(onClick = { showHistoryDialog = false }) {
                     Text(stringResource(R.string.close))
                 }
-            }
+            },
         )
     }
 }

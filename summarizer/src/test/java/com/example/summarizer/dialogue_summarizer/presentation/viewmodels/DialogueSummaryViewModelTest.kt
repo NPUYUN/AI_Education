@@ -67,7 +67,14 @@ class DialogueSummaryViewModelTest {
                 )
             whenever(mockChatDao.getSessions("default_user")).thenReturn(flowOf(sessions))
 
-            viewModel = DialogueSummaryViewModel(mockRepository, mockChatDao, mockGlobalConfigRepository, mockNetworkMonitor, mockSummaryHistoryDao)
+            viewModel =
+                DialogueSummaryViewModel(
+                    mockRepository,
+                    mockChatDao,
+                    mockGlobalConfigRepository,
+                    mockNetworkMonitor,
+                    mockSummaryHistoryDao,
+                )
             advanceUntilIdle()
 
             assertEquals(sessions, viewModel.uiState.value.sessions)
@@ -77,7 +84,14 @@ class DialogueSummaryViewModelTest {
     fun `selectSession updates state`() =
         runTest(testDispatcher) {
             whenever(mockChatDao.getSessions("default_user")).thenReturn(flowOf(emptyList()))
-            viewModel = DialogueSummaryViewModel(mockRepository, mockChatDao, mockGlobalConfigRepository, mockNetworkMonitor, mockSummaryHistoryDao)
+            viewModel =
+                DialogueSummaryViewModel(
+                    mockRepository,
+                    mockChatDao,
+                    mockGlobalConfigRepository,
+                    mockNetworkMonitor,
+                    mockSummaryHistoryDao,
+                )
 
             val session = ChatSessionEntity(id = "1", userId = "default_user", title = "Session 1", timestamp = 0L, lastMessage = "")
             viewModel.selectSession(session)
@@ -90,7 +104,14 @@ class DialogueSummaryViewModelTest {
     fun `summarizeSelectedSession with empty messages sets error`() =
         runTest(testDispatcher) {
             whenever(mockChatDao.getSessions("default_user")).thenReturn(flowOf(emptyList()))
-            viewModel = DialogueSummaryViewModel(mockRepository, mockChatDao, mockGlobalConfigRepository, mockNetworkMonitor, mockSummaryHistoryDao)
+            viewModel =
+                DialogueSummaryViewModel(
+                    mockRepository,
+                    mockChatDao,
+                    mockGlobalConfigRepository,
+                    mockNetworkMonitor,
+                    mockSummaryHistoryDao,
+                )
 
             val errors = mutableListOf<String>()
             val job = launch { viewModel.errorEvents.toList(errors) }
@@ -112,7 +133,14 @@ class DialogueSummaryViewModelTest {
     fun `summarizeSelectedSession success updates summaryResult`() =
         runTest(testDispatcher) {
             whenever(mockChatDao.getSessions("default_user")).thenReturn(flowOf(emptyList()))
-            viewModel = DialogueSummaryViewModel(mockRepository, mockChatDao, mockGlobalConfigRepository, mockNetworkMonitor, mockSummaryHistoryDao)
+            viewModel =
+                DialogueSummaryViewModel(
+                    mockRepository,
+                    mockChatDao,
+                    mockGlobalConfigRepository,
+                    mockNetworkMonitor,
+                    mockSummaryHistoryDao,
+                )
 
             val errors = mutableListOf<String>()
             val job = launch { viewModel.errorEvents.toList(errors) }

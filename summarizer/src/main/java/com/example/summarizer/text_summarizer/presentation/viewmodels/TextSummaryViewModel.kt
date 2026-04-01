@@ -86,17 +86,18 @@ class TextSummaryViewModel
                                     summaryResult = summary,
                                 )
                             viewModelScope.launch {
-                                val title = if (_uiState.value.extractedFileName.isNotBlank()) {
-                                    _uiState.value.extractedFileName
-                                } else {
-                                    textToSummarize.take(20).replace("\n", " ") + "..."
-                                }
+                                val title =
+                                    if (_uiState.value.extractedFileName.isNotBlank()) {
+                                        _uiState.value.extractedFileName
+                                    } else {
+                                        textToSummarize.take(20).replace("\n", " ") + "..."
+                                    }
                                 summaryHistoryDao.insertHistory(
                                     SummaryHistoryEntity(
                                         type = "text",
                                         sourceTitle = title,
-                                        summaryResult = summary
-                                    )
+                                        summaryResult = summary,
+                                    ),
                                 )
                             }
                         },
@@ -142,10 +143,11 @@ class TextSummaryViewModel
         }
 
         fun loadHistory(history: SummaryHistoryEntity) {
-            _uiState.value = _uiState.value.copy(
-                inputText = history.sourceTitle,
-                summaryResult = history.summaryResult
-            )
+            _uiState.value =
+                _uiState.value.copy(
+                    inputText = history.sourceTitle,
+                    summaryResult = history.summaryResult,
+                )
         }
 
         fun deleteHistory(history: SummaryHistoryEntity) {
