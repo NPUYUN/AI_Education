@@ -1,9 +1,11 @@
 package com.example.review.planner.presentation.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -11,8 +13,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -41,6 +46,11 @@ fun ReviewScreen(viewModel: ReviewViewModel) {
         errorEvent?.let {
             snackbarHostState.showSnackbar(it)
         }
+    }
+
+    if (uiState.showPracticeScreen) {
+        PracticeScreenOverlay(viewModel, uiState)
+        return
     }
 
     val tabs =
@@ -100,15 +110,9 @@ fun ReviewScreen(viewModel: ReviewViewModel) {
                     label = "TabAnimation",
                 ) { targetTab ->
                     when (targetTab) {
-                        0 -> SmartReviewPlannerView(viewModel, uiState.subjectInput, uiState.isGeneratingPlan, uiState.reviewPlan)
-                        1 ->
-                            KnowledgeReinforcementView(
-                                viewModel,
-                                uiState.knowledgePointInput,
-                                uiState.isGeneratingQuiz,
-                                uiState.reinforcementQuiz,
-                            )
-                        2 -> ErrorBookView(viewModel, uiState.errorRecords)
+                        0 -> SmartReviewPlannerView(viewModel, uiState)
+                        1 -> KnowledgeReinforcementView(viewModel, uiState)
+                        2 -> ErrorBookView(viewModel, uiState)
                     }
                 }
             }
@@ -119,10 +123,12 @@ fun ReviewScreen(viewModel: ReviewViewModel) {
 @Composable
 fun SmartReviewPlannerView(
     viewModel: ReviewViewModel,
-    subjectInput: String,
-    isGenerating: Boolean,
-    plan: String,
+    uiState: com.example.review.planner.presentation.viewmodels.ReviewUiState
 ) {
+    val subjectInput = uiState.subjectInput
+    val isGenerating = uiState.isGeneratingPlan
+    val plan = uiState.reviewPlan
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.fillMaxSize(),
@@ -130,11 +136,22 @@ fun SmartReviewPlannerView(
         OutlinedTextField(
             value = subjectInput,
             onValueChange = { viewModel.updateSubjectInput(it) },
-            label = { Text(stringResource(R.string.review_subjects_comma_separated)) },
-            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+            label = { Text("输入附加需求或科目（可选）") },
+            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
             enabled = !isGenerating,
             shape = RoundedCornerShape(12.dp),
         )
+        
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp).clickable { viewModel.toggleUseRecentContextForPlan(!uiState.useRecentContextForPlan) }
+        ) {
+            Checkbox(
+                checked = uiState.useRecentContextForPlan,
+                onCheckedChange = { viewModel.toggleUseRecentContextForPlan(it) }
+            )
+            Text("基于最近学习记录（对话和错题）找出薄弱点生成计划", style = MaterialTheme.typography.bodyMedium)
+        }
 
         AnimatedContent(
             targetState = plan.isBlank() && !isGenerating,
@@ -222,10 +239,12 @@ fun SmartReviewPlannerView(
 @Composable
 fun KnowledgeReinforcementView(
     viewModel: ReviewViewModel,
-    input: String,
-    isGenerating: Boolean,
-    quiz: String,
+    uiState: com.example.review.planner.presentation.viewmodels.ReviewUiState
 ) {
+    val input = uiState.knowledgePointInput
+    val isGenerating = uiState.isGeneratingQuiz
+    val quiz = uiState.reinforcementQuiz
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.fillMaxSize(),
@@ -233,17 +252,26 @@ fun KnowledgeReinforcementView(
         OutlinedTextField(
             value = input,
             onValueChange = { viewModel.updateKnowledgePointInput(it) },
-            label = { Text(stringResource(R.string.input_weak_knowledge_point)) },
+            label = { Text("输入附加需求或知识点（可选）") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             shape = RoundedCornerShape(12.dp),
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 16.dp).clickable { viewModel.toggleUseRecentContextForQuiz(!uiState.useRecentContextForQuiz) }
+        ) {
+            Checkbox(
+                checked = uiState.useRecentContextForQuiz,
+                onCheckedChange = { viewModel.toggleUseRecentContextForQuiz(it) }
+            )
+            Text("基于最近学习记录总结知识点", style = MaterialTheme.typography.bodyMedium)
+        }
 
         Button(
             onClick = { viewModel.generateReinforcementQuiz() },
-            enabled = !isGenerating && input.isNotBlank(),
+            enabled = !isGenerating,
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
             contentPadding = PaddingValues(vertical = 12.dp),
@@ -291,8 +319,14 @@ fun KnowledgeReinforcementView(
 @Composable
 fun ErrorBookView(
     viewModel: ReviewViewModel,
-    records: List<ErrorBookEntity>,
+    uiState: com.example.review.planner.presentation.viewmodels.ReviewUiState
 ) {
+    var showGenerateDialog by remember { mutableStateOf(false) }
+    var generateCount by remember { mutableFloatStateOf(5f) }
+
+    val records = uiState.errorRecords
+    val selectedIds = uiState.selectedErrorIds
+
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -304,15 +338,26 @@ fun ErrorBookView(
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
             )
-            IconButton(
-                onClick = { viewModel.addMockErrorRecord() },
-                modifier = Modifier.background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(12.dp)),
-            ) {
-                Icon(
-                    Icons.Default.Add,
-                    contentDescription = stringResource(R.string.add_test_data),
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                )
+            Row {
+                TextButton(onClick = { 
+                    if (selectedIds.size == records.size && records.isNotEmpty()) {
+                        viewModel.clearErrorSelection()
+                    } else {
+                        viewModel.selectAllErrors()
+                    }
+                }) {
+                    Text(if (selectedIds.size == records.size && records.isNotEmpty()) "取消全选" else "全选")
+                }
+                IconButton(
+                    onClick = { viewModel.addMockErrorRecord() },
+                    modifier = Modifier.background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(12.dp)),
+                ) {
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = stringResource(R.string.add_test_data),
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                }
             }
         }
 
@@ -321,6 +366,7 @@ fun ErrorBookView(
         AnimatedContent(
             targetState = records.isEmpty(),
             label = "ErrorBookContent",
+            modifier = Modifier.weight(1f)
         ) { isEmpty ->
             if (isEmpty) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -334,18 +380,24 @@ fun ErrorBookView(
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(bottom = 16.dp),
+                    contentPadding = PaddingValues(bottom = 80.dp),
                 ) {
                     items(records, key = { it.id }) { record ->
+                        val isSelected = selectedIds.contains(record.id)
                         Card(
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
                                     .animateItemPlacement()
-                                    .shadow(2.dp, RoundedCornerShape(16.dp))
+                                    .shadow(if (isSelected) 4.dp else 2.dp, RoundedCornerShape(16.dp))
+                                    .clickable { viewModel.toggleErrorSelection(record.id) }
                                     .animateContentSize(),
                             shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)),
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f) 
+                                                 else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+                            ),
+                            border = if (isSelected) androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null
                         ) {
                             Column(modifier = Modifier.padding(20.dp)) {
                                 Row(
@@ -353,17 +405,25 @@ fun ErrorBookView(
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
-                                    Surface(
-                                        color = MaterialTheme.colorScheme.primaryContainer,
-                                        shape = RoundedCornerShape(8.dp),
-                                    ) {
-                                        Text(
-                                            text = record.subject,
-                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                                            style = MaterialTheme.typography.labelMedium,
-                                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                            fontWeight = FontWeight.Bold,
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            imageVector = if (isSelected) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
+                                            contentDescription = "Select",
+                                            tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.padding(end = 8.dp)
                                         )
+                                        Surface(
+                                            color = MaterialTheme.colorScheme.primaryContainer,
+                                            shape = RoundedCornerShape(8.dp),
+                                        ) {
+                                            Text(
+                                                text = record.subject,
+                                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                                                style = MaterialTheme.typography.labelMedium,
+                                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                                fontWeight = FontWeight.Bold,
+                                            )
+                                        }
                                     }
                                     IconButton(
                                         onClick = { viewModel.deleteErrorRecord(record) },
@@ -426,6 +486,177 @@ fun ErrorBookView(
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
                                 )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Bottom action bar
+        AnimatedVisibility(
+            visible = selectedIds.isNotEmpty(),
+            enter = slideInVertically { it } + fadeIn(),
+            exit = slideOutVertically { it } + fadeOut()
+        ) {
+            Surface(
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                shape = RoundedCornerShape(16.dp),
+                shadowElevation = 8.dp,
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    Button(
+                        onClick = { viewModel.startRedoPractice() },
+                        modifier = Modifier.weight(1f).padding(end = 8.dp)
+                    ) {
+                        Text("一键测试")
+                    }
+                    Button(
+                        onClick = { showGenerateDialog = true },
+                        modifier = Modifier.weight(1f).padding(start = 8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+                    ) {
+                        Text("一键生成")
+                    }
+                }
+            }
+        }
+    }
+
+    if (showGenerateDialog) {
+        AlertDialog(
+            onDismissRequest = { showGenerateDialog = false },
+            title = { Text("生成相似题目") },
+            text = {
+                Column {
+                    Text("请选择要生成的题目总数: ${generateCount.toInt()}题")
+                    Slider(
+                        value = generateCount,
+                        onValueChange = { generateCount = it },
+                        valueRange = 1f..20f,
+                        steps = 19
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showGenerateDialog = false
+                    viewModel.generateSimilarPractice(generateCount.toInt())
+                }) {
+                    Text("确定")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showGenerateDialog = false }) {
+                    Text("取消")
+                }
+            }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun PracticeScreenOverlay(
+    viewModel: ReviewViewModel,
+    uiState: com.example.review.planner.presentation.viewmodels.ReviewUiState
+) {
+    BackHandler {
+        viewModel.closePracticeScreen()
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("做题与批改", fontWeight = FontWeight.Bold) },
+                navigationIcon = {
+                    IconButton(onClick = { viewModel.closePracticeScreen() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(16.dp)
+        ) {
+            if (uiState.isGeneratingPractice) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        CircularProgressIndicator()
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text("正在生成高质量题目...")
+                    }
+                }
+            } else {
+                Card(
+                    modifier = Modifier.fillMaxWidth().weight(1f).shadow(2.dp, RoundedCornerShape(16.dp)),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(16.dp)
+                    ) {
+                        SafeMarkdownText(markdown = uiState.practiceContent)
+                        
+                        Spacer(modifier = Modifier.height(24.dp))
+                        HorizontalDivider()
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        Text("你的作答：", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        OutlinedTextField(
+                            value = uiState.practiceAnswerInput,
+                            onValueChange = { viewModel.updatePracticeAnswer(it) },
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp),
+                            placeholder = { Text("请在此输入你的答案，按题目顺序作答...") },
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        Button(
+                            onClick = { viewModel.gradePractice() },
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = !uiState.isGradingPractice,
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            if (uiState.isGradingPractice) {
+                                CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("正在批改...")
+                            } else {
+                                Text("提交批改")
+                            }
+                        }
+
+                        AnimatedVisibility(
+                            visible = uiState.practiceGradingResult.isNotBlank(),
+                            enter = fadeIn() + expandVertically()
+                        ) {
+                            Column {
+                                Spacer(modifier = Modifier.height(24.dp))
+                                Surface(
+                                    color = MaterialTheme.colorScheme.secondaryContainer,
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Column(modifier = Modifier.padding(16.dp)) {
+                                        Text("批改结果", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        SafeMarkdownText(markdown = uiState.practiceGradingResult)
+                                    }
+                                }
                             }
                         }
                     }

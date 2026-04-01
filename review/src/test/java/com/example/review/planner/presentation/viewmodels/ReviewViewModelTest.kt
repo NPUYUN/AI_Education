@@ -2,6 +2,7 @@ package com.example.review.planner.presentation.viewmodels
 
 import com.example.common.config.GlobalConfigRepository
 import com.example.common.database.PreferencesManager
+import com.example.common.database.dao.ChatDao
 import com.example.common.database.dao.ErrorBookDao
 import com.example.common.database.models.ErrorBookEntity
 import com.example.common.utils.NetworkMonitor
@@ -24,6 +25,7 @@ class ReviewViewModelTest {
     private lateinit var viewModel: ReviewViewModel
     private lateinit var mockRepository: ReviewRepository
     private lateinit var mockErrorBookDao: ErrorBookDao
+    private lateinit var mockChatDao: ChatDao
     private lateinit var mockGlobalConfigRepository: GlobalConfigRepository
     private lateinit var mockPreferencesManager: PreferencesManager
     private lateinit var mockNetworkMonitor: NetworkMonitor
@@ -35,6 +37,7 @@ class ReviewViewModelTest {
         Dispatchers.setMain(testDispatcher)
         mockRepository = mock()
         mockErrorBookDao = mock()
+        mockChatDao = mock()
         mockGlobalConfigRepository = mock()
         mockPreferencesManager = mock()
         mockNetworkMonitor = mock()
@@ -43,6 +46,7 @@ class ReviewViewModelTest {
         whenever(mockGlobalConfigRepository.getAiTutorModelName()).thenReturn(flowOf("test_model"))
         whenever(mockGlobalConfigRepository.getAiTutorBaseUrl()).thenReturn(flowOf("test_url"))
         whenever(mockErrorBookDao.getAllErrorRecords()).thenReturn(flowOf(emptyList()))
+        whenever(mockChatDao.getSessions(any())).thenReturn(flowOf(emptyList()))
         whenever(mockPreferencesManager.getString(any(), any())).thenReturn(flowOf(""))
         whenever(mockNetworkMonitor.isConnected).thenReturn(MutableStateFlow(true))
     }
@@ -65,6 +69,7 @@ class ReviewViewModelTest {
                 ReviewViewModel(
                     mockRepository,
                     mockErrorBookDao,
+                    mockChatDao,
                     mockGlobalConfigRepository,
                     mockPreferencesManager,
                     mockNetworkMonitor,
@@ -81,6 +86,7 @@ class ReviewViewModelTest {
                 ReviewViewModel(
                     mockRepository,
                     mockErrorBookDao,
+                    mockChatDao,
                     mockGlobalConfigRepository,
                     mockPreferencesManager,
                     mockNetworkMonitor,
@@ -98,13 +104,14 @@ class ReviewViewModelTest {
                 ReviewViewModel(
                     mockRepository,
                     mockErrorBookDao,
+                    mockChatDao,
                     mockGlobalConfigRepository,
                     mockPreferencesManager,
                     mockNetworkMonitor,
                 )
             advanceUntilIdle()
 
-            whenever(mockRepository.generateReviewPlan(any(), any(), any(), any())).thenReturn(Result.success("My Plan"))
+            whenever(mockRepository.generateReviewPlan(any(), any(), any(), any(), any())).thenReturn(Result.success("My Plan"))
 
             viewModel.updateSubjectInput("Math")
             viewModel.generateReviewPlan()
@@ -123,6 +130,7 @@ class ReviewViewModelTest {
                 ReviewViewModel(
                     mockRepository,
                     mockErrorBookDao,
+                    mockChatDao,
                     mockGlobalConfigRepository,
                     mockPreferencesManager,
                     mockNetworkMonitor,
@@ -136,10 +144,11 @@ class ReviewViewModelTest {
                 }
 
             viewModel.updateKnowledgePointInput("   ")
+            viewModel.toggleUseRecentContextForQuiz(false)
             viewModel.generateReinforcementQuiz()
             advanceUntilIdle()
 
-            assertTrue(errors.contains("请输入要巩固的知识点"))
+            assertTrue(errors.contains("请输入要巩固的知识点，或选择基于最近记录生成"))
             job.cancel()
         }
 
@@ -150,6 +159,7 @@ class ReviewViewModelTest {
                 ReviewViewModel(
                     mockRepository,
                     mockErrorBookDao,
+                    mockChatDao,
                     mockGlobalConfigRepository,
                     mockPreferencesManager,
                     mockNetworkMonitor,
@@ -157,7 +167,7 @@ class ReviewViewModelTest {
             advanceUntilIdle()
 
             viewModel.updateKnowledgePointInput("Math")
-            whenever(mockRepository.generateReinforcementQuiz(any(), any(), any(), any())).thenReturn(Result.success("Quiz Data"))
+            whenever(mockRepository.generateReinforcementQuiz(any(), any(), any(), any(), any())).thenReturn(Result.success("Quiz Data"))
 
             viewModel.generateReinforcementQuiz()
             assertTrue(viewModel.uiState.value.isGeneratingQuiz)
@@ -175,6 +185,7 @@ class ReviewViewModelTest {
                 ReviewViewModel(
                     mockRepository,
                     mockErrorBookDao,
+                    mockChatDao,
                     mockGlobalConfigRepository,
                     mockPreferencesManager,
                     mockNetworkMonitor,
