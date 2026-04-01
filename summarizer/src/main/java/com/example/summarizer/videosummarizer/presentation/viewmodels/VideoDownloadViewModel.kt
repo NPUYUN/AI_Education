@@ -5,6 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.common.config.AppConstants
 import com.example.common.config.GlobalConfigRepository
+import com.example.common.database.dao.SummaryHistoryDao
+import com.example.common.database.models.SummaryHistoryEntity
 import com.example.common.dispatchers.DispatcherProvider
 import com.example.common.utils.NetworkMonitor
 import com.example.summarizer.videosummarizer.services.DownloadProgress
@@ -67,6 +69,7 @@ data class VideoDownloadUiState(
     val showApiSettings: Boolean = false,
     val currentUserId: String = "", // Added to verify cross-app user data access
     val downloadTasks: List<DownloadTask> = emptyList(),
+    val historyList: List<SummaryHistoryEntity> = emptyList(),
 )
 
 @HiltViewModel
@@ -82,6 +85,7 @@ class VideoDownloadViewModel
         private val processLocalVideoUseCase: ProcessLocalVideoUseCase,
         private val summarizeVideoUseCase: SummarizeVideoUseCase,
         private val networkMonitor: NetworkMonitor,
+        private val summaryHistoryDao: SummaryHistoryDao,
     ) : ViewModel() {
         private val apiKeyKey = "bailian_api_key"
 
@@ -117,6 +121,11 @@ class VideoDownloadViewModel
             viewModelScope.launch(dispatcherProvider.main) {
                 globalConfigRepository.getVideoSummaryBaseUrl().collect { baseUrl ->
                     _uiState.value = _uiState.value.copy(baseUrl = baseUrl)
+                }
+            }
+            viewModelScope.launch(dispatcherProvider.main) {
+                summaryHistoryDao.getHistoryByType("video").collect { history ->
+                    _uiState.value = _uiState.value.copy(historyList = history)
                 }
             }
             checkAndDownloadModel()
@@ -335,6 +344,17 @@ class VideoDownloadViewModel
                 result.fold(
                     onSuccess = { summaryText ->
                         updateTaskSummary(taskId) { it.copy(status = SummaryStatus.COMPLETED, summary = summaryText) }
+                        viewModelScope.launch(dispatcherProvider.io) {
+                            val task = _uiState.value.downloadTasks.firstOrNull { it.id == taskId }
+                            val title = task?.title ?: "Video Summary"
+                            summaryHistoryDao.insertHistory(
+                                SummaryHistoryEntity(
+                                    type = "video",
+                                    sourceTitle = title,
+                                    summaryResult = summaryText
+                                )
+                            )
+                        }
                     },
                     onFailure = { error ->
                         val message = error.message ?: "处理失败"
@@ -451,5 +471,11 @@ class VideoDownloadViewModel
                 .filterNot { it.startsWith("WARNING:", ignoreCase = true) }
                 .take(4)
                 .joinToString("\n")
+        }
+
+        fun deleteHistory(history: SummaryHistoryEntity) {
+            viewModelScope.launch(dispatcherProvider.io) {
+                summaryHistoryDao.deleteHistory(history)
+            }
         }
     }

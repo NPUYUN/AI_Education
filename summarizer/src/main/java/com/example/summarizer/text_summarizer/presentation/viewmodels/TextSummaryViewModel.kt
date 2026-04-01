@@ -4,6 +4,8 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.common.config.GlobalConfigRepository
+import com.example.common.database.dao.SummaryHistoryDao
+import com.example.common.database.models.SummaryHistoryEntity
 import com.example.common.utils.NetworkMonitor
 import com.example.common.utils.toUserFriendlyMessage
 import com.example.summarizer.text_summarizer.services.TextExtractionService
@@ -22,6 +24,8 @@ data class TextSummaryUiState(
     val isSummarizing: Boolean = false,
     val isExtractingFile: Boolean = false,
     val summaryResult: String = "",
+    val extractedFileName: String = "",
+    val historyList: List<SummaryHistoryEntity> = emptyList(),
 )
 
 @HiltViewModel
@@ -32,12 +36,21 @@ class TextSummaryViewModel
         private val textExtractionService: TextExtractionService,
         private val globalConfigRepository: GlobalConfigRepository,
         private val networkMonitor: NetworkMonitor,
+        private val summaryHistoryDao: SummaryHistoryDao,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(TextSummaryUiState())
         val uiState: StateFlow<TextSummaryUiState> = _uiState.asStateFlow()
 
         private val _errorEvents = kotlinx.coroutines.channels.Channel<String>()
         val errorEvents = _errorEvents.receiveAsFlow()
+
+        init {
+            viewModelScope.launch {
+                summaryHistoryDao.getHistoryByType("text").collect { history ->
+                    _uiState.value = _uiState.value.copy(historyList = history)
+                }
+            }
+        }
 
         fun updateInputText(text: String) {
             _uiState.value = _uiState.value.copy(inputText = text)
@@ -72,6 +85,20 @@ class TextSummaryViewModel
                                     isSummarizing = false,
                                     summaryResult = summary,
                                 )
+                            viewModelScope.launch {
+                                val title = if (_uiState.value.extractedFileName.isNotBlank()) {
+                                    _uiState.value.extractedFileName
+                                } else {
+                                    textToSummarize.take(20).replace("\n", " ") + "..."
+                                }
+                                summaryHistoryDao.insertHistory(
+                                    SummaryHistoryEntity(
+                                        type = "text",
+                                        sourceTitle = title,
+                                        summaryResult = summary
+                                    )
+                                )
+                            }
                         },
                         onFailure = { e ->
                             _uiState.value =
@@ -111,6 +138,19 @@ class TextSummaryViewModel
                         _errorEvents.send(e.message ?: "解析文件失败")
                     },
                 )
+            }
+        }
+
+        fun loadHistory(history: SummaryHistoryEntity) {
+            _uiState.value = _uiState.value.copy(
+                inputText = history.sourceTitle,
+                summaryResult = history.summaryResult
+            )
+        }
+
+        fun deleteHistory(history: SummaryHistoryEntity) {
+            viewModelScope.launch {
+                summaryHistoryDao.deleteHistory(history)
             }
         }
     }

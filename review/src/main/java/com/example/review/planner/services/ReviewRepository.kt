@@ -194,7 +194,7 @@ class ReviewRepository
                     val service = retrofit.create(OpenAiService::class.java)
 
                     val problemsStr = sourceProblems.joinToString("\n\n") { "原题：$it" }
-                    val prompt = "请根据以下错题，生成 ${count} 道相似的练习题（注意难度和考点要相似，题型可以有选择题或解答题，题目分布要均匀）。请在最后附上这 ${count} 道题的详细答案解析。请使用Markdown格式输出。\n\n$problemsStr"
+                    val prompt = "请根据以下错题，生成 $count 道相似的练习题（注意难度和考点要相似，题型可以有选择题或解答题，题目分布要均匀）。请在最后附上这 $count 道题的详细答案解析。请使用Markdown格式输出。\n\n$problemsStr"
 
                     val messages =
                         listOf(

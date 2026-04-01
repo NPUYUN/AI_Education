@@ -15,14 +15,24 @@ import dev.jeziellago.compose.markdowntext.MarkdownText
 fun SafeMarkdownText(
     markdown: String,
     modifier: Modifier = Modifier,
-    style: TextStyle = LocalTextStyle.current,
+    style: TextStyle? = null,
 ) {
     val context = LocalContext.current
+    val currentStyle = style ?: MaterialTheme.typography.bodyLarge.copy(
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        lineHeight = MaterialTheme.typography.bodyLarge.lineHeight * 1.5,
+    )
+
     // Basic sanitization: Sometimes LLMs return markdown with leading/trailing spaces or unclosed tags
     // that might crash the renderer.
     val safeMarkdown =
         remember(markdown) {
             var text = markdown.trim()
+            // Ensure lists are properly formatted with newlines to avoid rendering issues
+            text = text.replace(Regex("([^\n])\n(-|\\*) "), "$1\n\n$2 ")
+            text = text.replace(Regex("([^\n])\n(\\d+\\.) "), "$1\n\n$2 ")
+            // Also ensure markdown blocks like headers have preceding empty lines if they don't
+            text = text.replace(Regex("([^\n])\n(#+) "), "$1\n\n$2 ")
             // Simple fallback if text is somehow empty
             if (text.isEmpty()) {
                 text = "暂无内容"
@@ -32,8 +42,9 @@ fun SafeMarkdownText(
 
     MarkdownText(
         markdown = safeMarkdown,
-        color = MaterialTheme.colorScheme.onSurface,
-        modifier = modifier.fillMaxWidth(),
+        color = currentStyle.color,
+        style = currentStyle,
+        modifier = modifier,
         isTextSelectable = true,
         disableLinkMovementMethod = true, // Prevents crashes from malformed links
         imageLoader = context.imageLoader,

@@ -41,9 +41,10 @@ fun VideoSummaryScreen(
     viewModel: VideoDownloadViewModel,
     navController: NavController,
 ) {
-    SubScreenScaffold(title = stringResource(R.string.video_summary), onBack = { navController.popBackStack() }) {
-        VideoDownloadScreen(viewModel = viewModel)
-    }
+    VideoDownloadScreen(
+        viewModel = viewModel,
+        onNavigateBack = { navController.popBackStack() },
+    )
 }
 
 @Composable
@@ -51,11 +52,10 @@ fun TextSummaryScreenWrapper(
     viewModel: com.example.summarizer.text_summarizer.presentation.viewmodels.TextSummaryViewModel,
     navController: NavController,
 ) {
-    SubScreenScaffold(title = stringResource(R.string.text_summary), onBack = { navController.popBackStack() }) {
-        com.example.summarizer.text_summarizer.presentation.screens.TextSummaryScreen(
-            viewModel = viewModel,
-        )
-    }
+    com.example.summarizer.text_summarizer.presentation.screens.TextSummaryScreen(
+        viewModel = viewModel,
+        onNavigateBack = { navController.popBackStack() },
+    )
 }
 
 @Composable

@@ -40,12 +40,18 @@ class SummarizerFeatureApi
 
             navGraphBuilder.composable("video") {
                 val videoViewModel: VideoDownloadViewModel = hiltViewModel()
-                VideoDownloadScreen(videoViewModel)
+                VideoDownloadScreen(
+                    viewModel = videoViewModel,
+                    onNavigateBack = { navController.popBackStack() },
+                )
             }
 
             navGraphBuilder.composable("text_summary") {
                 val textSummaryViewModel: TextSummaryViewModel = hiltViewModel()
-                TextSummaryScreen(viewModel = textSummaryViewModel)
+                TextSummaryScreen(
+                    viewModel = textSummaryViewModel,
+                    onNavigateBack = { navController.popBackStack() },
+                )
             }
 
             navGraphBuilder.composable("audio_summary") {

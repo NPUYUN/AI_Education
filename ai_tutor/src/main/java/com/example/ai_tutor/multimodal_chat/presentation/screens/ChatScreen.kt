@@ -479,11 +479,6 @@ fun AssistantMessage(markdown: String) {
         ) {
             SafeMarkdownText(
                 markdown = markdown,
-                style =
-                    MaterialTheme.typography.bodyLarge.copy(
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        lineHeight = MaterialTheme.typography.bodyLarge.lineHeight * 1.5,
-                    ),
                 modifier = Modifier.fillMaxWidth(),
             )
         }

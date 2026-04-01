@@ -28,7 +28,10 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background,
                 ) {
                     val viewModel: VideoDownloadViewModel = hiltViewModel()
-                    VideoDownloadScreen(viewModel = viewModel)
+                    VideoDownloadScreen(
+                        viewModel = viewModel,
+                        onNavigateBack = { finish() },
+                    )
                 }
             }
         }

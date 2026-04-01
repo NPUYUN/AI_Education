@@ -64,6 +64,8 @@ class VideoDownloadViewModelTest {
 
     @Mock private lateinit var networkMonitor: com.example.common.utils.NetworkMonitor
 
+    @Mock private lateinit var summaryHistoryDao: com.example.common.database.dao.SummaryHistoryDao
+
     private lateinit var viewModel: VideoDownloadViewModel
 
     @Before
@@ -90,6 +92,7 @@ class VideoDownloadViewModelTest {
                 processLocalVideoUseCase,
                 summarizeVideoUseCase,
                 networkMonitor,
+                summaryHistoryDao,
             )
     }
 

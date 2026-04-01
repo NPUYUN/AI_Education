@@ -7,7 +7,9 @@ import com.example.common.config.GlobalConfigRepository
 import com.example.common.database.PreferencesManager
 import com.example.common.database.dao.ChatDao
 import com.example.common.database.dao.ErrorBookDao
+import com.example.common.database.dao.ReviewHistoryDao
 import com.example.common.database.models.ErrorBookEntity
+import com.example.common.database.models.ReviewHistoryEntity
 import com.example.common.utils.NetworkMonitor
 import com.example.common.utils.toUserFriendlyMessage
 import com.example.review.planner.services.ReviewRepository
@@ -39,6 +41,10 @@ data class ReviewUiState(
     val isGradingPractice: Boolean = false,
     val practiceGradingResult: String = "",
     val showPracticeScreen: Boolean = false,
+
+    // History
+    val plannerHistory: List<ReviewHistoryEntity> = emptyList(),
+    val reinforcementHistory: List<ReviewHistoryEntity> = emptyList(),
 )
 
 @HiltViewModel
@@ -48,6 +54,7 @@ class ReviewViewModel
         private val repository: ReviewRepository,
         private val errorBookDao: ErrorBookDao,
         private val chatDao: ChatDao,
+        private val reviewHistoryDao: ReviewHistoryDao,
         private val globalConfigRepository: GlobalConfigRepository,
         private val preferencesManager: PreferencesManager,
         private val networkMonitor: NetworkMonitor,
@@ -62,6 +69,16 @@ class ReviewViewModel
             viewModelScope.launch {
                 errorBookDao.getAllErrorRecords().collect { records ->
                     _uiState.update { it.copy(errorRecords = records) }
+                }
+            }
+            viewModelScope.launch {
+                reviewHistoryDao.getHistoryByType("planner").collect { history ->
+                    _uiState.update { it.copy(plannerHistory = history) }
+                }
+            }
+            viewModelScope.launch {
+                reviewHistoryDao.getHistoryByType("reinforcement").collect { history ->
+                    _uiState.update { it.copy(reinforcementHistory = history) }
                 }
             }
             viewModelScope.launch {
@@ -110,12 +127,15 @@ class ReviewViewModel
             val sessions = chatDao.getSessions("current_user").firstOrNull() ?: emptyList()
             val recentSessions = sessions.take(3)
             val contextBuilder = StringBuilder()
-            
+
             if (recentSessions.isNotEmpty()) {
                 contextBuilder.append("【最近对话记录】\n")
                 for (session in recentSessions) {
                     val msgs = chatDao.getMessages(session.id).firstOrNull() ?: emptyList()
-                    val msgsText = msgs.takeLast(10).joinToString("\n") { "${if(it.role == "user") "学生" else "AI"}: ${it.content.take(50)}" }
+                    val msgsText =
+                        msgs.takeLast(
+                            10,
+                        ).joinToString("\n") { "${if (it.role == "user") "学生" else "AI"}: ${it.content.take(50)}" }
                     if (msgsText.isNotBlank()) {
                         contextBuilder.append("对话：${session.title}\n$msgsText\n\n")
                     }
@@ -136,7 +156,7 @@ class ReviewViewModel
         fun generateReviewPlan() {
             val subjectsInput = _uiState.value.subjectInput
             val useRecent = _uiState.value.useRecentContextForPlan
-            
+
             if (subjectsInput.isBlank() && !useRecent) {
                 viewModelScope.launch { _errorEvents.send("请输入复习科目，或选择基于最近记录生成") }
                 return
@@ -157,7 +177,18 @@ class ReviewViewModel
                     val result = repository.generateReviewPlan(apiKey, baseUrl, modelName, subjectsInput, recentContext)
 
                     if (result.isSuccess) {
-                        _uiState.update { it.copy(isGeneratingPlan = false, reviewPlan = result.getOrNull() ?: "") }
+                        val planContent = result.getOrNull() ?: ""
+                        _uiState.update { it.copy(isGeneratingPlan = false, reviewPlan = planContent) }
+                        
+                        // Save history
+                        val inputParams = if (useRecent) "科目需求: $subjectsInput\n[包含最近学习记录]" else "科目需求: $subjectsInput"
+                        reviewHistoryDao.insertHistory(
+                            ReviewHistoryEntity(
+                                type = "planner",
+                                inputParameters = inputParams,
+                                resultContent = planContent
+                            )
+                        )
                     } else {
                         val exception = result.exceptionOrNull()
                         val errorMsg = exception?.toUserFriendlyMessage() ?: "未知错误"
@@ -196,7 +227,18 @@ class ReviewViewModel
                     val result = repository.generateReinforcementQuiz(apiKey, baseUrl, modelName, kp, recentContext)
 
                     if (result.isSuccess) {
-                        _uiState.update { it.copy(isGeneratingQuiz = false, reinforcementQuiz = result.getOrNull() ?: "") }
+                        val quizContent = result.getOrNull() ?: ""
+                        _uiState.update { it.copy(isGeneratingQuiz = false, reinforcementQuiz = quizContent) }
+                        
+                        // Save history
+                        val inputParams = if (useRecent) "知识点/需求: $kp\n[包含最近学习记录]" else "知识点/需求: $kp"
+                        reviewHistoryDao.insertHistory(
+                            ReviewHistoryEntity(
+                                type = "reinforcement",
+                                inputParameters = inputParams,
+                                resultContent = quizContent
+                            )
+                        )
                     } else {
                         val exception = result.exceptionOrNull()
                         val errorMsg = exception?.toUserFriendlyMessage() ?: "未知错误"
@@ -211,6 +253,20 @@ class ReviewViewModel
             }
         }
 
+        fun loadPlannerHistory(historyEntity: ReviewHistoryEntity) {
+            _uiState.update { it.copy(reviewPlan = historyEntity.resultContent) }
+        }
+
+        fun loadReinforcementHistory(historyEntity: ReviewHistoryEntity) {
+            _uiState.update { it.copy(reinforcementQuiz = historyEntity.resultContent) }
+        }
+
+        fun deleteHistory(historyEntity: ReviewHistoryEntity) {
+            viewModelScope.launch {
+                reviewHistoryDao.deleteHistory(historyEntity)
+            }
+        }
+        
         // For demonstration, adding a mock error record
         fun addMockErrorRecord() {
             viewModelScope.launch {
@@ -256,19 +312,20 @@ class ReviewViewModel
         fun startRedoPractice() {
             val selectedIds = _uiState.value.selectedErrorIds
             if (selectedIds.isEmpty()) return
-            
-            val selectedRecords = _uiState.value.errorRecords.filter { selectedIds.contains(it.id) }
-            val practiceContent = selectedRecords.mapIndexed { index, record ->
-                "**第 ${index + 1} 题（${record.subject}）**\n${record.questionContent}"
-            }.joinToString("\n\n")
 
-            _uiState.update { 
+            val selectedRecords = _uiState.value.errorRecords.filter { selectedIds.contains(it.id) }
+            val practiceContent =
+                selectedRecords.mapIndexed { index, record ->
+                    "**第 ${index + 1} 题（${record.subject}）**\n${record.questionContent}"
+                }.joinToString("\n\n")
+
+            _uiState.update {
                 it.copy(
                     practiceContent = practiceContent,
                     practiceAnswerInput = "",
                     practiceGradingResult = "",
                     isGeneratingPractice = false,
-                    showPracticeScreen = true
+                    showPracticeScreen = true,
                 )
             }
         }
@@ -280,14 +337,14 @@ class ReviewViewModel
             val selectedRecords = _uiState.value.errorRecords.filter { selectedIds.contains(it.id) }
             val sourceProblems = selectedRecords.map { it.questionContent }
 
-            _uiState.update { 
+            _uiState.update {
                 it.copy(
-                    isGeneratingPractice = true, 
+                    isGeneratingPractice = true,
                     practiceContent = "",
                     practiceAnswerInput = "",
                     practiceGradingResult = "",
-                    showPracticeScreen = true
-                ) 
+                    showPracticeScreen = true,
+                )
             }
 
             viewModelScope.launch {
@@ -325,14 +382,14 @@ class ReviewViewModel
         fun gradePractice() {
             val content = _uiState.value.practiceContent
             val answer = _uiState.value.practiceAnswerInput
-            
+
             if (content.isBlank() || answer.isBlank()) {
                 viewModelScope.launch { _errorEvents.send("题目或答案不能为空") }
                 return
             }
 
             _uiState.update { it.copy(isGradingPractice = true, practiceGradingResult = "") }
-            
+
             viewModelScope.launch {
                 try {
                     val apiKey = globalConfigRepository.getAiTutorApiKey().firstOrNull()?.takeIf { it.isNotBlank() } ?: AppConstants.DEFAULT_API_KEY

@@ -77,6 +77,18 @@ object CommonModule {
 
     @Provides
     @Singleton
+    fun provideReviewHistoryDao(database: ChatDatabase): com.example.common.database.dao.ReviewHistoryDao {
+        return database.reviewHistoryDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideSummaryHistoryDao(database: ChatDatabase): com.example.common.database.dao.SummaryHistoryDao {
+        return database.summaryHistoryDao()
+    }
+
+    @Provides
+    @Singleton
     fun providePreferencesManager(
         @ApplicationContext context: Context,
     ): PreferencesManager {

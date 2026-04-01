@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.example.common.config.GlobalConfigRepository
 import com.example.common.database.dao.ChatDao
 import com.example.common.database.models.ChatSessionEntity
+import com.example.common.database.dao.SummaryHistoryDao
+import com.example.common.database.models.SummaryHistoryEntity
 import com.example.common.utils.NetworkMonitor
 import com.example.common.utils.toUserFriendlyMessage
 import com.example.summarizer.dialogue_summarizer.services.DialogueSummaryRepository
@@ -23,6 +25,7 @@ data class DialogueSummaryUiState(
     val selectedSession: ChatSessionEntity? = null,
     val isSummarizing: Boolean = false,
     val summaryResult: String = "",
+    val historyList: List<SummaryHistoryEntity> = emptyList(),
 )
 
 @HiltViewModel
@@ -33,6 +36,7 @@ class DialogueSummaryViewModel
         private val chatDao: ChatDao,
         private val globalConfigRepository: GlobalConfigRepository,
         private val networkMonitor: NetworkMonitor,
+        private val summaryHistoryDao: SummaryHistoryDao,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(DialogueSummaryUiState())
         val uiState: StateFlow<DialogueSummaryUiState> = _uiState.asStateFlow()
@@ -42,6 +46,11 @@ class DialogueSummaryViewModel
 
         init {
             loadSessions()
+            viewModelScope.launch {
+                summaryHistoryDao.getHistoryByType("dialogue").collect { history ->
+                    _uiState.value = _uiState.value.copy(historyList = history)
+                }
+            }
         }
 
         private fun loadSessions() {
@@ -103,11 +112,22 @@ class DialogueSummaryViewModel
                     val result = repository.summarizeDialogue(apiKey, messages, modelName, baseUrl)
 
                     if (result.isSuccess) {
+                        val summary = result.getOrNull() ?: ""
                         _uiState.value =
                             _uiState.value.copy(
                                 isSummarizing = false,
-                                summaryResult = result.getOrNull() ?: "",
+                                summaryResult = summary,
                             )
+                        viewModelScope.launch {
+                            val title = session.title.ifBlank { "Dialogue Session ${session.id}" }
+                            summaryHistoryDao.insertHistory(
+                                SummaryHistoryEntity(
+                                    type = "dialogue",
+                                    sourceTitle = title,
+                                    summaryResult = summary
+                                )
+                            )
+                        }
                     } else {
                         _uiState.value =
                             _uiState.value.copy(
@@ -122,6 +142,18 @@ class DialogueSummaryViewModel
                         )
                     _errorEvents.send(e.toUserFriendlyMessage())
                 }
+            }
+        }
+
+        fun loadHistory(history: SummaryHistoryEntity) {
+            _uiState.value = _uiState.value.copy(
+                summaryResult = history.summaryResult
+            )
+        }
+
+        fun deleteHistory(history: SummaryHistoryEntity) {
+            viewModelScope.launch {
+                summaryHistoryDao.deleteHistory(history)
             }
         }
     }

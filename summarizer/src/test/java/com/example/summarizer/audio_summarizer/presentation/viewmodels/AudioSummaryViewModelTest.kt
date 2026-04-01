@@ -74,6 +74,9 @@ class AudioSummaryViewModelTest {
     @Mock
     private lateinit var networkMonitor: NetworkMonitor
 
+    @Mock
+    private lateinit var summaryHistoryDao: com.example.common.database.dao.SummaryHistoryDao
+
     private lateinit var viewModel: AudioSummaryViewModel
 
     @Before
@@ -95,6 +98,7 @@ class AudioSummaryViewModelTest {
                 globalConfigRepository,
                 dispatcherProvider,
                 networkMonitor,
+                summaryHistoryDao,
             )
     }
 

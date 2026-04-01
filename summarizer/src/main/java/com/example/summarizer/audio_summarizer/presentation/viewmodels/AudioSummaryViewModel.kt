@@ -5,6 +5,8 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.common.config.GlobalConfigRepository
+import com.example.common.database.dao.SummaryHistoryDao
+import com.example.common.database.models.SummaryHistoryEntity
 import com.example.common.dispatchers.DispatcherProvider
 import com.example.common.utils.NetworkMonitor
 import com.example.common.utils.toUserFriendlyMessage
@@ -30,6 +32,7 @@ data class AudioSummaryUiState(
     val isSummarizing: Boolean = false,
     val transcriptResult: String = "",
     val summaryResult: String = "",
+    val historyList: List<SummaryHistoryEntity> = emptyList(),
 )
 
 @HiltViewModel
@@ -42,12 +45,21 @@ class AudioSummaryViewModel
         private val globalConfigRepository: GlobalConfigRepository,
         private val dispatcherProvider: DispatcherProvider,
         private val networkMonitor: NetworkMonitor,
+        private val summaryHistoryDao: SummaryHistoryDao,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(AudioSummaryUiState())
         val uiState: StateFlow<AudioSummaryUiState> = _uiState.asStateFlow()
 
         private val _errorEvents = kotlinx.coroutines.channels.Channel<String>()
         val errorEvents = _errorEvents.receiveAsFlow()
+
+        init {
+            viewModelScope.launch {
+                summaryHistoryDao.getHistoryByType("audio").collect { history ->
+                    _uiState.value = _uiState.value.copy(historyList = history)
+                }
+            }
+        }
 
         fun handleAudioUri(uri: Uri) {
             val name = getFileName(uri)
@@ -150,6 +162,16 @@ class AudioSummaryViewModel
                                     isSummarizing = false,
                                     summaryResult = summary,
                                 )
+                            viewModelScope.launch {
+                                val title = _uiState.value.selectedAudioName.ifBlank { "Audio Summary" }
+                                summaryHistoryDao.insertHistory(
+                                    SummaryHistoryEntity(
+                                        type = "audio",
+                                        sourceTitle = title,
+                                        summaryResult = summary
+                                    )
+                                )
+                            }
                         },
                         onFailure = { e ->
                             _uiState.value =
@@ -169,4 +191,17 @@ class AudioSummaryViewModel
                 }
             }
         }
-    }
+    
+        fun loadHistory(history: SummaryHistoryEntity) {
+            _uiState.value = _uiState.value.copy(
+                selectedAudioName = history.sourceTitle,
+                summaryResult = history.summaryResult
+            )
+        }
+
+        fun deleteHistory(history: SummaryHistoryEntity) {
+            viewModelScope.launch {
+                summaryHistoryDao.deleteHistory(history)
+            }
+        }
+}

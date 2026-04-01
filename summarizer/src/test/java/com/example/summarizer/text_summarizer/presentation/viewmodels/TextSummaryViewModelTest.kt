@@ -50,6 +50,9 @@ class TextSummaryViewModelTest {
     @Mock
     private lateinit var networkMonitor: NetworkMonitor
 
+    @Mock
+    private lateinit var summaryHistoryDao: com.example.common.database.dao.SummaryHistoryDao
+
     private lateinit var viewModel: TextSummaryViewModel
 
     @Before
@@ -60,7 +63,7 @@ class TextSummaryViewModelTest {
         `when`(globalConfigRepository.getVideoSummaryModelName()).thenReturn(flowOf("test_model"))
         `when`(networkMonitor.isConnected).thenReturn(MutableStateFlow(true))
 
-        viewModel = TextSummaryViewModel(repository, textExtractionService, globalConfigRepository, networkMonitor)
+        viewModel = TextSummaryViewModel(repository, textExtractionService, globalConfigRepository, networkMonitor, summaryHistoryDao)
     }
 
     @After
