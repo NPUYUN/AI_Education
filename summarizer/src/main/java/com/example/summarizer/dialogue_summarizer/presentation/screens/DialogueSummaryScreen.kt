@@ -19,7 +19,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
-import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
@@ -30,6 +29,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.common.R
 import com.example.common.ui.components.SafeMarkdownText
 import com.example.summarizer.dialogue_summarizer.presentation.viewmodels.DialogueSummaryViewModel
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -157,7 +157,7 @@ fun DialogueSummaryScreen(
                                 Row(
                                     modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
                                     horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
+                                    verticalAlignment = Alignment.CenterVertically,
                                 ) {
                                     Text(
                                         text = stringResource(R.string.summary_result),
@@ -171,9 +171,13 @@ fun DialogueSummaryScreen(
                                             scope.launch {
                                                 com.example.common.utils.PdfExporter.exportToPdf(context, "对话总结", uiState.summaryResult)
                                             }
-                                        }
+                                        },
                                     ) {
-                                        Icon(Icons.Default.Download, contentDescription = "Export PDF", tint = MaterialTheme.colorScheme.primary)
+                                        Icon(
+                                            Icons.Default.Download,
+                                            contentDescription = "Export PDF",
+                                            tint = MaterialTheme.colorScheme.primary,
+                                        )
                                     }
                                 }
                                 HorizontalDivider(modifier = Modifier.padding(bottom = 8.dp))

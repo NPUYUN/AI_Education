@@ -144,9 +144,13 @@ fun SolverScreen(
             TopAppBar(
                 title = {
                     Text(
-                        if (isDetailScreen) stringResource(
-                            R.string.smart_problem_solving,
-                        ) else stringResource(R.string.smart_problem_solving),
+                        if (isDetailScreen) {
+                            stringResource(
+                                R.string.smart_problem_solving,
+                            )
+                        } else {
+                            stringResource(R.string.smart_problem_solving)
+                        },
                     )
                 },
                 navigationIcon = {

@@ -22,17 +22,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.Alignment
-import kotlinx.coroutines.launch
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.common.R
 import com.example.common.ui.components.SafeMarkdownText
 import com.example.summarizer.text_summarizer.presentation.viewmodels.TextSummaryViewModel
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -154,7 +154,7 @@ fun TextSummaryScreen(viewModel: TextSummaryViewModel) {
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(
                                 text = stringResource(R.string.summary_result),
@@ -169,7 +169,7 @@ fun TextSummaryScreen(viewModel: TextSummaryViewModel) {
                                     scope.launch {
                                         com.example.common.utils.PdfExporter.exportToPdf(context, "文本总结", uiState.summaryResult)
                                     }
-                                }
+                                },
                             ) {
                                 Icon(Icons.Default.Download, contentDescription = "Export PDF", tint = MaterialTheme.colorScheme.primary)
                             }

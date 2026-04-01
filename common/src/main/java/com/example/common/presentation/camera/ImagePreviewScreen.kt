@@ -213,20 +213,24 @@ fun ImagePreviewScreen(
                                     try {
                                         val matrix = android.graphics.Matrix()
                                         matrix.postRotate(90f)
-                                        val rotatedBitmap = Bitmap.createBitmap(
-                                            currentBitmap!!,
-                                            0, 0,
-                                            currentBitmap!!.width, currentBitmap!!.height,
-                                            matrix, true
-                                        )
-                                        
+                                        val rotatedBitmap =
+                                            Bitmap.createBitmap(
+                                                currentBitmap!!,
+                                                0,
+                                                0,
+                                                currentBitmap!!.width,
+                                                currentBitmap!!.height,
+                                                matrix,
+                                                true,
+                                            )
+
                                         // Save rotated bitmap to temp file
                                         val file = File(context.cacheDir, "rotated_${System.currentTimeMillis()}.jpg")
                                         val stream = FileOutputStream(file)
                                         rotatedBitmap.compress(Bitmap.CompressFormat.JPEG, 100, stream)
                                         stream.flush()
                                         stream.close()
-                                        
+
                                         withContext(Dispatchers.Main) {
                                             currentBitmap = rotatedBitmap
                                             currentUri = Uri.fromFile(file).toString()
@@ -236,7 +240,7 @@ fun ImagePreviewScreen(
                                     }
                                 }
                             }
-                        }
+                        },
                     ) {
                         Icon(Icons.Default.RotateRight, contentDescription = "Rotate", tint = MaterialTheme.colorScheme.onBackground)
                     }

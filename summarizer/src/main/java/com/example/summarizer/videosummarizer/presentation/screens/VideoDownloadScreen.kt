@@ -1,9 +1,7 @@
 package com.example.summarizer.videosummarizer.presentation.screens
 
-import android.Manifest
 import android.content.Intent
 import android.net.Uri
-import android.os.Build
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -35,7 +33,6 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import kotlinx.coroutines.launch
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
@@ -48,6 +45,7 @@ import com.example.summarizer.videosummarizer.presentation.viewmodels.DownloadTa
 import com.example.summarizer.videosummarizer.presentation.viewmodels.SummaryStatus
 import com.example.summarizer.videosummarizer.presentation.viewmodels.VideoDownloadViewModel
 import com.example.summarizer.videosummarizer.services.DownloadStatus
+import kotlinx.coroutines.launch
 import java.io.File
 
 @androidx.media3.common.util.UnstableApi
@@ -516,7 +514,7 @@ fun DownloadTaskCard(
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(
                                 text = summaryText,
@@ -530,7 +528,7 @@ fun DownloadTaskCard(
                                     scope.launch {
                                         com.example.common.utils.PdfExporter.exportToPdf(context, task.title, task.summary.summary)
                                     }
-                                }
+                                },
                             ) {
                                 Icon(Icons.Default.Download, contentDescription = "Export PDF", tint = MaterialTheme.colorScheme.primary)
                             }
