@@ -205,8 +205,9 @@ class SolverViewModel
                         )
 
                     if (result.isSuccess) {
-                        val solution = result.getOrNull() ?: ""
-                        val drawings = parseDrawingSteps(solution)
+                        val rawSolution = result.getOrNull() ?: ""
+                        val drawings = parseDrawingSteps(rawSolution)
+                        val solution = cleanSolutionText(rawSolution)
                         _uiState.value =
                             _uiState.value.copy(
                                 isSolving = false,
@@ -436,6 +437,19 @@ class SolverViewModel
                 t.contains(
                     "导数",
                 ) || t.contains("抛物线") || t.contains("直线") || t.contains("指数函数") || t.contains("对数函数") || t.contains("三角函数")
+        }
+
+        private fun cleanSolutionText(text: String): String {
+            val startToken = "BEGIN_DRAWING_JSON"
+            val endToken = "END_DRAWING_JSON"
+            val start = text.indexOf(startToken)
+            val end = text.indexOf(endToken)
+            if (start >= 0 && end > start) {
+                // Remove the JSON block and the tags
+                val cleaned = text.substring(0, start) + text.substring(end + endToken.length)
+                return cleaned.trim()
+            }
+            return text
         }
 
         private fun parseDrawingSteps(text: String): List<com.example.solver.geometry_solver.presentation.components.GeometryDrawingStep> {

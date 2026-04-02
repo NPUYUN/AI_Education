@@ -80,6 +80,7 @@ class VideoDownloadViewModelTest {
         `when`(modelDownloader.isModelReady()).thenReturn(true) // Skip model download in simple tests
 
         `when`(networkMonitor.isConnected).thenReturn(MutableStateFlow(true))
+        `when`(summaryHistoryDao.getHistoryByType("video")).thenReturn(flowOf(emptyList()))
 
         viewModel =
             VideoDownloadViewModel(

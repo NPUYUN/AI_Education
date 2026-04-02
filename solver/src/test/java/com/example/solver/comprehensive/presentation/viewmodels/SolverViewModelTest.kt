@@ -239,6 +239,7 @@ class SolverViewModelTest {
 
             assertFalse(viewModel.uiState.value.isSolving)
             assertTrue(viewModel.uiState.value.solutionResult.contains("这是解答。"))
+            assertFalse(viewModel.uiState.value.solutionResult.contains("BEGIN_DRAWING_JSON"))
             assertEquals(1, viewModel.uiState.value.drawingSteps.size)
             assertEquals("画一个圆", viewModel.uiState.value.drawingSteps[0].title)
             assertEquals(1, viewModel.uiState.value.drawingSteps[0].shapes.size)
@@ -280,6 +281,7 @@ class SolverViewModelTest {
 
             assertFalse(viewModel.uiState.value.isSolving)
             assertTrue(viewModel.uiState.value.solutionResult.contains("这是解答。"))
+            assertFalse(viewModel.uiState.value.solutionResult.contains("BEGIN_DRAWING_JSON"))
             assertEquals(0, viewModel.uiState.value.drawingSteps.size) // Should be empty due to parsing exception
         }
 }

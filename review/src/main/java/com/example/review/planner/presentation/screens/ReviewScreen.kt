@@ -16,6 +16,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material3.*
@@ -31,6 +32,7 @@ import com.example.common.R
 import com.example.common.database.models.ReviewHistoryEntity
 import com.example.common.ui.components.SafeMarkdownText
 import com.example.review.planner.presentation.viewmodels.ReviewViewModel
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -63,6 +65,21 @@ fun SmartReviewPlannerScreen(
                     }
                 },
                 actions = {
+                    val scope = rememberCoroutineScope()
+                    val context = androidx.compose.ui.platform.LocalContext.current
+                    if (uiState.reviewPlan.isNotBlank()) {
+                        IconButton(onClick = {
+                            scope.launch {
+                                com.example.common.utils.PdfExporter.exportToPdf(
+                                    context = context,
+                                    title = context.getString(R.string.smart_review_plan),
+                                    content = uiState.reviewPlan
+                                )
+                            }
+                        }) {
+                            Icon(Icons.Default.Download, contentDescription = "Export PDF")
+                        }
+                    }
                     IconButton(onClick = { showHistoryDialog = true }) {
                         Icon(Icons.Default.History, contentDescription = "History")
                     }
@@ -118,6 +135,21 @@ fun KnowledgeReinforcementScreen(
                     }
                 },
                 actions = {
+                    val scope = rememberCoroutineScope()
+                    val context = androidx.compose.ui.platform.LocalContext.current
+                    if (uiState.reinforcementQuiz.isNotBlank()) {
+                        IconButton(onClick = {
+                            scope.launch {
+                                com.example.common.utils.PdfExporter.exportToPdf(
+                                    context = context,
+                                    title = context.getString(R.string.knowledge_point_consolidation),
+                                    content = uiState.reinforcementQuiz
+                                )
+                            }
+                        }) {
+                            Icon(Icons.Default.Download, contentDescription = "Export PDF")
+                        }
+                    }
                     IconButton(onClick = { showHistoryDialog = true }) {
                         Icon(Icons.Default.History, contentDescription = "History")
                     }
@@ -173,6 +205,35 @@ fun ErrorBookScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    val scope = rememberCoroutineScope()
+                    val context = androidx.compose.ui.platform.LocalContext.current
+                    if (uiState.errorRecords.isNotEmpty()) {
+                        IconButton(onClick = {
+                            scope.launch {
+                                val fullContent = buildString {
+                                    append("# 错题本\n\n")
+                                    uiState.errorRecords.forEachIndexed { index, record ->
+                                        append("## ${index + 1}. [${record.subject}]\n\n")
+                                        append(record.questionContent)
+                                        if (!record.errorReason.isNullOrBlank()) {
+                                            append("\n\n**错误原因/知识点：**\n\n")
+                                            append(record.errorReason)
+                                        }
+                                        append("\n\n---\n\n")
+                                    }
+                                }
+                                com.example.common.utils.PdfExporter.exportToPdf(
+                                    context = context,
+                                    title = context.getString(R.string.error_book),
+                                    content = fullContent
+                                )
+                            }
+                        }) {
+                            Icon(Icons.Default.Download, contentDescription = "Export PDF")
+                        }
                     }
                 },
             )
@@ -739,6 +800,34 @@ fun PracticeScreenOverlay(
                 navigationIcon = {
                     IconButton(onClick = { viewModel.closePracticeScreen() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    val scope = rememberCoroutineScope()
+                    val context = androidx.compose.ui.platform.LocalContext.current
+                    if (uiState.practiceContent.isNotBlank()) {
+                        IconButton(onClick = {
+                            scope.launch {
+                                val fullContent = buildString {
+                                    append(uiState.practiceContent)
+                                    if (uiState.practiceAnswerInput.isNotBlank()) {
+                                        append("\n\n---\n\n**你的作答：**\n\n")
+                                        append(uiState.practiceAnswerInput)
+                                    }
+                                    if (uiState.practiceGradingResult.isNotBlank()) {
+                                        append("\n\n---\n\n**批改结果：**\n\n")
+                                        append(uiState.practiceGradingResult)
+                                    }
+                                }
+                                com.example.common.utils.PdfExporter.exportToPdf(
+                                    context = context,
+                                    title = "做题与批改",
+                                    content = fullContent
+                                )
+                            }
+                        }) {
+                            Icon(Icons.Default.Download, contentDescription = "Export PDF")
+                        }
                     }
                 },
             )

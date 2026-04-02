@@ -89,6 +89,7 @@ class AudioSummaryViewModelTest {
         `when`(globalConfigRepository.getVideoSummaryBaseUrl()).thenReturn(flowOf("test_url"))
         `when`(globalConfigRepository.getVideoSummaryModelName()).thenReturn(flowOf("test_model"))
         `when`(networkMonitor.isConnected).thenReturn(kotlinx.coroutines.flow.MutableStateFlow(true))
+        `when`(summaryHistoryDao.getHistoryByType("audio")).thenReturn(flowOf(emptyList()))
 
         viewModel =
             AudioSummaryViewModel(

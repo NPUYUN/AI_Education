@@ -294,77 +294,89 @@ class VideoDownloadViewModel
             }
 
             viewModelScope.launch(dispatcherProvider.io) {
-                if (!networkMonitor.isConnected.value) {
-                    val errorMsg = "当前处于无网络环境，无法使用大模型总结视频。\n您可以继续使用本地视频提取音频及离线转写功能。"
-                    updateTaskSummary(taskId) { it.copy(status = SummaryStatus.FAILED) }
-                    showError(errorMsg)
-                    return@launch
-                }
+                try {
+                    if (!networkMonitor.isConnected.value) {
+                        val errorMsg = "当前处于无网络环境，无法使用大模型总结视频。\n您可以继续使用本地视频提取音频及离线转写功能。"
+                        updateTaskSummary(taskId) { it.copy(status = SummaryStatus.FAILED) }
+                        showError(errorMsg)
+                        return@launch
+                    }
 
-                val apiKey = _uiState.value.apiKey.trim()
-                val modelName = _uiState.value.modelName
-                val baseUrl = _uiState.value.baseUrl
+                    val apiKey = _uiState.value.apiKey.trim()
+                    val modelName = _uiState.value.modelName
+                    val baseUrl = _uiState.value.baseUrl
 
-                if (apiKey.isBlank()) {
-                    updateTaskSummary(taskId) { it.copy(status = SummaryStatus.FAILED) }
-                    showError("尚未配置 API Key，请在弹出的设置中进行配置。")
-                    _uiState.value = _uiState.value.copy(showApiSettings = true)
-                    return@launch
-                }
+                    if (apiKey.isBlank()) {
+                        updateTaskSummary(taskId) { it.copy(status = SummaryStatus.FAILED) }
+                        showError("尚未配置 API Key，请在弹出的设置中进行配置。")
+                        _uiState.value = _uiState.value.copy(showApiSettings = true)
+                        return@launch
+                    }
 
-                updateTaskSummary(taskId) {
-                    it.copy(
-                        status = SummaryStatus.PREPARING,
-                        transcript = "",
-                        summary = "",
-                    )
-                }
+                    updateTaskSummary(taskId) {
+                        it.copy(
+                            status = SummaryStatus.PREPARING,
+                            transcript = "",
+                            summary = "",
+                        )
+                    }
 
-                val localFile = localPath?.let { File(it) }
-                if (localFile == null) {
-                    val errorMsg = "未找到本地文件，无法上传转写"
-                    updateTaskSummary(taskId) { it.copy(status = SummaryStatus.FAILED) }
-                    showError(errorMsg)
-                    return@launch
-                }
+                    val localFile = localPath?.let { File(it) }
+                    if (localFile == null) {
+                        val errorMsg = "未找到本地文件，无法上传转写"
+                        updateTaskSummary(taskId) { it.copy(status = SummaryStatus.FAILED) }
+                        showError(errorMsg)
+                        return@launch
+                    }
 
-                updateTaskSummary(taskId) { it.copy(status = SummaryStatus.TRANSCRIBING) }
+                    updateTaskSummary(taskId) { it.copy(status = SummaryStatus.TRANSCRIBING) }
 
-                val result =
-                    summarizeVideoUseCase(
-                        apiKey = apiKey,
-                        localFile = localFile,
-                        modelName = modelName,
-                        baseUrl = baseUrl,
-                        onTranscriptReady = { transcript ->
-                            updateTaskSummary(taskId) { it.copy(status = SummaryStatus.SUMMARIZING, transcript = transcript) }
+                    val result =
+                        summarizeVideoUseCase(
+                            apiKey = apiKey,
+                            localFile = localFile,
+                            modelName = modelName,
+                            baseUrl = baseUrl,
+                            onTranscriptReady = { transcript ->
+                                updateTaskSummary(taskId) { it.copy(status = SummaryStatus.SUMMARIZING, transcript = transcript) }
+                            },
+                        )
+
+                    result.fold(
+                        onSuccess = { summaryText ->
+                            updateTaskSummary(taskId) { it.copy(status = SummaryStatus.COMPLETED, summary = summaryText) }
+                            showSuccess("视频总结已完成！")
+
+                            // Save to history
+                            viewModelScope.launch(dispatcherProvider.io) {
+                                try {
+                                    val task = _uiState.value.downloadTasks.firstOrNull { it.id == taskId }
+                                    val title = task?.title ?: "Video Summary"
+                                    summaryHistoryDao.insertHistory(
+                                        SummaryHistoryEntity(
+                                            type = "video",
+                                            sourceTitle = title,
+                                            summaryResult = summaryText,
+                                        ),
+                                    )
+                                } catch (e: Exception) {
+                                    // ignore history insertion failure
+                                }
+                            }
+                        },
+                        onFailure = { error ->
+                            val message = error.message ?: "处理失败"
+                            updateTaskSummary(taskId) { it.copy(status = SummaryStatus.FAILED) }
+                            showError(message)
+                            if (message.contains("API Key 无效或未授权") || message.contains("尚未配置 API Key")) {
+                                _uiState.value = _uiState.value.copy(showApiSettings = true)
+                            }
                         },
                     )
-
-                result.fold(
-                    onSuccess = { summaryText ->
-                        updateTaskSummary(taskId) { it.copy(status = SummaryStatus.COMPLETED, summary = summaryText) }
-                        viewModelScope.launch(dispatcherProvider.io) {
-                            val task = _uiState.value.downloadTasks.firstOrNull { it.id == taskId }
-                            val title = task?.title ?: "Video Summary"
-                            summaryHistoryDao.insertHistory(
-                                SummaryHistoryEntity(
-                                    type = "video",
-                                    sourceTitle = title,
-                                    summaryResult = summaryText,
-                                ),
-                            )
-                        }
-                    },
-                    onFailure = { error ->
-                        val message = error.message ?: "处理失败"
-                        updateTaskSummary(taskId) { it.copy(status = SummaryStatus.FAILED) }
-                        showError(message)
-                        if (message.contains("API Key 无效或未授权") || message.contains("尚未配置 API Key")) {
-                            _uiState.value = _uiState.value.copy(showApiSettings = true)
-                        }
-                    },
-                )
+                } catch (e: Exception) {
+                    updateTaskSummary(taskId) { it.copy(status = SummaryStatus.FAILED) }
+                    showError("发生未知错误: ${e.message}")
+                }
             }
         }
 

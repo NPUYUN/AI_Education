@@ -51,6 +51,7 @@ class DialogueSummaryViewModelTest {
         whenever(mockGlobalConfigRepository.getAiTutorModelName()).thenReturn(flowOf("test_model"))
         whenever(mockGlobalConfigRepository.getAiTutorBaseUrl()).thenReturn(flowOf("test_url"))
         whenever(mockNetworkMonitor.isConnected).thenReturn(MutableStateFlow(true))
+        whenever(mockSummaryHistoryDao.getHistoryByType("chat")).thenReturn(flowOf(emptyList()))
     }
 
     @After

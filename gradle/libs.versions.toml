@@ -35,6 +35,7 @@ amap = "9.8.3"
 datastore = "1.0.0"
 constraintlayoutCompose = "1.0.1"
 composeMarkdown = "0.5.0"
+markwon = "4.6.2"
 gson = "2.10.1"
 osmdroid = "6.1.18"
 # mnn = "2.7.0"
@@ -48,6 +49,9 @@ foojay-resolver = { group = "org.gradle.toolchains", name = "foojay-resolver", v
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-constraintlayout-compose = { group = "androidx.constraintlayout", name = "constraintlayout-compose", version.ref = "constraintlayoutCompose" }
 compose-markdown = { group = "com.github.jeziellago", name = "compose-markdown", version.ref = "composeMarkdown" }
+markwon-core = { group = "io.noties.markwon", name = "core", version.ref = "markwon" }
+markwon-ext-latex = { group = "io.noties.markwon", name = "ext-latex", version.ref = "markwon" }
+markwon-ext-tables = { group = "io.noties.markwon", name = "ext-tables", version.ref = "markwon" }
 gson = { group = "com.google.code.gson", name = "gson", version.ref = "gson" }
 osmdroid-android = { group = "org.osmdroid", name = "osmdroid-android", version.ref = "osmdroid" }
 # mnn = { group = "com.taobao.android", name = "mnn", version.ref = "mnn" }

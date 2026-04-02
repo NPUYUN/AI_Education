@@ -110,6 +110,9 @@ dependencies {
 
     // Markdown
     api(libs.compose.markdown)
+    api(libs.markwon.core)
+    api(libs.markwon.ext.latex)
+    api(libs.markwon.ext.tables)
 
     // Hilt
     api(libs.hilt.android)

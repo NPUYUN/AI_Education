@@ -1,13 +1,18 @@
 package com.example.common.ui.components
 
+import android.text.method.LinkMovementMethod
+import android.widget.TextView
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
-import coil.imageLoader
-import dev.jeziellago.compose.markdowntext.MarkdownText
+import androidx.compose.ui.viewinterop.AndroidView
+import io.noties.markwon.Markwon
+import io.noties.markwon.ext.latex.JLatexMathPlugin
+import io.noties.markwon.ext.tables.TablePlugin
 
 @Composable
 fun SafeMarkdownText(
@@ -26,15 +31,29 @@ fun SafeMarkdownText(
         remember(markdown) {
             normalizeMarkdownForDisplay(markdown)
         }
+    val markwon =
+        remember(context) {
+            Markwon
+                .builder(context)
+                .usePlugin(TablePlugin.create(context))
+                .usePlugin(JLatexMathPlugin.create(48f, 0f))
+                .build()
+        }
 
-    MarkdownText(
-        markdown = safeMarkdown,
-        color = currentStyle.color,
-        style = currentStyle,
+    AndroidView(
         modifier = modifier,
-        isTextSelectable = true,
-        disableLinkMovementMethod = true, // Prevents crashes from malformed links
-        imageLoader = context.imageLoader,
+        factory = { ctx ->
+            TextView(ctx).apply {
+                movementMethod = LinkMovementMethod.getInstance()
+                setTextIsSelectable(true)
+                textSize = currentStyle.fontSize.value
+            }
+        },
+        update = { tv ->
+            tv.setTextColor(currentStyle.color.toArgb())
+            tv.textSize = currentStyle.fontSize.value
+            markwon.setMarkdown(tv, safeMarkdown)
+        },
     )
 }
 

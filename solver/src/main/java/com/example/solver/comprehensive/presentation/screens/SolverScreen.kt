@@ -87,7 +87,6 @@ fun SolverScreen(
                 viewModel.setImageUri(uriContent)
                 if (uriContent != null) {
                     isDetailScreen = true
-                    viewModel.solveProblem()
                 }
             } else {
                 val exception = result.error
@@ -353,20 +352,6 @@ fun SolverScreen(
                             .animateContentSize(),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
-                    OutlinedTextField(
-                        value = uiState.questionText,
-                        onValueChange = {
-                            viewModel.updateQuestionText(it)
-                        },
-                        label = { Text(stringResource(R.string.question_supplementary_description_optional)) },
-                        shape = RoundedCornerShape(16.dp),
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .heightIn(min = 100.dp, max = 160.dp),
-                        maxLines = 8,
-                    )
-
                     // Image Preview
                     if (uiState.imageUri != null) {
                         Card(
@@ -397,6 +382,20 @@ fun SolverScreen(
                             }
                         }
                     }
+
+                    OutlinedTextField(
+                        value = uiState.questionText,
+                        onValueChange = {
+                            viewModel.updateQuestionText(it)
+                        },
+                        label = { Text(stringResource(R.string.question_supplementary_description_optional)) },
+                        shape = RoundedCornerShape(16.dp),
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 100.dp, max = 160.dp),
+                        maxLines = 8,
+                    )
 
                     Button(
                         onClick = { viewModel.solveProblem() },
@@ -584,7 +583,7 @@ fun SolverScreen(
                 onDismissRequest = { selectedHistory = null },
                 title = { Text(stringResource(R.string.problem_solving_details)) },
                 text = {
-                    Column {
+                    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                         Text("${item.subject}｜${DateFormatUtils.format(item.timestamp)}")
                         Spacer(modifier = Modifier.height(8.dp))
                         if (item.imageUri != null) {
@@ -595,15 +594,16 @@ fun SolverScreen(
                                     Modifier
                                         .fillMaxWidth()
                                         .height(180.dp),
+                                contentScale = androidx.compose.ui.layout.ContentScale.Fit,
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                         }
-                        Text(stringResource(R.string.question_colon))
+                        Text(stringResource(R.string.question_colon), fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                         Text(item.questionContent)
                         Spacer(modifier = Modifier.height(8.dp))
                         HorizontalDivider()
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text(stringResource(R.string.analysis_colon))
+                        Text(stringResource(R.string.analysis_colon), fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                         SafeMarkdownText(
                             markdown = item.solution,
                             modifier = Modifier.fillMaxWidth(),

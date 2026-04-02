@@ -312,12 +312,15 @@ fun MainScreen(
                 val currentRoute = navBackStackEntry?.destination?.route
 
                 // Show top bar on main tabs and profile page
-                if ((items.any { it.first == currentRoute } && currentRoute != "timeline" && currentRoute != "video") || currentRoute == "profile") {
+                val isMainTab = items.any { it.first == currentRoute } || currentRoute == "review_menu"
+                if ((isMainTab && currentRoute != "timeline" && currentRoute != "video") || currentRoute == "profile") {
                     CenterAlignedTopAppBar(
                         title = {
                             val label =
                                 if (currentRoute == "profile") {
                                     stringResource(R.string.personal_homepage)
+                                } else if (currentRoute == "review_menu") {
+                                    stringResource(R.string.review)
                                 } else {
                                     items.find {
                                         it.first == currentRoute
@@ -326,7 +329,7 @@ fun MainScreen(
                             Text(label)
                         },
                         navigationIcon = {
-                            if (items.any { it.first == currentRoute }) {
+                            if (isMainTab) {
                                 IconButton(onClick = { scope.launch { drawerState.open() } }) {
                                     Icon(Icons.Default.Menu, contentDescription = stringResource(R.string.open_menu))
                                 }
@@ -386,7 +389,7 @@ fun MainScreen(
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = navBackStackEntry?.destination?.route
 
-                if (items.any { it.first == currentRoute }) {
+                if (items.any { it.first == currentRoute } || currentRoute == "review_menu") {
                     NavigationBar(
                         containerColor = MaterialTheme.colorScheme.surface,
                         contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -441,7 +444,9 @@ fun MainScreen(
                         .consumeWindowInsets(innerPadding)
                         .imePadding(),
                 enterTransition = {
-                    if (initialState.destination.route in items.map { it.first } && targetState.destination.route in items.map { it.first }) {
+                    val isInitialMain = initialState.destination.route in items.map { it.first } || initialState.destination.route == "review_menu"
+                    val isTargetMain = targetState.destination.route in items.map { it.first } || targetState.destination.route == "review_menu"
+                    if (isInitialMain && isTargetMain) {
                         fadeIn(animationSpec = tween(300))
                     } else {
                         slideIntoContainer(
@@ -451,7 +456,9 @@ fun MainScreen(
                     }
                 },
                 exitTransition = {
-                    if (initialState.destination.route in items.map { it.first } && targetState.destination.route in items.map { it.first }) {
+                    val isInitialMain = initialState.destination.route in items.map { it.first } || initialState.destination.route == "review_menu"
+                    val isTargetMain = targetState.destination.route in items.map { it.first } || targetState.destination.route == "review_menu"
+                    if (isInitialMain && isTargetMain) {
                         fadeOut(animationSpec = tween(300))
                     } else {
                         slideOutOfContainer(
@@ -461,7 +468,9 @@ fun MainScreen(
                     }
                 },
                 popEnterTransition = {
-                    if (initialState.destination.route in items.map { it.first } && targetState.destination.route in items.map { it.first }) {
+                    val isInitialMain = initialState.destination.route in items.map { it.first } || initialState.destination.route == "review_menu"
+                    val isTargetMain = targetState.destination.route in items.map { it.first } || targetState.destination.route == "review_menu"
+                    if (isInitialMain && isTargetMain) {
                         fadeIn(animationSpec = tween(300))
                     } else {
                         slideIntoContainer(
@@ -471,7 +480,9 @@ fun MainScreen(
                     }
                 },
                 popExitTransition = {
-                    if (initialState.destination.route in items.map { it.first } && targetState.destination.route in items.map { it.first }) {
+                    val isInitialMain = initialState.destination.route in items.map { it.first } || initialState.destination.route == "review_menu"
+                    val isTargetMain = targetState.destination.route in items.map { it.first } || targetState.destination.route == "review_menu"
+                    if (isInitialMain && isTargetMain) {
                         fadeOut(animationSpec = tween(300))
                     } else {
                         slideOutOfContainer(

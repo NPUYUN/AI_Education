@@ -62,6 +62,7 @@ class TextSummaryViewModelTest {
         `when`(globalConfigRepository.getVideoSummaryBaseUrl()).thenReturn(flowOf("test_url"))
         `when`(globalConfigRepository.getVideoSummaryModelName()).thenReturn(flowOf("test_model"))
         `when`(networkMonitor.isConnected).thenReturn(MutableStateFlow(true))
+        `when`(summaryHistoryDao.getHistoryByType("text")).thenReturn(flowOf(emptyList()))
 
         viewModel = TextSummaryViewModel(repository, textExtractionService, globalConfigRepository, networkMonitor, summaryHistoryDao)
     }

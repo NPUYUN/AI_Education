@@ -32,7 +32,6 @@ class SolverFeatureApi
                 LaunchedEffect(solverImageUri?.value) {
                     solverImageUri?.value?.let { uriString ->
                         solverViewModel.setImageUri(android.net.Uri.parse(uriString))
-                        solverViewModel.solveProblem()
                         // Clear the saved state so it doesn't trigger again
                         outerSavedStateHandle?.remove<String>("solver_image_uri")
                     }
