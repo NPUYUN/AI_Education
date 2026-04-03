@@ -9,6 +9,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -59,6 +61,7 @@ fun DialogueSummaryScreen(
     }
 
     var showHistoryDialog by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    var showResultDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -154,56 +157,63 @@ fun DialogueSummaryScreen(
                         exit = fadeOut() + shrinkVertically(),
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Card(
-                            modifier = Modifier.fillMaxWidth().shadow(2.dp, RoundedCornerShape(16.dp)),
-                            shape = RoundedCornerShape(16.dp),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        Button(
+                            onClick = { showResultDialog = true },
+                            modifier = Modifier.fillMaxWidth().height(56.dp).padding(top = 16.dp),
+                            shape = RoundedCornerShape(12.dp)
                         ) {
-                            Column(
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .padding(16.dp),
-                            ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    Text(
-                                        text = stringResource(R.string.summary_result),
-                                        style = MaterialTheme.typography.titleMedium,
-                                        color = MaterialTheme.colorScheme.primary,
-                                    )
-                                    val context = androidx.compose.ui.platform.LocalContext.current
-                                    val scope = rememberCoroutineScope()
-                                    IconButton(
-                                        onClick = {
-                                            scope.launch {
-                                                com.example.common.utils.PdfExporter.exportToPdf(context, "对话总结", uiState.summaryResult)
-                                            }
-                                        },
-                                    ) {
-                                        Icon(
-                                            Icons.Default.Download,
-                                            contentDescription = "Export PDF",
-                                            tint = MaterialTheme.colorScheme.primary,
-                                        )
-                                    }
-                                }
-                                HorizontalDivider(modifier = Modifier.padding(bottom = 8.dp))
-                                SafeMarkdownText(
-                                    markdown = uiState.summaryResult,
-                                    modifier = Modifier.fillMaxWidth(),
-                                )
-                            }
+                            Text("查看总结结果", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                         }
                     }
                 }
             }
         }
     }
+
+    if (showResultDialog) {
+            androidx.compose.ui.window.Dialog(
+                onDismissRequest = { showResultDialog = false },
+                properties = androidx.compose.ui.window.DialogProperties(
+                    usePlatformDefaultWidth = false,
+                    dismissOnBackPress = true,
+                )
+            ) {
+                Scaffold(
+                    topBar = {
+                        @OptIn(ExperimentalMaterial3Api::class)
+                        TopAppBar(
+                            title = { Text(stringResource(R.string.conversation_summary)) },
+                            navigationIcon = {
+                                IconButton(onClick = { showResultDialog = false }) {
+                                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+                                }
+                            },
+                            actions = {
+                                val context = androidx.compose.ui.platform.LocalContext.current
+                                val scope = rememberCoroutineScope()
+                                IconButton(onClick = {
+                                    scope.launch {
+                                        com.example.common.utils.PdfExporter.exportToPdf(context, "对话总结", uiState.summaryResult)
+                                    }
+                                }) {
+                                    Icon(Icons.Default.Download, contentDescription = "Export PDF")
+                                }
+                            }
+                        )
+                    }
+                ) { paddingValues ->
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(paddingValues)
+                            .padding(16.dp)
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        SafeMarkdownText(markdown = uiState.summaryResult)
+                    }
+                }
+            }
+        }
 
     if (showHistoryDialog) {
         AlertDialog(

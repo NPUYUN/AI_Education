@@ -59,20 +59,50 @@ class VideoDownloader(
         withContext(dispatcherProvider.io) {
             if (isInitialized) return@withContext
             try {
-                YoutubeDL.getInstance().init(context)
-                try {
-                    YoutubeDL.getInstance().updateYoutubeDL(
-                        context,
-                        YoutubeDL.UpdateChannel.STABLE,
-                    )
-                } catch (_: Exception) {
-                }
-                isInitialized = true
+                tryInitYoutubeDl()
             } catch (e: Exception) {
-                isInitialized = false
-                throw e
+                if (isNativeAbiMismatchError(e)) {
+                    clearYoutubeDlExtractedFiles()
+                    tryInitYoutubeDl()
+                } else {
+                    isInitialized = false
+                    throw e
+                }
             }
         }
+
+    private fun tryInitYoutubeDl() {
+        YoutubeDL.getInstance().init(context)
+        try {
+            YoutubeDL.getInstance().updateYoutubeDL(
+                context,
+                YoutubeDL.UpdateChannel.STABLE,
+            )
+        } catch (_: Exception) {
+        }
+        isInitialized = true
+    }
+
+    private fun isNativeAbiMismatchError(e: Throwable): Boolean {
+        val msg = buildString {
+            append(e.message.orEmpty())
+            e.cause?.message?.let { append(it) }
+        }.lowercase()
+        return msg.contains("cannot link executable") ||
+            msg.contains("em_aarch64") ||
+            msg.contains("em_x86_64") ||
+            msg.contains("wrong elf class") ||
+            (msg.contains("libz.so") && (msg.contains("instead of") || msg.contains("mismatch")))
+    }
+
+    private fun clearYoutubeDlExtractedFiles() {
+        isInitialized = false
+        try {
+            val base = context.noBackupFilesDir ?: return
+            File(base, "youtubedl-android").takeIf { it.exists() }?.deleteRecursively()
+        } catch (_: Exception) {
+        }
+    }
 
     suspend fun getVideoInfo(url: String): Result<VideoInfo> =
         withContext(dispatcherProvider.io) {
@@ -124,9 +154,22 @@ class VideoDownloader(
         }
     }
 
+    /**
+     * 移动版 B 站域名在部分 yt-dlp 版本上解析不稳定（易导致下载/合并失败甚至 native 异常），统一为桌面站。
+     * 例：https://m.bilibili.com/video/BV1kv411574Y → https://www.bilibili.com/video/BV1kv411574Y
+     */
+    private fun normalizeExtractorUrl(url: String): String {
+        var u = url.trim()
+        if (u.contains("bilibili.com", ignoreCase = true)) {
+            u =
+                u.replace("://m.bilibili.com", "://www.bilibili.com", ignoreCase = true)
+        }
+        return u
+    }
+
     private fun resolveRedirects(inputUrl: String): String {
         return try {
-            var current = inputUrl.trim()
+            var current = normalizeExtractorUrl(inputUrl)
             if (!current.startsWith("http://") && !current.startsWith("https://")) return current
 
             val trustAllCerts =
@@ -282,131 +325,93 @@ class VideoDownloader(
             val resolvedUrl = resolveRedirects(url)
             val downloadDir = getDownloadDirectory()
             val timestamp = System.currentTimeMillis()
-            val fileName = "video_$timestamp.%(ext)s"
-            val request = YoutubeDLRequest(resolvedUrl)
-            request.addOption("-o", File(downloadDir, fileName).absolutePath)
-            request.addOption("--no-mtime")
-            request.addOption("--no-playlist")
-            request.addOption(
-                "-f",
-                "bestvideo+bestaudio/best",
-            )
-            request.addOption("--merge-output-format", "mp4")
-            request.addOption(
-                "--user-agent",
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-            )
-            request.addOption("--socket-timeout", "30")
-            request.addOption("--no-check-certificate")
-            request.addOption("--force-ipv4")
-            if (resolvedUrl.contains("bilibili.com") || resolvedUrl.contains("b23.tv")) {
-                request.addOption("--referer", "https://www.bilibili.com")
-                request.addOption("--extractor-args", "bilibili:api=app")
-            }
-
-            val processId = "video_download_$timestamp"
-            activeProcessId = processId
-
-            val response =
-                YoutubeDL.getInstance().execute(
-                    request,
-                    processId = processId,
-                    callback = { progress: Float, etaInSeconds: Long, _: String ->
-                        if (isCancelled.get()) {
-                            throw InterruptedException("Download cancelled")
-                        }
-                        onProgress(
-                            DownloadProgress(
-                                progress = progress,
-                                status = DownloadStatus.DOWNLOADING,
-                                currentSpeed = "",
-                                eta = "${etaInSeconds}s",
-                                downloadedBytes = 0,
-                                totalBytes = 0,
-                            ),
-                        )
-                    },
+            val formatStrategies =
+                listOf(
+                    "bestvideo+bestaudio/best",
+                    "best[ext=mp4]/best",
+                    "best",
                 )
 
-            if (isCancelled.get()) {
-                onProgress(DownloadProgress(status = DownloadStatus.CANCELLED))
-                Result.failure(Exception("Download cancelled"))
-            } else {
-                // Parse output to find downloaded files
-                val logs = response.out
-                val destinationRegex = "Destination: (.+)".toRegex()
-                val destinations = destinationRegex.findAll(logs).map { it.groupValues[1].trim() }.toList()
-                val alreadyDownloadedRegex = "has already been downloaded and merged".toRegex() // Handle cached case
-
-                var finalFile: File? = null
-
-                // Check for merged file
-                val mergedRegex = "Merging formats into \"(.+)\"".toRegex()
-                val mergedMatch = mergedRegex.find(logs)
-
-                if (mergedMatch != null) {
-                    finalFile = File(mergedMatch.groupValues[1])
-                } else if (destinations.size >= 2) {
-                    // Manual Merge using FFmpegKit
-                    val videoFile = File(destinations.firstOrNull { it.endsWith(".mp4") || it.endsWith(".webm") } ?: destinations[0])
-                    val audioFile =
-                        File(
-                            destinations.firstOrNull {
-                                it.endsWith(
-                                    ".m4a",
-                                ) || it.endsWith(".webm") && it != videoFile.absolutePath
-                            } ?: destinations[1],
-                        )
-
-                    if (videoFile.exists() && audioFile.exists()) {
-                        val outputFile = File(downloadDir, "video_${timestamp}_merged.mp4")
-                        val ffmpegCommand =
-                            "-i \"${videoFile.absolutePath}\" " +
-                                "-i \"${audioFile.absolutePath}\" -c:v copy -c:a aac -strict experimental " +
-                                "\"${outputFile.absolutePath}\""
-
-                        val session = FFmpegKit.execute(ffmpegCommand)
-                        if (ReturnCode.isSuccess(session.returnCode)) {
-                            finalFile = outputFile
-                            // Cleanup parts
-                            videoFile.delete()
-                            audioFile.delete()
-                        } else {
-                            throw Exception("FFmpeg merge failed: ${session.failStackTrace}")
-                        }
-                    }
-                } else {
-                    // Single file download or already merged
-                    val downloadedFile =
-                        downloadDir.listFiles()?.find {
-                            it.name.startsWith("video_$timestamp") && !it.name.endsWith(".part") && !it.name.contains("merged")
-                        }
-                    finalFile = downloadedFile
+            var lastError: Exception? = null
+            for ((idx, format) in formatStrategies.withIndex()) {
+                if (isCancelled.get()) {
+                    onProgress(DownloadProgress(status = DownloadStatus.CANCELLED))
+                    return Result.failure(Exception("Download cancelled"))
                 }
 
-                if (finalFile != null && finalFile.exists()) {
-                    try {
+                val attemptTimestamp = timestamp + idx
+                val attemptFilePrefix = "video_$attemptTimestamp"
+                val request = YoutubeDLRequest(resolvedUrl)
+                request.addOption("-o", File(downloadDir, "$attemptFilePrefix.%(ext)s").absolutePath)
+                request.addOption("--no-mtime")
+                request.addOption("--no-playlist")
+                request.addOption("-f", format)
+                request.addOption("--merge-output-format", "mp4")
+                request.addOption(
+                    "--user-agent",
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+                )
+                request.addOption("--socket-timeout", "30")
+                request.addOption("--no-check-certificate")
+                request.addOption("--force-ipv4")
+                if (resolvedUrl.contains("bilibili.com") || resolvedUrl.contains("b23.tv")) {
+                    request.addOption("--referer", "https://www.bilibili.com")
+                    if (idx == 0) {
+                        request.addOption("--extractor-args", "bilibili:api=app")
+                    }
+                }
+
+                val processId = "video_download_${attemptTimestamp}"
+                activeProcessId = processId
+
+                try {
+                    val response =
+                        YoutubeDL.getInstance().execute(
+                            request,
+                            processId = processId,
+                            callback = { progress: Float, etaInSeconds: Long, _: String ->
+                                if (!isCancelled.get()) {
+                                    onProgress(
+                                        DownloadProgress(
+                                            progress = progress,
+                                            status = DownloadStatus.DOWNLOADING,
+                                            currentSpeed = "",
+                                            eta = "${etaInSeconds}s",
+                                            downloadedBytes = 0,
+                                            totalBytes = 0,
+                                        ),
+                                    )
+                                }
+                            },
+                        )
+
+                    if (isCancelled.get()) {
+                        onProgress(DownloadProgress(status = DownloadStatus.CANCELLED))
+                        return Result.failure(Exception("Download cancelled"))
+                    }
+
+                    val finalFile = resolveDownloadedFile(downloadDir, attemptTimestamp, response.out)
+                    if (finalFile != null && finalFile.exists()) {
                         val mediaInfoSession = FFprobeKit.getMediaInformation(finalFile.absolutePath)
                         val mediaInformation = mediaInfoSession.mediaInformation
                         val hasAudio = mediaInformation?.streams?.any { it.type == "audio" } ?: false
-
                         if (!hasAudio) {
                             finalFile.delete()
-                            onProgress(DownloadProgress(status = DownloadStatus.FAILED))
-                            Result.failure(IllegalStateException("下载的视频不包含音频流，且自动合并失败，请重试"))
-                        } else {
-                            onProgress(DownloadProgress(status = DownloadStatus.COMPLETED, progress = 100f))
-                            Result.success(finalFile.absolutePath)
+                            lastError = IllegalStateException("下载的视频不包含音频流")
+                            continue
                         }
-                    } catch (e: Exception) {
-                        onProgress(DownloadProgress(status = DownloadStatus.FAILED))
-                        Result.failure(Exception("验证媒体文件失败: ${e.message}"))
+                        onProgress(DownloadProgress(status = DownloadStatus.COMPLETED, progress = 100f))
+                        return Result.success(finalFile.absolutePath)
+                    } else {
+                        lastError = Exception("Downloaded file not found or merge failed")
                     }
-                } else {
-                    onProgress(DownloadProgress(status = DownloadStatus.FAILED))
-                    Result.failure(Exception("Downloaded file not found or merge failed"))
+                } catch (e: Exception) {
+                    lastError = e
                 }
             }
+
+            onProgress(DownloadProgress(status = DownloadStatus.FAILED))
+            Result.failure(lastError ?: Exception("下载失败"))
         } catch (e: Exception) {
             if (e.message?.contains("cancelled") == true || e is InterruptedException) {
                 onProgress(DownloadProgress(status = DownloadStatus.CANCELLED))
@@ -428,6 +433,50 @@ class VideoDownloader(
             }
         } finally {
             activeProcessId = null
+        }
+    }
+
+    private fun resolveDownloadedFile(
+        downloadDir: File,
+        timestamp: Long,
+        logs: String,
+    ): File? {
+        val destinationRegex = "Destination: (.+)".toRegex()
+        val destinations = destinationRegex.findAll(logs).map { it.groupValues[1].trim() }.toList()
+
+        val mergedRegex = "Merging formats into \"(.+)\"".toRegex()
+        val mergedMatch = mergedRegex.find(logs)
+        if (mergedMatch != null) {
+            return File(mergedMatch.groupValues[1])
+        }
+
+        if (destinations.size >= 2) {
+            val videoFile = File(destinations.firstOrNull { it.endsWith(".mp4") || it.endsWith(".webm") } ?: destinations[0])
+            val audioFile =
+                File(
+                    destinations.firstOrNull {
+                        it.endsWith(".m4a") || (it.endsWith(".webm") && it != videoFile.absolutePath)
+                    } ?: destinations[1],
+                )
+            if (videoFile.exists() && audioFile.exists()) {
+                val outputFile = File(downloadDir, "video_${timestamp}_merged.mp4")
+                val ffmpegCommand =
+                    "-i \"${videoFile.absolutePath}\" " +
+                        "-i \"${audioFile.absolutePath}\" -c:v copy -c:a aac -strict experimental " +
+                        "\"${outputFile.absolutePath}\""
+                val session = FFmpegKit.execute(ffmpegCommand)
+                if (ReturnCode.isSuccess(session.returnCode)) {
+                    videoFile.delete()
+                    audioFile.delete()
+                    return outputFile
+                }
+            }
+        }
+
+        return downloadDir.listFiles()?.find {
+            it.name.startsWith("video_$timestamp") &&
+                !it.name.endsWith(".part") &&
+                !it.name.contains("merged")
         }
     }
 

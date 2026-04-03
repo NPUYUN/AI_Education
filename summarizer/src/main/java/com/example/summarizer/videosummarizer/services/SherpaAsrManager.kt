@@ -10,7 +10,6 @@ import com.k2fsa.sherpa.onnx.OfflineParaformerModelConfig
 import com.k2fsa.sherpa.onnx.OfflineRecognizer
 import com.k2fsa.sherpa.onnx.OfflineRecognizerConfig
 import com.k2fsa.sherpa.onnx.OfflineStream
-import com.k2fsa.sherpa.onnx.WaveReader
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -29,14 +28,17 @@ class SherpaAsrManager(
     private fun getRecognizer(): OfflineRecognizer {
         if (recognizer == null) {
             try {
-                // Initialize config
-                // The model files are located in external cache dir
+                // Check if context/resources are still valid before initializing Native memory
                 val baseDir = context.externalCacheDir ?: context.cacheDir
                 val modelDir = File(baseDir, "sherpa-onnx-paraformer-zh-2023-09-14").absolutePath
 
-                if (!File(modelDir).exists() || !File(modelDir, "model.int8.onnx").exists()) {
+                if (!File(modelDir).exists() || !File(modelDir, "model.int8.onnx").exists() || !File(modelDir, "tokens.txt").exists()) {
                     throw IllegalStateException("语音识别模型未下载或不完整，请先下载模型")
                 }
+
+                // Make sure to load the correct paths
+                val modelPath = File(modelDir, "model.int8.onnx").absolutePath
+                val tokensPath = File(modelDir, "tokens.txt").absolutePath
 
                 val config =
                     OfflineRecognizerConfig(
@@ -44,11 +46,12 @@ class SherpaAsrManager(
                             OfflineModelConfig(
                                 paraformer =
                                     OfflineParaformerModelConfig(
-                                        model = "$modelDir/model.int8.onnx",
+                                        model = modelPath,
                                     ),
-                                tokens = "$modelDir/tokens.txt",
+                                tokens = tokensPath,
                                 modelType = "paraformer",
-                                debug = true,
+                                debug = false,
+                                numThreads = 1, // Limit to 1 thread to completely avoid thread-related crashes in underlying ONNX
                             ),
                     )
 
@@ -60,7 +63,15 @@ class SherpaAsrManager(
                 Log.d(tag, "Sherpa-onnx initialized successfully from file path: $modelDir")
             } catch (e: Throwable) {
                 Log.e(tag, "Failed to initialize Sherpa-onnx", e)
-                throw IllegalStateException("语音识别初始化失败: ${e.message}", e)
+                val detail =
+                    buildString {
+                        append(e.message ?: e.javaClass.simpleName)
+                        e.cause?.let { c ->
+                            append(" | ")
+                            append(c.message ?: c.javaClass.simpleName)
+                        }
+                    }
+                throw IllegalStateException("语音识别初始化失败: $detail", e)
             }
         }
         return recognizer!!
@@ -68,65 +79,115 @@ class SherpaAsrManager(
 
     suspend fun transcribe(audioFile: File): String =
         withContext(dispatcherProvider.io) {
-            var wavFile: File? = null
-            var stream: OfflineStream? = null
-            try {
-                Log.d(tag, "Starting transcription for: ${audioFile.name}")
+            // FFmpeg 与 Sherpa 原生调用必须串行：此前 convertToWav 在锁外执行，并发转写时易触发 native 崩溃
+            mutex.withLock {
+                var wavFile: File? = null
+                var stream: OfflineStream? = null
+                try {
+                    Log.d(tag, "Starting transcription for: ${audioFile.name}")
 
-                // 1. Convert to 16kHz wav (this will fail naturally if no audio stream exists)
-                wavFile = convertToWav(audioFile)
+                    wavFile = convertToWav(audioFile)
 
-                // 2. Use recognizer safely with Mutex
-                val resultText =
-                    mutex.withLock {
-                        val r = recognizer ?: getRecognizer().also { recognizer = it }
+                    // Ensure recognizer is initialized properly before proceeding
+                    val r = recognizer ?: try {
+                        getRecognizer().also { recognizer = it }
+                    } catch (e: Exception) {
+                        Log.e(tag, "Failed to initialize recognizer", e)
+                        throw IllegalStateException("语音识别引擎初始化失败", e)
+                    }
 
-                        // 3. Read wave data
-                        val waveData =
-                            WaveReader.readWaveFromFile(wavFile.absolutePath)
-                                ?: throw IllegalStateException("Failed to read wave file: ${wavFile.absolutePath}")
+                    // Protect against NPE if getRecognizer() still returned null or recognizer field became null
+                    if (r == null) {
+                        throw IllegalStateException("语音识别引擎未正确初始化")
+                    }
 
-                        // 4. Create stream and decode
+                    // 彻底避开 JNI WaveReader 的内存陷阱。
+                    // 原先底层一次性读取整个音频导致 C++ 和 ART 虚拟机内存爆炸 (Fatal signal 6, Channel unrecoverably broken)。
+                    // 现在改为在 Kotlin 层直接读取 WAV 并分块转 FloatArray，每次仅加载约 30 秒 (3MB) 到内存，真正实现流式处理。
+                    val maxSegmentDurationSeconds = 30
+                    val sampleRate = 16000
+                    val segmentSize = sampleRate * maxSegmentDurationSeconds // 480,000 samples per chunk
+                    val bytesPerSegment = segmentSize * 2 // 16-bit PCM = 2 bytes per sample
+                    
+                    val fullText = StringBuilder()
+
+                    java.io.RandomAccessFile(wavFile, "r").use { raf ->
+                        // 解析 WAV 头寻找 data chunk 起始位置，避免硬编码 44 字节带来的兼容性问题
+                        var dataOffset = 44L
                         try {
-                            stream = r.createStream()
-                            stream!!.acceptWaveform(waveData.samples, waveData.sampleRate)
+                            raf.seek(12) // Skip "RIFF" + size + "WAVE"
+                            while (raf.filePointer < raf.length()) {
+                                val chunkId = ByteArray(4)
+                                raf.readFully(chunkId)
+                                val chunkSize = Integer.reverseBytes(raf.readInt()) // little-endian
+                                if (String(chunkId) == "data") {
+                                    dataOffset = raf.filePointer
+                                    break
+                                }
+                                raf.seek(raf.filePointer + chunkSize + (chunkSize % 2))
+                            }
+                        } catch (e: Exception) {
+                            Log.w(tag, "Failed to parse WAV header precisely, fallback to offset 44", e)
+                        }
 
-                            // Decode might take a while, check cancellation before starting
-                            kotlin.coroutines.coroutineContext.ensureActive()
-                            r.decode(stream!!)
+                        raf.seek(dataOffset)
+                        val byteBuffer = ByteArray(bytesPerSegment)
+
+                        while (true) {
                             kotlin.coroutines.coroutineContext.ensureActive()
 
-                            // 5. Get result
-                            val result = r.getResult(stream!!)
-                            Log.d(tag, "Transcription result length: ${result.text.length}")
-                            result.text
-                        } catch (e: kotlinx.coroutines.CancellationException) {
-                            Log.d(tag, "Transcription cancelled")
-                            throw e
-                        } catch (e: Throwable) {
-                            Log.e(tag, "Native recognition failed", e)
-                            throw IllegalStateException("语音识别引擎出错: ${e.message}")
+                            val bytesRead = raf.read(byteBuffer)
+                            if (bytesRead <= 0) break
+
+                            val samplesCount = bytesRead / 2
+                            val chunkFloatArray = FloatArray(samplesCount)
+                            
+                            // 16-bit PCM (Little Endian) to Float [-1.0, 1.0]
+                            for (i in 0 until samplesCount) {
+                                val low = byteBuffer[i * 2].toInt() and 0xFF
+                                val high = byteBuffer[i * 2 + 1].toInt()
+                                val sample = (high shl 8) or low
+                                // Handle sign extension for 16-bit integer
+                                val signedSample = sample.toShort().toInt()
+                                chunkFloatArray[i] = signedSample / 32768.0f
+                            }
+
+                            var segmentStream: OfflineStream? = null
+                            try {
+                                segmentStream = r.createStream()
+                                if (segmentStream == null) {
+                                    throw IllegalStateException("Failed to create OfflineStream from Native engine.")
+                                }
+                                
+                                segmentStream.acceptWaveform(chunkFloatArray, sampleRate)
+                                
+                                kotlin.coroutines.coroutineContext.ensureActive()
+                                r.decode(segmentStream)
+                                kotlin.coroutines.coroutineContext.ensureActive()
+
+                                val result = r.getResult(segmentStream)
+                                if (result != null && result.text.isNotBlank() && !result.text.contains("【语音识别底层返回异常】")) {
+                                    fullText.append(result.text)
+                                }
+                            } finally {
+                                try {
+                                    segmentStream?.release()
+                                } catch (e: Exception) {
+                                    Log.w(tag, "Failed to release segment stream", e)
+                                }
+                            }
                         }
                     }
 
-                return@withContext resultText
-            } catch (e: Throwable) {
-                Log.e(tag, "Transcription process failed", e)
-                throw if (e is Exception) e else RuntimeException("Transcription failed with fatal error: ${e.message}", e)
-            } finally {
-                // Clean up stream
-                try {
-                    stream?.release()
-                } catch (e: Exception) {
-                    Log.w(tag, "Failed to release stream", e)
-                }
-                // Clean up temp wav file
-                try {
-                    if (wavFile != null && wavFile.exists()) {
-                        wavFile.delete()
+                    val finalText = fullText.toString()
+                    Log.d(tag, "Transcription completed. Total length: ${finalText.length}")
+                    return@withLock finalText
+                } catch (e: Throwable) {
+                    try {
+                        wavFile?.takeIf { it.exists() }?.delete()
+                    } catch (_: Exception) {
                     }
-                } catch (e: Exception) {
-                    Log.w(tag, "Failed to delete temp wav file", e)
+                    throw e
                 }
             }
         }
@@ -157,7 +218,13 @@ class SherpaAsrManager(
             )
 
         Log.d(tag, "Executing FFmpeg command: ${args.joinToString(" ")}")
-        val session = FFmpegKit.executeWithArguments(args)
+        val session =
+            try {
+                FFmpegKit.executeWithArguments(args)
+            } catch (t: Throwable) {
+                Log.e(tag, "FFmpegKit.executeWithArguments threw", t)
+                throw IllegalStateException("音频提取失败: ${t.message ?: t.javaClass.simpleName}", t)
+            }
 
         if (ReturnCode.isSuccess(session.returnCode)) {
             Log.d(tag, "FFmpeg conversion successful: ${outputFile.absolutePath}")

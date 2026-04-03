@@ -99,6 +99,7 @@ class VideoDownloadViewModel
         val successEvents = _successEvents.receiveAsFlow()
 
         private val cancelledTasks = mutableSetOf<String>()
+        private val summarizingTaskIds = mutableSetOf<String>()
 
         init {
             // Verify cross-app user data access
@@ -177,18 +178,25 @@ class VideoDownloadViewModel
                 showError("当前处于无网络环境，无法下载视频。")
                 return
             }
+            val normalizedUrl = normalizeBilibiliShareUrl(url.trim())
             val taskId = System.currentTimeMillis().toString()
             val newTask =
                 DownloadTask(
                     id = taskId,
-                    url = url,
-                    title = extractVideoTitle(url),
+                    url = normalizedUrl,
+                    title = extractVideoTitle(normalizedUrl),
                 )
             _uiState.update { state ->
                 state.copy(downloadTasks = state.downloadTasks + newTask)
             }
-            startDownload(taskId, url)
+            startDownload(taskId, normalizedUrl)
             _uiState.value = _uiState.value.copy(inputUrl = "")
+        }
+
+        /** 与 [VideoDownloader] 一致：移动版 B 站链接统一为 www，减少解析失败 */
+        private fun normalizeBilibiliShareUrl(url: String): String {
+            if (!url.contains("bilibili.com", ignoreCase = true)) return url
+            return url.replace("://m.bilibili.com", "://www.bilibili.com", ignoreCase = true)
         }
 
         fun handleLocalVideo(uri: android.net.Uri) {
@@ -281,16 +289,45 @@ class VideoDownloadViewModel
             taskId: String,
             localPath: String?,
         ) {
-            val status = _uiState.value.downloadTasks.firstOrNull { it.id == taskId }?.summary?.status
+            val task = _uiState.value.downloadTasks.firstOrNull { it.id == taskId }
+            if (task == null) {
+                showError("任务不存在或已被移除")
+                return
+            }
+
+            val status = task.summary.status
             if (status == SummaryStatus.PREPARING ||
                 status == SummaryStatus.TRANSCRIBING ||
                 status == SummaryStatus.SUMMARIZING
-            ) {
+            ) return
+
+            synchronized(summarizingTaskIds) {
+                if (summarizingTaskIds.contains(taskId)) return
+                summarizingTaskIds.add(taskId)
+            }
+
+            val resolvedPath = localPath?.takeIf { it.isNotBlank() } ?: task.localPath
+            val localFile = resolvedPath?.let { File(it) }
+            if (localFile == null || !localFile.exists()) {
+                synchronized(summarizingTaskIds) { summarizingTaskIds.remove(taskId) }
+                updateTaskSummary(taskId) { it.copy(status = SummaryStatus.FAILED) }
+                showError("未找到本地文件，无法生成摘要")
                 return
             }
+
             if (!modelDownloader.isModelReady()) {
+                synchronized(summarizingTaskIds) { summarizingTaskIds.remove(taskId) }
                 showError("语音识别模型尚未就绪，请等待模型下载完成")
                 return
+            }
+
+            // Immediately mark as preparing to prevent rapid double-click concurrent jobs.
+            updateTaskSummary(taskId) {
+                it.copy(
+                    status = SummaryStatus.PREPARING,
+                    transcript = "",
+                    summary = "",
+                )
             }
 
             viewModelScope.launch(dispatcherProvider.io) {
@@ -310,22 +347,6 @@ class VideoDownloadViewModel
                         updateTaskSummary(taskId) { it.copy(status = SummaryStatus.FAILED) }
                         showError("尚未配置 API Key，请在弹出的设置中进行配置。")
                         _uiState.value = _uiState.value.copy(showApiSettings = true)
-                        return@launch
-                    }
-
-                    updateTaskSummary(taskId) {
-                        it.copy(
-                            status = SummaryStatus.PREPARING,
-                            transcript = "",
-                            summary = "",
-                        )
-                    }
-
-                    val localFile = localPath?.let { File(it) }
-                    if (localFile == null) {
-                        val errorMsg = "未找到本地文件，无法上传转写"
-                        updateTaskSummary(taskId) { it.copy(status = SummaryStatus.FAILED) }
-                        showError(errorMsg)
                         return@launch
                     }
 
@@ -373,9 +394,11 @@ class VideoDownloadViewModel
                             }
                         },
                     )
-                } catch (e: Exception) {
+                } catch (e: Throwable) {
                     updateTaskSummary(taskId) { it.copy(status = SummaryStatus.FAILED) }
                     showError("发生未知错误: ${e.message}")
+                } finally {
+                    synchronized(summarizingTaskIds) { summarizingTaskIds.remove(taskId) }
                 }
             }
         }
@@ -454,6 +477,11 @@ class VideoDownloadViewModel
 
             val message =
                 when {
+                    normalized.contains("cannot link executable") ||
+                        normalized.contains("em_aarch64") ||
+                        normalized.contains("em_x86_64") ||
+                        (normalized.contains("libz.so") && normalized.contains("instead of")) ->
+                        "下载失败：当前设备 CPU 架构与已解压的下载组件不匹配（常见于 x86 模拟器仅打包 arm64）。请重新安装应用或使用 arm64 系统镜像模拟器；若仍失败，请清除应用数据后重试。"
                     normalized.contains("ssl") || normalized.contains("certificate") ->
                         "下载失败：HTTPS 连接异常（SSL/TLS），已启用更友好的连接参数并忽略证书校验，请重试。"
                     normalized.contains("nonetype") && normalized.contains("lower") ->

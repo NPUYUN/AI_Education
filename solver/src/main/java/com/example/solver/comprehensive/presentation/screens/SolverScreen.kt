@@ -14,9 +14,13 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.ui.window.Dialog
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
@@ -60,6 +64,7 @@ fun SolverScreen(
     val allHistory by viewModel.allHistory.collectAsStateWithLifecycle(initialValue = emptyList())
 
     var isDetailScreen by remember { mutableStateOf(false) }
+    var showSolutionDetailDialog by remember { mutableStateOf(false) }
 
     val snackbarHostState = remember { SnackbarHostState() }
     val errorEvent by viewModel.errorEvents.collectAsStateWithLifecycle(initialValue = null)
@@ -444,67 +449,42 @@ fun SolverScreen(
                                     modifier = Modifier.padding(bottom = 8.dp),
                                 )
                                 HorizontalDivider(modifier = Modifier.padding(bottom = 8.dp))
-                                SafeMarkdownText(
-                                    markdown = uiState.solutionResult,
-                                    modifier = Modifier.fillMaxWidth(),
-                                )
-                                if (uiState.selectedTab == 0 && uiState.drawingSteps.isNotEmpty()) {
+                                
+                                if (uiState.parsedQuestionContent.isNotBlank()) {
+                                    Text("【题目内容】", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    SafeMarkdownText(markdown = uiState.parsedQuestionContent)
                                     Spacer(modifier = Modifier.height(12.dp))
-                                    Text(stringResource(R.string.geometry_drawing), style = MaterialTheme.typography.titleMedium)
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    val prev = mutableListOf<Map<String, Any>>()
-                                    uiState.drawingSteps.forEach { step ->
-                                        GeometryStepCard(
-                                            step,
-                                            prevShapes = prev.toList(),
-                                            modifier =
-                                                Modifier
-                                                    .fillMaxWidth()
-                                                    .padding(bottom = 12.dp),
-                                        )
-                                        prev += step.shapes
-                                    }
-                                } else if (uiState.selectedTab == 1 && uiState.isFunction && uiState.drawingSteps.isNotEmpty()) {
-                                    Spacer(modifier = Modifier.height(12.dp))
-                                    Text(stringResource(R.string.function_drawing), style = MaterialTheme.typography.titleMedium)
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    val prev = mutableListOf<Map<String, Any>>()
-                                    uiState.drawingSteps.forEach { step ->
-                                        GeometryStepCard(
-                                            step,
-                                            prevShapes = prev.toList(),
-                                            modifier =
-                                                Modifier
-                                                    .fillMaxWidth()
-                                                    .padding(bottom = 12.dp),
-                                        )
-                                        prev += step.shapes
-                                    }
-                                } else if (uiState.selectedTab == 2 && uiState.drawingSteps.isNotEmpty()) {
-                                    Spacer(modifier = Modifier.height(12.dp))
-                                    val title =
-                                        when (uiState.comprehensiveType) {
-                                            stringResource(R.string.physics) -> stringResource(R.string.physics_diagram)
-                                            stringResource(R.string.chemistry) -> stringResource(R.string.chemistry_diagram)
-                                            stringResource(R.string.biology) -> stringResource(R.string.biology_diagram)
-                                            else -> stringResource(R.string.comprehensive_diagram)
-                                        }
-                                    Text(title, style = MaterialTheme.typography.titleMedium)
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    val prev = mutableListOf<Map<String, Any>>()
-                                    uiState.drawingSteps.forEach { step ->
-                                        GeometryStepCard(
-                                            step,
-                                            prevShapes = prev.toList(),
-                                            modifier =
-                                                Modifier
-                                                    .fillMaxWidth()
-                                                    .padding(bottom = 12.dp),
-                                        )
-                                        prev += step.shapes
-                                    }
                                 }
+                                
+                                if (uiState.questionText.isNotBlank()) {
+                                    Text("【您的描述】", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(uiState.questionText)
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                }
+                                
+                                if (uiState.parsedFinalAnswer.isNotBlank()) {
+                                    Text("【最终答案】", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    SafeMarkdownText(markdown = uiState.parsedFinalAnswer)
+                                } else {
+                                    // Fallback if parsing failed
+                                    SafeMarkdownText(
+                                        markdown = uiState.solutionResult,
+                                        modifier = Modifier.fillMaxWidth(),
+                                    )
+                                }
+                                
                                 Spacer(modifier = Modifier.height(16.dp))
+                                Button(
+                                    onClick = { showSolutionDetailDialog = true },
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Text("查看解题详情")
+                                }
+                                
+                                Spacer(modifier = Modifier.height(8.dp))
                                 Button(
                                     onClick = { showErrorBookDialog = true },
                                     modifier = Modifier.fillMaxWidth(),
@@ -520,6 +500,89 @@ fun SolverScreen(
                                         },
                                     )
                                 }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (showSolutionDetailDialog) {
+            Dialog(
+                onDismissRequest = { showSolutionDetailDialog = false },
+                properties = androidx.compose.ui.window.DialogProperties(
+                    usePlatformDefaultWidth = false,
+                    dismissOnBackPress = true,
+                )
+            ) {
+                Scaffold(
+                    topBar = {
+                        @OptIn(ExperimentalMaterial3Api::class)
+                        TopAppBar(
+                            title = { Text("解题详情") },
+                            navigationIcon = {
+                                IconButton(onClick = { showSolutionDetailDialog = false }) {
+                                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                                }
+                            },
+                            actions = {
+                                val scope = rememberCoroutineScope()
+                                val context = androidx.compose.ui.platform.LocalContext.current
+                                IconButton(onClick = {
+                                    scope.launch {
+                                        val fullContent = buildString {
+                                            append("# 解题详情\n\n")
+                                            append(uiState.solutionResult)
+                                        }
+                                        com.example.common.utils.PdfExporter.exportToPdf(
+                                            context = context,
+                                            title = "解题详情",
+                                            content = fullContent,
+                                        )
+                                    }
+                                }) {
+                                    Icon(Icons.Default.Download, contentDescription = "Export PDF")
+                                }
+                            }
+                        )
+                    }
+                ) { paddingValues ->
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(paddingValues)
+                            .padding(16.dp)
+                            .verticalScroll(rememberScrollState()),
+                    ) {
+                        SafeMarkdownText(
+                            markdown = uiState.solutionResult,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        if (uiState.drawingSteps.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            val title =
+                                when (uiState.selectedTab) {
+                                    0 -> stringResource(R.string.geometry_drawing)
+                                    1 -> if (uiState.isFunction) stringResource(R.string.function_drawing) else stringResource(R.string.algebra)
+                                    else -> when (uiState.comprehensiveType) {
+                                        stringResource(R.string.physics) -> stringResource(R.string.physics_diagram)
+                                        stringResource(R.string.chemistry) -> stringResource(R.string.chemistry_diagram)
+                                        stringResource(R.string.biology) -> stringResource(R.string.biology_diagram)
+                                        else -> stringResource(R.string.comprehensive_diagram)
+                                    }
+                                }
+                            Text(title, style = MaterialTheme.typography.titleMedium)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            val prev = mutableListOf<Map<String, Any>>()
+                            uiState.drawingSteps.forEach { step ->
+                                GeometryStepCard(
+                                    step,
+                                    prevShapes = prev.toList(),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(bottom = 12.dp),
+                                )
+                                prev += step.shapes
                             }
                         }
                     }

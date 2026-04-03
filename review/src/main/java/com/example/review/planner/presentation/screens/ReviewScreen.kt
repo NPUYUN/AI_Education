@@ -54,6 +54,7 @@ fun SmartReviewPlannerScreen(
     }
 
     var showHistoryDialog by remember { mutableStateOf(false) }
+    var showResultDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -65,21 +66,6 @@ fun SmartReviewPlannerScreen(
                     }
                 },
                 actions = {
-                    val scope = rememberCoroutineScope()
-                    val context = androidx.compose.ui.platform.LocalContext.current
-                    if (uiState.reviewPlan.isNotBlank()) {
-                        IconButton(onClick = {
-                            scope.launch {
-                                com.example.common.utils.PdfExporter.exportToPdf(
-                                    context = context,
-                                    title = context.getString(R.string.smart_review_plan),
-                                    content = uiState.reviewPlan
-                                )
-                            }
-                        }) {
-                            Icon(Icons.Default.Download, contentDescription = "Export PDF")
-                        }
-                    }
                     IconButton(onClick = { showHistoryDialog = true }) {
                         Icon(Icons.Default.History, contentDescription = "History")
                     }
@@ -89,7 +75,60 @@ fun SmartReviewPlannerScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { paddingValues ->
         Box(modifier = Modifier.padding(paddingValues).padding(16.dp)) {
-            SmartReviewPlannerView(viewModel, uiState)
+            SmartReviewPlannerView(
+                viewModel = viewModel,
+                uiState = uiState,
+                onShowResult = { showResultDialog = true }
+            )
+        }
+    }
+
+    if (showResultDialog) {
+        androidx.compose.ui.window.Dialog(
+            onDismissRequest = { showResultDialog = false },
+            properties = androidx.compose.ui.window.DialogProperties(
+                usePlatformDefaultWidth = false,
+                dismissOnBackPress = true,
+            )
+        ) {
+            Scaffold(
+                topBar = {
+                    @OptIn(ExperimentalMaterial3Api::class)
+                    TopAppBar(
+                        title = { Text(stringResource(R.string.smart_review_plan)) },
+                        navigationIcon = {
+                            IconButton(onClick = { showResultDialog = false }) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+                            }
+                        },
+                        actions = {
+                            val scope = rememberCoroutineScope()
+                            val context = androidx.compose.ui.platform.LocalContext.current
+                            IconButton(onClick = {
+                                scope.launch {
+                                    com.example.common.utils.PdfExporter.exportToPdf(
+                                        context = context,
+                                        title = context.getString(R.string.smart_review_plan),
+                                        content = uiState.reviewPlan,
+                                    )
+                                }
+                            }) {
+                                Icon(Icons.Default.Download, contentDescription = "Export PDF")
+                            }
+                        }
+                    )
+                }
+            ) { paddingValues ->
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
+                        .padding(16.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    SafeMarkdownText(markdown = uiState.reviewPlan)
+                }
+            }
         }
     }
 
@@ -124,6 +163,7 @@ fun KnowledgeReinforcementScreen(
     }
 
     var showHistoryDialog by remember { mutableStateOf(false) }
+    var showResultDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -135,21 +175,6 @@ fun KnowledgeReinforcementScreen(
                     }
                 },
                 actions = {
-                    val scope = rememberCoroutineScope()
-                    val context = androidx.compose.ui.platform.LocalContext.current
-                    if (uiState.reinforcementQuiz.isNotBlank()) {
-                        IconButton(onClick = {
-                            scope.launch {
-                                com.example.common.utils.PdfExporter.exportToPdf(
-                                    context = context,
-                                    title = context.getString(R.string.knowledge_point_consolidation),
-                                    content = uiState.reinforcementQuiz
-                                )
-                            }
-                        }) {
-                            Icon(Icons.Default.Download, contentDescription = "Export PDF")
-                        }
-                    }
                     IconButton(onClick = { showHistoryDialog = true }) {
                         Icon(Icons.Default.History, contentDescription = "History")
                     }
@@ -159,7 +184,60 @@ fun KnowledgeReinforcementScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { paddingValues ->
         Box(modifier = Modifier.padding(paddingValues).padding(16.dp)) {
-            KnowledgeReinforcementView(viewModel, uiState)
+            KnowledgeReinforcementView(
+                viewModel = viewModel,
+                uiState = uiState,
+                onShowResult = { showResultDialog = true }
+            )
+        }
+    }
+
+    if (showResultDialog) {
+        androidx.compose.ui.window.Dialog(
+            onDismissRequest = { showResultDialog = false },
+            properties = androidx.compose.ui.window.DialogProperties(
+                usePlatformDefaultWidth = false,
+                dismissOnBackPress = true,
+            )
+        ) {
+            Scaffold(
+                topBar = {
+                    @OptIn(ExperimentalMaterial3Api::class)
+                    TopAppBar(
+                        title = { Text(stringResource(R.string.knowledge_point_consolidation)) },
+                        navigationIcon = {
+                            IconButton(onClick = { showResultDialog = false }) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+                            }
+                        },
+                        actions = {
+                            val scope = rememberCoroutineScope()
+                            val context = androidx.compose.ui.platform.LocalContext.current
+                            IconButton(onClick = {
+                                scope.launch {
+                                    com.example.common.utils.PdfExporter.exportToPdf(
+                                        context = context,
+                                        title = context.getString(R.string.knowledge_point_consolidation),
+                                        content = uiState.reinforcementQuiz,
+                                    )
+                                }
+                            }) {
+                                Icon(Icons.Default.Download, contentDescription = "Export PDF")
+                            }
+                        }
+                    )
+                }
+            ) { paddingValues ->
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
+                        .padding(16.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    SafeMarkdownText(markdown = uiState.reinforcementQuiz)
+                }
+            }
         }
     }
 
@@ -213,22 +291,23 @@ fun ErrorBookScreen(
                     if (uiState.errorRecords.isNotEmpty()) {
                         IconButton(onClick = {
                             scope.launch {
-                                val fullContent = buildString {
-                                    append("# 错题本\n\n")
-                                    uiState.errorRecords.forEachIndexed { index, record ->
-                                        append("## ${index + 1}. [${record.subject}]\n\n")
-                                        append(record.questionContent)
-                                        if (!record.errorReason.isNullOrBlank()) {
-                                            append("\n\n**错误原因/知识点：**\n\n")
-                                            append(record.errorReason)
+                                val fullContent =
+                                    buildString {
+                                        append("# 错题本\n\n")
+                                        uiState.errorRecords.forEachIndexed { index, record ->
+                                            append("## ${index + 1}. [${record.subject}]\n\n")
+                                            append(record.questionContent)
+                                            if (!record.errorReason.isNullOrBlank()) {
+                                                append("\n\n**错误原因/知识点：**\n\n")
+                                                append(record.errorReason)
+                                            }
+                                            append("\n\n---\n\n")
                                         }
-                                        append("\n\n---\n\n")
                                     }
-                                }
                                 com.example.common.utils.PdfExporter.exportToPdf(
                                     context = context,
                                     title = context.getString(R.string.error_book),
-                                    content = fullContent
+                                    content = fullContent,
                                 )
                             }
                         }) {
@@ -322,6 +401,7 @@ fun HistoryDialog(
 fun SmartReviewPlannerView(
     viewModel: ReviewViewModel,
     uiState: com.example.review.planner.presentation.viewmodels.ReviewUiState,
+    onShowResult: () -> Unit = {}
 ) {
     val subjectInput = uiState.subjectInput
     val isGenerating = uiState.isGeneratingPlan
@@ -406,32 +486,14 @@ fun SmartReviewPlannerView(
                         }
                     }
 
-                    AnimatedVisibility(
-                        visible = plan.isNotBlank(),
-                        enter = fadeIn() + expandVertically(),
-                        exit = fadeOut() + shrinkVertically(),
-                    ) {
-                        Card(
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .weight(1f)
-                                    .shadow(2.dp, RoundedCornerShape(16.dp)),
+                    if (plan.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Button(
+                            onClick = onShowResult,
+                            modifier = Modifier.fillMaxWidth().height(56.dp),
                             shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                         ) {
-                            Column(
-                                modifier =
-                                    Modifier
-                                        .fillMaxSize()
-                                        .verticalScroll(rememberScrollState())
-                                        .padding(20.dp),
-                            ) {
-                                SafeMarkdownText(
-                                    markdown = plan,
-                                    modifier = Modifier.fillMaxWidth(),
-                                )
-                            }
+                            Text("查看复习计划", fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -444,6 +506,7 @@ fun SmartReviewPlannerView(
 fun KnowledgeReinforcementView(
     viewModel: ReviewViewModel,
     uiState: com.example.review.planner.presentation.viewmodels.ReviewUiState,
+    onShowResult: () -> Unit = {}
 ) {
     val input = uiState.knowledgePointInput
     val isGenerating = uiState.isGeneratingQuiz
@@ -494,33 +557,13 @@ fun KnowledgeReinforcementView(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        AnimatedVisibility(
-            visible = quiz.isNotBlank(),
-            enter = fadeIn() + slideInVertically { it / 4 },
-            exit = fadeOut() + shrinkVertically(),
-        ) {
-            Card(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                        .shadow(2.dp, RoundedCornerShape(16.dp)),
+        if (quiz.isNotBlank()) {
+            Button(
+                onClick = onShowResult,
+                modifier = Modifier.fillMaxWidth().height(56.dp),
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             ) {
-                LazyColumn(
-                    modifier =
-                        Modifier
-                            .fillMaxSize()
-                            .padding(20.dp),
-                ) {
-                    item {
-                        SafeMarkdownText(
-                            markdown = quiz,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
-                }
+                Text("查看知识巩固结果", fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -808,21 +851,22 @@ fun PracticeScreenOverlay(
                     if (uiState.practiceContent.isNotBlank()) {
                         IconButton(onClick = {
                             scope.launch {
-                                val fullContent = buildString {
-                                    append(uiState.practiceContent)
-                                    if (uiState.practiceAnswerInput.isNotBlank()) {
-                                        append("\n\n---\n\n**你的作答：**\n\n")
-                                        append(uiState.practiceAnswerInput)
+                                val fullContent =
+                                    buildString {
+                                        append(uiState.practiceContent)
+                                        if (uiState.practiceAnswerInput.isNotBlank()) {
+                                            append("\n\n---\n\n**你的作答：**\n\n")
+                                            append(uiState.practiceAnswerInput)
+                                        }
+                                        if (uiState.practiceGradingResult.isNotBlank()) {
+                                            append("\n\n---\n\n**批改结果：**\n\n")
+                                            append(uiState.practiceGradingResult)
+                                        }
                                     }
-                                    if (uiState.practiceGradingResult.isNotBlank()) {
-                                        append("\n\n---\n\n**批改结果：**\n\n")
-                                        append(uiState.practiceGradingResult)
-                                    }
-                                }
                                 com.example.common.utils.PdfExporter.exportToPdf(
                                     context = context,
                                     title = "做题与批改",
-                                    content = fullContent
+                                    content = fullContent,
                                 )
                             }
                         }) {

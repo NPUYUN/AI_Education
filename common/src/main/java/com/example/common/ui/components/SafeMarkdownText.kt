@@ -67,6 +67,20 @@ private fun normalizeMarkdownForDisplay(rawMarkdown: String): String {
             .replace("\u200B", "")
             .replace("\uFEFF", "")
 
+    // Normalize LaTeX formulas
+    // Some models use [ ... ] for block math and \( ... \) for inline math
+    // We convert them to standard $...$ and $$...$$ for JLatexMathPlugin
+    text = text.replace(Regex("""\\\[(.*?)\\\]""", RegexOption.DOT_MATCHES_ALL)) {
+        "$$" + it.groupValues[1] + "$$"
+    }
+    text = text.replace(Regex("""\\\((.*?)\\\)""", RegexOption.DOT_MATCHES_ALL)) {
+        "$" + it.groupValues[1] + "$"
+    }
+    // Handle cases where the model outputs `[ R = ... ]` without escaping the bracket
+    text = text.replace(Regex("""^\s*\[(.*?)\]\s*$""", RegexOption.MULTILINE)) {
+        "$$" + it.groupValues[1] + "$$"
+    }
+
     // Some model responses return JSON-escaped newlines. Convert them only when text has
     // almost no real line breaks, to avoid touching legitimate backslash content.
     if (!text.contains('\n') && text.contains("\\n")) {
@@ -74,6 +88,7 @@ private fun normalizeMarkdownForDisplay(rawMarkdown: String): String {
     }
 
     text = unwrapOuterMarkdownFence(text).trim()
+    text = normalizeMathDelimiters(text)
 
     val lines = text.lines()
     val normalized = StringBuilder()
@@ -102,6 +117,43 @@ private fun normalizeMarkdownForDisplay(rawMarkdown: String): String {
     }
 
     return normalized.toString().trim().ifEmpty { "暂无内容" }
+}
+
+private fun normalizeMathDelimiters(input: String): String {
+    var text = input
+
+    // Unescape math delimiters frequently produced by JSON/LLM output.
+    text = text.replace("\\$", "$")
+
+    // \(...\) -> $...$ (inline math)
+    text =
+        Regex("""\\\((.+?)\\\)""", setOf(RegexOption.DOT_MATCHES_ALL))
+            .replace(text) { match ->
+                "$${match.groupValues[1].trim()}$"
+            }
+
+    // \[...\] -> $$...$$ (block math)
+    text =
+        Regex("""\\\[(.+?)\\\]""", setOf(RegexOption.DOT_MATCHES_ALL))
+            .replace(text) { match ->
+                "\n$$\n${match.groupValues[1].trim()}\n$$\n"
+            }
+
+    // Normalize "$ expr $" into "$expr$" for better parser compatibility.
+    text =
+        Regex("""\$\s+([^$\n][^$]*?)\s+\$""")
+            .replace(text) { match ->
+                "$${match.groupValues[1].trim()}$"
+            }
+
+    // Normalize "$$ expr $$" into canonical block form.
+    text =
+        Regex("""\$\$\s+(.+?)\s+\$\$""", setOf(RegexOption.DOT_MATCHES_ALL))
+            .replace(text) { match ->
+                "\n$$\n${match.groupValues[1].trim()}\n$$\n"
+            }
+
+    return text
 }
 
 private fun unwrapOuterMarkdownFence(input: String): String {

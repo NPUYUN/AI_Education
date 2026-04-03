@@ -14,6 +14,9 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import com.example.common.ui.components.SafeMarkdownText
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -72,6 +75,7 @@ fun VideoDownloadScreen(
 
     val snackbarHostState = remember { SnackbarHostState() }
     var showHistoryDialog by remember { mutableStateOf(false) }
+    var selectedSummaryTask by remember { mutableStateOf<DownloadTask?>(null) }
     val errorEvent by viewModel.errorEvents.collectAsStateWithLifecycle(initialValue = null)
     val successEvent by viewModel.successEvents.collectAsStateWithLifecycle(initialValue = null)
 
@@ -231,6 +235,7 @@ fun VideoDownloadScreen(
                             onSummarize = {
                                 viewModel.startVideoSummary(task.id, task.localPath)
                             },
+                            onShowSummary = { selectedSummaryTask = it },
                         )
                     }
                 }
@@ -247,7 +252,56 @@ fun VideoDownloadScreen(
         )
     }
 
-    if (showHistoryDialog) {
+    if (selectedSummaryTask != null) {
+            androidx.compose.ui.window.Dialog(
+                onDismissRequest = { selectedSummaryTask = null },
+                properties = androidx.compose.ui.window.DialogProperties(
+                    usePlatformDefaultWidth = false,
+                    dismissOnBackPress = true,
+                )
+            ) {
+                Scaffold(
+                    topBar = {
+                        @OptIn(ExperimentalMaterial3Api::class)
+                        TopAppBar(
+                            title = { Text(stringResource(R.string.video_summary)) },
+                            navigationIcon = {
+                                IconButton(onClick = { selectedSummaryTask = null }) {
+                                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+                                }
+                            },
+                            actions = {
+                                val context = LocalContext.current
+                                val scope = rememberCoroutineScope()
+                                IconButton(onClick = {
+                                    scope.launch {
+                                        com.example.common.utils.PdfExporter.exportToPdf(
+                                            context,
+                                            selectedSummaryTask!!.title,
+                                            selectedSummaryTask!!.summary.summary
+                                        )
+                                    }
+                                }) {
+                                    Icon(Icons.Default.Download, contentDescription = "Export PDF")
+                                }
+                            }
+                        )
+                    }
+                ) { paddingValues ->
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(paddingValues)
+                            .padding(16.dp)
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        SafeMarkdownText(markdown = selectedSummaryTask!!.summary.summary)
+                    }
+                }
+            }
+        }
+
+        if (showHistoryDialog) {
         AlertDialog(
             onDismissRequest = { showHistoryDialog = false },
             title = { Text("历史记录") },
@@ -519,6 +573,7 @@ fun DownloadTaskCard(
     onPlay: () -> Unit,
     onOpenFolder: () -> Unit,
     onSummarize: () -> Unit,
+    onShowSummary: (DownloadTask) -> Unit,
 ) {
     Card(
         modifier = modifier.fillMaxWidth().shadow(1.dp, RoundedCornerShape(12.dp)),
@@ -595,86 +650,96 @@ fun DownloadTaskCard(
                     val summaryText = stringResource(R.string.summary)
                     if (task.summary.summary.isNotBlank()) {
                         Spacer(modifier = Modifier.height(8.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
+                        Button(
+                            onClick = { onShowSummary(task) },
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text(
-                                text = summaryText,
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.Bold,
-                            )
-                            val context = LocalContext.current
-                            val scope = rememberCoroutineScope()
-                            IconButton(
-                                onClick = {
-                                    scope.launch {
-                                        com.example.common.utils.PdfExporter.exportToPdf(context, task.title, task.summary.summary)
-                                    }
-                                },
-                            ) {
-                                Icon(Icons.Default.Download, contentDescription = "Export PDF", tint = MaterialTheme.colorScheme.primary)
-                            }
+                            Text("查看总结结果")
                         }
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = task.summary.summary,
-                            style = MaterialTheme.typography.bodySmall,
-                        )
                     }
                 }
             }
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
-            ) {
-                if (task.progress.status == DownloadStatus.DOWNLOADING && task.id != "model_download_task") {
+            if (task.progress.status == DownloadStatus.DOWNLOADING && task.id != "model_download_task") {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                ) {
                     TextButton(onClick = onCancel) {
                         Icon(Icons.Default.Close, contentDescription = null)
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(stringResource(R.string.cancel))
                     }
                 }
+            }
 
-                if (task.progress.status == DownloadStatus.COMPLETED) {
-                    if (task.id != "model_download_task") {
-                        TextButton(onClick = onPlay) {
-                            Icon(Icons.Default.PlayArrow, contentDescription = null)
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(stringResource(R.string.play_online))
-                        }
-                        TextButton(onClick = onOpenFolder) {
-                            Icon(Icons.Default.FolderOpen, contentDescription = null)
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(stringResource(R.string.open_folder))
-                        }
-                        TextButton(onClick = onSummarize) {
-                            Icon(Icons.Default.AutoAwesome, contentDescription = null)
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                if (task.summary.status == SummaryStatus.COMPLETED) {
-                                    stringResource(
-                                        R.string.re_summarize,
-                                    )
-                                } else {
-                                    stringResource(R.string.generate_summary)
-                                },
-                            )
-                        }
+            if (task.progress.status == DownloadStatus.COMPLETED && task.id != "model_download_task") {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    TextButton(
+                        onClick = onPlay,
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Icon(Icons.Default.PlayArrow, contentDescription = null)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = stringResource(R.string.play_online),
+                            maxLines = 1,
+                        )
                     }
+                    TextButton(
+                        onClick = onOpenFolder,
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Icon(Icons.Default.FolderOpen, contentDescription = null)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = stringResource(R.string.open_folder),
+                            maxLines = 1,
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Button(
+                    onClick = onSummarize,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Icon(Icons.Default.AutoAwesome, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        if (task.summary.status == SummaryStatus.COMPLETED) {
+                            stringResource(R.string.re_summarize)
+                        } else {
+                            stringResource(R.string.generate_summary)
+                        },
+                        maxLines = 1,
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                ) {
                     TextButton(onClick = onRemove) {
                         Icon(Icons.Default.Delete, contentDescription = null)
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(stringResource(R.string.remove))
                     }
                 }
+            }
 
-                if (task.progress.status == DownloadStatus.FAILED ||
-                    task.progress.status == DownloadStatus.CANCELLED
+            if (task.progress.status == DownloadStatus.FAILED ||
+                task.progress.status == DownloadStatus.CANCELLED
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
                 ) {
                     TextButton(onClick = onRemove) {
                         Icon(Icons.Default.Delete, contentDescription = null)

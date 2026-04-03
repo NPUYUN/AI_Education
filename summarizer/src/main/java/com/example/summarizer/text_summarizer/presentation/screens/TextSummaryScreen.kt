@@ -30,6 +30,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -71,6 +72,7 @@ fun TextSummaryScreen(
 
     val screenHeight = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp.dp
     var showHistoryDialog by remember { mutableStateOf(false) }
+    var showResultDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -166,49 +168,18 @@ fun TextSummaryScreen(
                 }
             }
 
-            // Result Area
+            // Summary Result Area
             AnimatedVisibility(
                 visible = uiState.summaryResult.isNotBlank(),
                 enter = fadeIn() + expandVertically(),
                 exit = fadeOut() + shrinkVertically(),
             ) {
-                Card(
-                    modifier = Modifier.fillMaxWidth().shadow(2.dp, RoundedCornerShape(16.dp)),
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                Button(
+                    onClick = { showResultDialog = true },
+                    modifier = Modifier.fillMaxWidth().height(56.dp).padding(top = 16.dp),
+                    shape = RoundedCornerShape(12.dp)
                 ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(
-                                text = stringResource(R.string.summary_result),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary,
-                            )
-                            val context = androidx.compose.ui.platform.LocalContext.current
-                            val scope = androidx.compose.runtime.rememberCoroutineScope()
-                            IconButton(
-                                onClick = {
-                                    scope.launch {
-                                        com.example.common.utils.PdfExporter.exportToPdf(context, "文本总结", uiState.summaryResult)
-                                    }
-                                },
-                            ) {
-                                Icon(Icons.Default.Download, contentDescription = "Export PDF", tint = MaterialTheme.colorScheme.primary)
-                            }
-                        }
-                        HorizontalDivider(modifier = Modifier.padding(bottom = 12.dp))
-
-                        SafeMarkdownText(
-                            markdown = uiState.summaryResult,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
+                    Text("查看总结结果", fontWeight = FontWeight.Bold)
                 }
             }
             if (uiState.summaryResult.isNotBlank()) {
@@ -216,6 +187,51 @@ fun TextSummaryScreen(
             }
         }
     }
+
+    if (showResultDialog) {
+            androidx.compose.ui.window.Dialog(
+                onDismissRequest = { showResultDialog = false },
+                properties = androidx.compose.ui.window.DialogProperties(
+                    usePlatformDefaultWidth = false,
+                    dismissOnBackPress = true,
+                )
+            ) {
+                Scaffold(
+                    topBar = {
+                        @OptIn(ExperimentalMaterial3Api::class)
+                        TopAppBar(
+                            title = { Text(stringResource(R.string.text_summary)) },
+                            navigationIcon = {
+                                IconButton(onClick = { showResultDialog = false }) {
+                                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+                                }
+                            },
+                            actions = {
+                                val context = androidx.compose.ui.platform.LocalContext.current
+                                val scope = rememberCoroutineScope()
+                                IconButton(onClick = {
+                                    scope.launch {
+                                        com.example.common.utils.PdfExporter.exportToPdf(context, "文本与文件总结", uiState.summaryResult)
+                                    }
+                                }) {
+                                    Icon(Icons.Default.Download, contentDescription = "Export PDF")
+                                }
+                            }
+                        )
+                    }
+                ) { paddingValues ->
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(paddingValues)
+                            .padding(16.dp)
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        SafeMarkdownText(markdown = uiState.summaryResult)
+                    }
+                }
+            }
+        }
 
     if (showHistoryDialog) {
         AlertDialog(

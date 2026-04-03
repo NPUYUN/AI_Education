@@ -56,18 +56,46 @@ task unzipSherpaLibs(dependsOn: downloadSherpaLibs, type: Copy) {
     into new File(buildDirPath, 'sherpa-libs-extracted')
 }
 
-task installSherpaLibs(dependsOn: unzipSherpaLibs, type: Copy) {
+// 需与 app 模块 ndk.abiFilters 一致：真机 arm64 + 模拟器 x86_64，否则 OfflineRecognizer 会因缺 .so 初始化失败
+task installSherpaLibs(dependsOn: unzipSherpaLibs) {
+    // 配置阶段取路径，避免 doLast 内访问 layout/project 导致 configuration-cache 失败
     def buildDirPath = layout.buildDirectory.get().asFile.absolutePath
-    // Source path depends on the structure inside the tar
-    // Based on LS output, it seems to be directly under jniLibs
-    def sourceDir = new File(buildDirPath, 'sherpa-libs-extracted/jniLibs/arm64-v8a')
-    if (!sourceDir.exists()) {
-        // Fallback to checking for the versioned folder just in case
-        sourceDir = new File(buildDirPath, 'sherpa-libs-extracted/sherpa-onnx-v1.10.30-android/jniLibs/arm64-v8a')
+    def moduleDir = project.projectDir
+
+    doLast {
+        def extracted = new File(buildDirPath, 'sherpa-libs-extracted')
+
+        def jniLibsRoot = new File(extracted, 'jniLibs')
+        if (!jniLibsRoot.exists()) {
+            def alt = new File(extracted, 'sherpa-onnx-v1.10.30-android/jniLibs')
+            if (alt.exists()) {
+                jniLibsRoot = alt
+            }
+        }
+        if (!jniLibsRoot.exists()) {
+            throw new GradleException("installSherpaLibs: jniLibs not found under ${extracted.absolutePath}")
+        }
+
+        ['arm64-v8a', 'x86_64'].each { abi ->
+            def src = new File(jniLibsRoot, abi)
+            def dest = new File(moduleDir, "src/main/jniLibs/${abi}")
+            if (src.exists()) {
+                dest.mkdirs()
+                src.eachFile { f ->
+                    if (f.isFile()) {
+                        java.nio.file.Files.copy(
+                            f.toPath(),
+                            new File(dest, f.name).toPath(),
+                            java.nio.file.StandardCopyOption.REPLACE_EXISTING
+                        )
+                    }
+                }
+                println "installSherpaLibs: installed Sherpa JNI for ${abi}"
+            } else {
+                println "installSherpaLibs: WARNING - missing ${abi} in tarball (${src.absolutePath})"
+            }
+        }
     }
-    
-    from sourceDir
-    into "src/main/jniLibs/arm64-v8a"
 }
 
 // Hook into preBuild

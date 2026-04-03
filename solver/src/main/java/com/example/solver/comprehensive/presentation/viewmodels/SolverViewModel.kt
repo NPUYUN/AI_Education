@@ -32,6 +32,8 @@ data class SolverUiState(
     val imageUri: Uri? = null,
     val isSolving: Boolean = false,
     val solutionResult: String = "",
+    val parsedQuestionContent: String = "",
+    val parsedFinalAnswer: String = "",
     val isAddedToErrorBook: Boolean = false,
     val drawingSteps: List<com.example.solver.geometry_solver.presentation.components.GeometryDrawingStep> = emptyList(),
     val isFunction: Boolean = false,
@@ -67,6 +69,8 @@ class SolverViewModel
                     questionText = "",
                     imageUri = null,
                     solutionResult = "",
+                    parsedQuestionContent = "",
+                    parsedFinalAnswer = "",
                     isAddedToErrorBook = false,
                 )
         }
@@ -137,7 +141,7 @@ class SolverViewModel
                 return
             }
 
-            _uiState.value = state.copy(isSolving = true, solutionResult = "")
+            _uiState.value = state.copy(isSolving = true, solutionResult = "", parsedQuestionContent = "", parsedFinalAnswer = "")
 
             viewModelScope.launch {
                 if (!networkMonitor.isConnected.value) {
@@ -208,10 +212,18 @@ class SolverViewModel
                         val rawSolution = result.getOrNull() ?: ""
                         val drawings = parseDrawingSteps(rawSolution)
                         val solution = cleanSolutionText(rawSolution)
+                        
+                        val qcMatch = Regex("""【题目内容】\s*(.*?)(?=\n【|$)""", RegexOption.DOT_MATCHES_ALL).find(solution)
+                        val faMatch = Regex("""【最终答案】\s*(.*?)(?=\n【|$)""", RegexOption.DOT_MATCHES_ALL).find(solution)
+                        val parsedQC = qcMatch?.groupValues?.get(1)?.trim() ?: ""
+                        val parsedFA = faMatch?.groupValues?.get(1)?.trim() ?: ""
+                        
                         _uiState.value =
                             _uiState.value.copy(
                                 isSolving = false,
                                 solutionResult = solution,
+                                parsedQuestionContent = parsedQC,
+                                parsedFinalAnswer = parsedFA,
                                 drawingSteps = drawings,
                                 isFunction =
                                     if (_uiState.value.selectedTab == 1) {
@@ -228,10 +240,20 @@ class SolverViewModel
                                 1 -> "代数"
                                 else -> "综合"
                             }
+                            
+                        val combinedQuestionContent = buildString {
+                            if (_uiState.value.questionText.isNotBlank()) {
+                                append("【用户描述】\n${_uiState.value.questionText}\n\n")
+                            }
+                            if (parsedQC.isNotBlank()) {
+                                append("【题目总结】\n$parsedQC")
+                            }
+                        }.trim().ifEmpty { "图片题目（暂无文字描述）" }
+
                         val history =
                             SolveHistoryEntity(
                                 subject = subject,
-                                questionContent = if (_uiState.value.questionText.isNotBlank()) _uiState.value.questionText else "图片题目（暂无文字描述）",
+                                questionContent = combinedQuestionContent,
                                 imageUri = _uiState.value.imageUri?.toString(),
                                 solution = solution,
                             )
@@ -440,47 +462,113 @@ class SolverViewModel
         }
 
         private fun cleanSolutionText(text: String): String {
+            var cleaned = text
+            
+            // First, try to find the standard tags
             val startToken = "BEGIN_DRAWING_JSON"
             val endToken = "END_DRAWING_JSON"
-            val start = text.indexOf(startToken)
-            val end = text.indexOf(endToken)
+            
+            var start = cleaned.indexOf(startToken)
+            var end = cleaned.indexOf(endToken)
+            
             if (start >= 0 && end > start) {
-                // Remove the JSON block and the tags
-                val cleaned = text.substring(0, start) + text.substring(end + endToken.length)
+                // Check if there are markdown code blocks wrapping the tags
+                var actualStart = start
+                var actualEnd = end + endToken.length
+                
+                // Look backwards for ```json or ```
+                val beforeStart = cleaned.substring(0, start).trimEnd()
+                if (beforeStart.endsWith("```json")) {
+                    actualStart = beforeStart.lastIndexOf("```json")
+                } else if (beforeStart.endsWith("```")) {
+                    actualStart = beforeStart.lastIndexOf("```")
+                }
+                
+                // Look forwards for ```
+                val afterEnd = cleaned.substring(actualEnd).trimStart()
+                if (afterEnd.startsWith("```")) {
+                    actualEnd += cleaned.substring(actualEnd).indexOf("```") + 3
+                }
+                
+                cleaned = cleaned.substring(0, actualStart) + cleaned.substring(actualEnd)
                 return cleaned.trim()
             }
-            return text
-        }
-
-        private fun parseDrawingSteps(text: String): List<com.example.solver.geometry_solver.presentation.components.GeometryDrawingStep> {
-            try {
-                val startToken = "BEGIN_DRAWING_JSON"
-                val endToken = "END_DRAWING_JSON"
-                val start = text.indexOf(startToken)
-                val end = text.indexOf(endToken)
-                if (start >= 0 && end > start) {
-                    val json = text.substring(start + startToken.length, end).trim()
-                    val gson = com.google.gson.Gson()
-                    val type =
-                        com.google.gson.reflect.TypeToken.getParameterized(
-                            List::class.java,
-                            com.example.solver.geometry_solver.presentation.components.GeometryDrawingStep::class.java,
-                        ).type
-                    return gson.fromJson(json, type) ?: emptyList()
-                }
-                val fenceStart = text.indexOf("```json")
-                if (fenceStart >= 0) {
-                    val fenceEnd = text.indexOf("```", fenceStart + 7)
-                    if (fenceEnd > fenceStart) {
-                        val json = text.substring(fenceStart + 7, fenceEnd).trim()
+            
+            // Fallback: If no tags, check if the model just outputted ```json at the end
+            val fenceStart = cleaned.lastIndexOf("```json")
+            if (fenceStart >= 0) {
+                val fenceEnd = cleaned.indexOf("```", fenceStart + 7)
+                if (fenceEnd > fenceStart) {
+                    // Try parsing it to see if it's a drawing array
+                    try {
+                        val json = cleaned.substring(fenceStart + 7, fenceEnd).trim()
                         val gson = com.google.gson.Gson()
                         val type =
                             com.google.gson.reflect.TypeToken.getParameterized(
                                 List::class.java,
                                 com.example.solver.geometry_solver.presentation.components.GeometryDrawingStep::class.java,
                             ).type
-                        return gson.fromJson(json, type) ?: emptyList()
+                        val steps: List<com.example.solver.geometry_solver.presentation.components.GeometryDrawingStep>? = gson.fromJson(json, type)
+                        if (!steps.isNullOrEmpty() && steps.first().type == "2D") {
+                            // It is a drawing JSON, remove it
+                            cleaned = cleaned.substring(0, fenceStart) + cleaned.substring(fenceEnd + 3)
+                            return cleaned.trim()
+                        }
+                    } catch (_: Exception) {}
+                }
+            }
+            
+            return cleaned.trim()
+        }
+
+        private fun parseDrawingSteps(text: String): List<com.example.solver.geometry_solver.presentation.components.GeometryDrawingStep> {
+            try {
+                val startToken = "BEGIN_DRAWING_JSON"
+                val endToken = "END_DRAWING_JSON"
+                var jsonToParse: String? = null
+                
+                val start = text.indexOf(startToken)
+                val end = text.indexOf(endToken)
+                if (start >= 0 && end > start) {
+                    var json = text.substring(start + startToken.length, end).trim()
+                    // Strip markdown code block if the model accidentally put it inside the tags
+                    if (json.startsWith("```json")) {
+                        json = json.substring(7)
+                    } else if (json.startsWith("```")) {
+                        json = json.substring(3)
                     }
+                    if (json.endsWith("```")) {
+                        json = json.substring(0, json.length - 3)
+                    }
+                    jsonToParse = json.trim()
+                } else {
+                    val fenceStart = text.lastIndexOf("```json")
+                    if (fenceStart >= 0) {
+                        val fenceEnd = text.indexOf("```", fenceStart + 7)
+                        if (fenceEnd > fenceStart) {
+                            jsonToParse = text.substring(fenceStart + 7, fenceEnd).trim()
+                        }
+                    }
+                }
+                
+                if (jsonToParse != null) {
+                    // Sometimes the model outputs a single object instead of an array of steps
+                    if (jsonToParse.startsWith("{") && jsonToParse.endsWith("}")) {
+                        jsonToParse = "[$jsonToParse]"
+                    }
+                    
+                    // Replace "elements" with "shapes" if the model used the wrong key
+                    if (jsonToParse.contains("\"elements\":")) {
+                        jsonToParse = jsonToParse.replace("\"elements\":", "\"shapes\":")
+                    }
+                    
+                    val gson = com.google.gson.Gson()
+                    val type =
+                        com.google.gson.reflect.TypeToken.getParameterized(
+                            List::class.java,
+                            com.example.solver.geometry_solver.presentation.components.GeometryDrawingStep::class.java,
+                        ).type
+                    return gson.fromJson(jsonToParse, type) ?: emptyList()
                 }
             } catch (_: Exception) {
             }

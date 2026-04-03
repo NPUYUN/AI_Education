@@ -69,6 +69,7 @@ fun AudioSummaryScreen(
         }
 
     var showHistoryDialog by remember { androidx.compose.runtime.mutableStateOf(false) }
+    var showResultDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -216,43 +217,12 @@ fun AudioSummaryScreen(
                 enter = fadeIn() + expandVertically(),
                 exit = fadeOut() + shrinkVertically(),
             ) {
-                Card(
-                    modifier = Modifier.fillMaxWidth().shadow(2.dp, RoundedCornerShape(16.dp)),
-                    shape = RoundedCornerShape(16.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                Button(
+                    onClick = { showResultDialog = true },
+                    modifier = Modifier.fillMaxWidth().height(56.dp).padding(top = 16.dp),
+                    shape = RoundedCornerShape(12.dp)
                 ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(
-                                text = stringResource(R.string.smart_summary),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary,
-                            )
-                            val context = androidx.compose.ui.platform.LocalContext.current
-                            val scope = rememberCoroutineScope()
-                            IconButton(
-                                onClick = {
-                                    scope.launch {
-                                        com.example.common.utils.PdfExporter.exportToPdf(context, "音频总结", uiState.summaryResult)
-                                    }
-                                },
-                            ) {
-                                Icon(Icons.Default.Download, contentDescription = "Export PDF", tint = MaterialTheme.colorScheme.primary)
-                            }
-                        }
-                        HorizontalDivider(modifier = Modifier.padding(bottom = 12.dp))
-
-                        SafeMarkdownText(
-                            markdown = uiState.summaryResult,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
+                    Text("查看总结结果", fontWeight = FontWeight.Bold)
                 }
             }
             if (uiState.summaryResult.isNotBlank()) {
@@ -260,6 +230,51 @@ fun AudioSummaryScreen(
             }
         }
     }
+
+    if (showResultDialog) {
+            androidx.compose.ui.window.Dialog(
+                onDismissRequest = { showResultDialog = false },
+                properties = androidx.compose.ui.window.DialogProperties(
+                    usePlatformDefaultWidth = false,
+                    dismissOnBackPress = true,
+                )
+            ) {
+                Scaffold(
+                    topBar = {
+                        @OptIn(ExperimentalMaterial3Api::class)
+                        TopAppBar(
+                            title = { Text(stringResource(R.string.audio_summary)) },
+                            navigationIcon = {
+                                IconButton(onClick = { showResultDialog = false }) {
+                                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+                                }
+                            },
+                            actions = {
+                                val context = androidx.compose.ui.platform.LocalContext.current
+                                val scope = rememberCoroutineScope()
+                                IconButton(onClick = {
+                                    scope.launch {
+                                        com.example.common.utils.PdfExporter.exportToPdf(context, "音频总结", uiState.summaryResult)
+                                    }
+                                }) {
+                                    Icon(Icons.Default.Download, contentDescription = "Export PDF")
+                                }
+                            }
+                        )
+                    }
+                ) { paddingValues ->
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(paddingValues)
+                            .padding(16.dp)
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        SafeMarkdownText(markdown = uiState.summaryResult)
+                    }
+                }
+            }
+        }
 
     if (showHistoryDialog) {
         AlertDialog(

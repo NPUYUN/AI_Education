@@ -8,7 +8,11 @@ class OfflineStream(var ptr: Long) {
 
     protected fun finalize() {
         if (ptr != 0L) {
-            delete(ptr)
+            try {
+                delete(ptr)
+            } catch (e: Exception) {
+                // Ignore JNI delete exceptions during GC
+            }
             ptr = 0
         }
     }

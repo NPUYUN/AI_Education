@@ -20,8 +20,9 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         ndk {
-            // 只保留主流架构，减少 APK 和构建占用空间
+            // arm64：真机；x86_64：Android 模拟器（否则 youtubedl-android 内置 Python 会与宿主 ABI 不一致导致 CANNOT LINK）
             abiFilters.add("arm64-v8a")
+            abiFilters.add("x86_64")
             // 如果需要支持较老设备或 32 位模拟器，可以取消下面这行的注释
             // abiFilters.add("armeabi-v7a")
         }

@@ -116,7 +116,7 @@ data class OfflineModelConfig(
     var numThreads: Int = 1,
     var debug: Boolean = false,
     var provider: String = "cpu",
-    var modelType: String = "",
+    var modelType: String = "paraformer", // explicitly default to paraformer
     var tokens: String = "",
     var modelingUnit: String = "",
     var bpeVocab: String = "",
@@ -143,33 +143,111 @@ class OfflineRecognizer(
     private var ptr: Long
 
     init {
-        ptr =
+        ptr = try {
             if (assetManager != null) {
                 newFromAsset(assetManager, config)
             } else {
                 newFromFile(config)
             }
+        } catch (e: Throwable) {
+            0L
+        }
+        if (ptr == 0L) {
+            throw IllegalStateException("Failed to initialize Sherpa-ONNX model natively. Paths might be incorrect or native library crashed.")
+        }
     }
 
     protected fun finalize() {
         if (ptr != 0L) {
-            delete(ptr)
+            try {
+                delete(ptr)
+            } catch (e: Exception) {
+                // Ignore JNI delete exceptions during GC
+            }
             ptr = 0
         }
     }
 
     fun release() = finalize()
 
-    fun createStream(): OfflineStream {
-        val p = createStream(ptr)
-        return OfflineStream(p)
+    fun createStream(): OfflineStream? {
+        return try {
+            val p = createStream(ptr)
+            OfflineStream(p)
+        } catch (e: Throwable) {
+            null
+        }
     }
 
-    fun getResult(stream: OfflineStream): OfflineRecognizerResult {
-        return getResult(stream.ptr)
+    fun getResult(stream: OfflineStream): OfflineRecognizerResult? {
+        val obj = try {
+            getResult(stream.ptr)
+        } catch (e: Throwable) {
+            return OfflineRecognizerResult(
+                text = "【语音识别底层返回异常】",
+                tokens = emptyArray(),
+                timestamps = FloatArray(0),
+                lang = "",
+                emotion = "",
+                event = "",
+                durations = FloatArray(0)
+            )
+        }
+        // Similar to WaveReader, JNI might return an Object array instead of OfflineRecognizerResult
+        // Signature: [text: String, tokens: Array<String>, timestamps: FloatArray, lang: String, emotion: String, event: String, durations: FloatArray]
+        if (obj is Array<*>) {
+            try {
+                val text = obj[0] as? String ?: ""
+                val tokens = obj.getOrNull(1) as? Array<String> ?: emptyArray()
+                val timestamps = obj.getOrNull(2) as? FloatArray ?: FloatArray(0)
+                val lang = obj.getOrNull(3) as? String ?: ""
+                val emotion = obj.getOrNull(4) as? String ?: ""
+                val event = obj.getOrNull(5) as? String ?: ""
+                val durations = obj.getOrNull(6) as? FloatArray ?: FloatArray(0)
+                
+                return OfflineRecognizerResult(
+                    text = text,
+                    tokens = tokens,
+                    timestamps = timestamps,
+                    lang = lang,
+                    emotion = emotion,
+                    event = event,
+                    durations = durations
+                )
+            } catch (e: Exception) {
+                // If it fails to parse the array, return a basic result with string representation to avoid crashing completely
+                return OfflineRecognizerResult(
+                    text = obj.joinToString(separator = ""),
+                    tokens = emptyArray(),
+                    timestamps = FloatArray(0),
+                    lang = "",
+                    emotion = "",
+                    event = "",
+                    durations = FloatArray(0)
+                )
+            }
+        } else if (obj is String) {
+             // In some versions, getResult might just return a single String
+             return OfflineRecognizerResult(
+                 text = obj,
+                 tokens = emptyArray(),
+                 timestamps = FloatArray(0),
+                 lang = "",
+                 emotion = "",
+                 event = "",
+                 durations = FloatArray(0)
+             )
+        }
+        return obj as? OfflineRecognizerResult
     }
 
-    fun decode(stream: OfflineStream) = decode(ptr, stream.ptr)
+    fun decode(stream: OfflineStream) {
+        try {
+            decode(ptr, stream.ptr)
+        } catch (e: Throwable) {
+            // Log and ignore to prevent JVM crash
+        }
+    }
 
     fun setConfig(config: OfflineRecognizerConfig) = setConfig(ptr, config)
 
@@ -194,7 +272,7 @@ class OfflineRecognizer(
         streamPtr: Long,
     )
 
-    private external fun getResult(streamPtr: Long): OfflineRecognizerResult
+    private external fun getResult(streamPtr: Long): Any?
 
     companion object {
         init {
