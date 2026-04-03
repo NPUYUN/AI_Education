@@ -70,16 +70,19 @@ private fun normalizeMarkdownForDisplay(rawMarkdown: String): String {
     // Normalize LaTeX formulas
     // Some models use [ ... ] for block math and \( ... \) for inline math
     // We convert them to standard $...$ and $$...$$ for JLatexMathPlugin
-    text = text.replace(Regex("""\\\[(.*?)\\\]""", RegexOption.DOT_MATCHES_ALL)) {
-        "$$" + it.groupValues[1] + "$$"
-    }
-    text = text.replace(Regex("""\\\((.*?)\\\)""", RegexOption.DOT_MATCHES_ALL)) {
-        "$" + it.groupValues[1] + "$"
-    }
+    text =
+        text.replace(Regex("""\\\[(.*?)\\\]""", RegexOption.DOT_MATCHES_ALL)) {
+            "$$" + it.groupValues[1] + "$$"
+        }
+    text =
+        text.replace(Regex("""\\\((.*?)\\\)""", RegexOption.DOT_MATCHES_ALL)) {
+            "$" + it.groupValues[1] + "$"
+        }
     // Handle cases where the model outputs `[ R = ... ]` without escaping the bracket
-    text = text.replace(Regex("""^\s*\[(.*?)\]\s*$""", RegexOption.MULTILINE)) {
-        "$$" + it.groupValues[1] + "$$"
-    }
+    text =
+        text.replace(Regex("""^\s*\[(.*?)\]\s*$""", RegexOption.MULTILINE)) {
+            "$$" + it.groupValues[1] + "$$"
+        }
 
     // Some model responses return JSON-escaped newlines. Convert them only when text has
     // almost no real line breaks, to avoid touching legitimate backslash content.

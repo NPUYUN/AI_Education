@@ -89,12 +89,13 @@ class SherpaAsrManager(
                     wavFile = convertToWav(audioFile)
 
                     // Ensure recognizer is initialized properly before proceeding
-                    val r = recognizer ?: try {
-                        getRecognizer().also { recognizer = it }
-                    } catch (e: Exception) {
-                        Log.e(tag, "Failed to initialize recognizer", e)
-                        throw IllegalStateException("语音识别引擎初始化失败", e)
-                    }
+                    val r =
+                        recognizer ?: try {
+                            getRecognizer().also { recognizer = it }
+                        } catch (e: Exception) {
+                            Log.e(tag, "Failed to initialize recognizer", e)
+                            throw IllegalStateException("语音识别引擎初始化失败", e)
+                        }
 
                     // Protect against NPE if getRecognizer() still returned null or recognizer field became null
                     if (r == null) {
@@ -108,7 +109,7 @@ class SherpaAsrManager(
                     val sampleRate = 16000
                     val segmentSize = sampleRate * maxSegmentDurationSeconds // 480,000 samples per chunk
                     val bytesPerSegment = segmentSize * 2 // 16-bit PCM = 2 bytes per sample
-                    
+
                     val fullText = StringBuilder()
 
                     java.io.RandomAccessFile(wavFile, "r").use { raf ->
@@ -141,7 +142,7 @@ class SherpaAsrManager(
 
                             val samplesCount = bytesRead / 2
                             val chunkFloatArray = FloatArray(samplesCount)
-                            
+
                             // 16-bit PCM (Little Endian) to Float [-1.0, 1.0]
                             for (i in 0 until samplesCount) {
                                 val low = byteBuffer[i * 2].toInt() and 0xFF
@@ -158,9 +159,9 @@ class SherpaAsrManager(
                                 if (segmentStream == null) {
                                     throw IllegalStateException("Failed to create OfflineStream from Native engine.")
                                 }
-                                
+
                                 segmentStream.acceptWaveform(chunkFloatArray, sampleRate)
-                                
+
                                 kotlin.coroutines.coroutineContext.ensureActive()
                                 r.decode(segmentStream)
                                 kotlin.coroutines.coroutineContext.ensureActive()

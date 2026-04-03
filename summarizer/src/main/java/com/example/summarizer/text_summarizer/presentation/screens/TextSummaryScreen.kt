@@ -24,7 +24,6 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material3.*
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -34,7 +33,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -177,7 +175,7 @@ fun TextSummaryScreen(
                 Button(
                     onClick = { showResultDialog = true },
                     modifier = Modifier.fillMaxWidth().height(56.dp).padding(top = 16.dp),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(12.dp),
                 ) {
                     Text("查看总结结果", fontWeight = FontWeight.Bold)
                 }
@@ -189,49 +187,51 @@ fun TextSummaryScreen(
     }
 
     if (showResultDialog) {
-            androidx.compose.ui.window.Dialog(
-                onDismissRequest = { showResultDialog = false },
-                properties = androidx.compose.ui.window.DialogProperties(
+        androidx.compose.ui.window.Dialog(
+            onDismissRequest = { showResultDialog = false },
+            properties =
+                androidx.compose.ui.window.DialogProperties(
                     usePlatformDefaultWidth = false,
                     dismissOnBackPress = true,
-                )
-            ) {
-                Scaffold(
-                    topBar = {
-                        @OptIn(ExperimentalMaterial3Api::class)
-                        TopAppBar(
-                            title = { Text(stringResource(R.string.text_summary)) },
-                            navigationIcon = {
-                                IconButton(onClick = { showResultDialog = false }) {
-                                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
-                                }
-                            },
-                            actions = {
-                                val context = androidx.compose.ui.platform.LocalContext.current
-                                val scope = rememberCoroutineScope()
-                                IconButton(onClick = {
-                                    scope.launch {
-                                        com.example.common.utils.PdfExporter.exportToPdf(context, "文本与文件总结", uiState.summaryResult)
-                                    }
-                                }) {
-                                    Icon(Icons.Default.Download, contentDescription = "Export PDF")
-                                }
+                ),
+        ) {
+            Scaffold(
+                topBar = {
+                    @OptIn(ExperimentalMaterial3Api::class)
+                    TopAppBar(
+                        title = { Text(stringResource(R.string.text_summary)) },
+                        navigationIcon = {
+                            IconButton(onClick = { showResultDialog = false }) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                             }
-                        )
-                    }
-                ) { paddingValues ->
-                    Column(
-                        modifier = Modifier
+                        },
+                        actions = {
+                            val context = androidx.compose.ui.platform.LocalContext.current
+                            val scope = rememberCoroutineScope()
+                            IconButton(onClick = {
+                                scope.launch {
+                                    com.example.common.utils.PdfExporter.exportToPdf(context, "文本与文件总结", uiState.summaryResult)
+                                }
+                            }) {
+                                Icon(Icons.Default.Download, contentDescription = "Export PDF")
+                            }
+                        },
+                    )
+                },
+            ) { paddingValues ->
+                Column(
+                    modifier =
+                        Modifier
                             .fillMaxSize()
                             .padding(paddingValues)
                             .padding(16.dp)
-                            .verticalScroll(rememberScrollState())
-                    ) {
-                        SafeMarkdownText(markdown = uiState.summaryResult)
-                    }
+                            .verticalScroll(rememberScrollState()),
+                ) {
+                    SafeMarkdownText(markdown = uiState.summaryResult)
                 }
             }
         }
+    }
 
     if (showHistoryDialog) {
         AlertDialog(

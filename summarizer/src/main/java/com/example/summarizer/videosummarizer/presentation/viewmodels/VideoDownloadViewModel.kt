@@ -299,7 +299,9 @@ class VideoDownloadViewModel
             if (status == SummaryStatus.PREPARING ||
                 status == SummaryStatus.TRANSCRIBING ||
                 status == SummaryStatus.SUMMARIZING
-            ) return
+            ) {
+                return
+            }
 
             synchronized(summarizingTaskIds) {
                 if (summarizingTaskIds.contains(taskId)) return

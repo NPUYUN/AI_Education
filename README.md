@@ -24,15 +24,16 @@ This project is divided into four core business modules to deeply cover all lear
 * **Personal Center & Config**: Unified management and seamless switching of global LLM model parameters (API Key, Base URL, Model Selection).
 
 ### 2. 📝 Smart Solver
-* **Multimodal Input**: Supports photo-based problem solving (integrated with CameraX, featuring built-in image rotation and cropping), gallery uploads, and quick history retrieval. Supports mixed text and image queries.
+* **Multimodal Input**: Supports photo-based problem solving (integrated with CameraX, featuring built-in image rotation and cropping), gallery uploads, and quick history retrieval. Supports mixed text and image queries with an interactive "wait-to-solve" flow.
 * **Smart Classification & Parsing**: Automatically identifies the subject of the problem (Geometry, Algebra, Physics, Chemistry, Biology, etc.) and loads subject-specific system Prompts. Features an intelligent fallback mechanism to pure vision models (e.g., `qwen-vl-plus`) when identifying problems containing images.
 * **Dynamic Geometry Canvas**: Deeply integrated with the `exp4j` math engine to dynamically draw function graphs (including tangents and shaded areas), geometric shapes, physics force diagrams, and chemistry experiment schematics based on AI-output JSON instructions.
+* **Split Result View**: Elegantly separates the final answer (shown on the main screen) from the detailed step-by-step derivation (displayed in a full-screen dialog).
 * **Error Book Integration**: Supports one-click addition to the Error Book after successful problem solving, synchronizing states in the solving history.
 
 ### 3. 📑 Intelligent Summarizer
 * **Multi-format Text Summarization**: Supports direct pasting of long texts, or importing and parsing PDF (PDFBox), Word (XML parsing), HTML (Jsoup), TXT/CSV files to extract core summaries.
-* **Audio & Video Summarization**: Efficient offline Automatic Speech Recognition (ASR) using Sherpa ONNX, combined with LLMs for refinement and summarization.
-* **Dialogue Review & PDF Export**: Supports importing historical dialogues from the Room database for review. All summarization results (text, audio, video, dialogue) can be **exported to beautifully formatted PDF documents** with one click for easy local archiving and sharing.
+* **Audio & Video Summarization**: Efficient offline Automatic Speech Recognition (ASR) using Sherpa ONNX. Implements advanced **streaming memory chunking** to prevent JNI OOM and C++ aborts when processing long media files, combined with LLMs for refinement and summarization.
+* **Dialogue Review & Universal PDF Export**: Supports importing historical dialogues from the Room database for review. All summarization results (text, audio, video, dialogue) and review modules can be **exported to beautifully formatted PDF documents** with one click for easy local archiving and sharing.
 
 ### 4. 📚 Smart Review
 * **Ebbinghaus Review Planner**: Supports customized review schedules for different subjects, intelligently planning daily review tasks using the memory curve algorithm.
@@ -44,11 +45,12 @@ This project is divided into four core business modules to deeply cover all lear
 
 ### Architecture Standards
 * **Pattern**: Clean Architecture + MVVM + Unidirectional Data Flow (MVI mindset with StateFlow).
-* **Multi-module**: Split by business boundaries (`app`, `common`, `ai_tutor`, `solver`, `summarizer`, `review`). Each module is strictly layered into `models`, `services`, and `presentation`.
+* **Multi-module Decoupling**: Split by business boundaries (`app`, `common`, `ai_tutor`, `solver`, `summarizer`, `review`). Features a robust `FeatureApi` mechanism injected via Hilt, ensuring zero cross-module hardcoded navigation dependencies in the main `app` module. Each module is strictly layered into `models`, `services`, and `presentation`.
 * **High Availability & Offline Fallback**: Built-in `NetworkMonitor` listens to network states in real-time, providing global offline fallback strategies (seamless switching to local Error Book, history, offline ASR, and local canvas rendering when offline).
 
 ### Core Frameworks
-* **UI Layer**: Jetpack Compose (fully applies Material 3 specifications, Dark Mode adaptation, and system-level Accessibility support).
+* **UI Layer**: Jetpack Compose (fully applies Material 3 specifications, unified `CenterAlignedTopAppBar`, NavHost `AnimatedVisibility` transitions, Dark Mode adaptation, and system-level Accessibility support).
+* **Markdown & Math**: Enhanced `SafeMarkdownText` globally integrating Markwon with custom LaTeX regex parsing (`$$`, `$`) and Coil for mixed text-and-image rendering.
 * **Dependency Injection**: Dagger Hilt, including custom Coroutine DispatcherProvider for enhanced testability.
 * **Local Persistence**: Room Database (with relational tables, TypeConverters) and DataStore/SharedPreferences.
 * **Networking**: Retrofit, OkHttp, unified Server-Sent Events (SSE) streaming API for LLMs. Custom timeouts for long-text generations (e.g., 90s for Timeline Map).

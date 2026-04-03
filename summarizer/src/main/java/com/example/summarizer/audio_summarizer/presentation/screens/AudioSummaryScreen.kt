@@ -220,7 +220,7 @@ fun AudioSummaryScreen(
                 Button(
                     onClick = { showResultDialog = true },
                     modifier = Modifier.fillMaxWidth().height(56.dp).padding(top = 16.dp),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(12.dp),
                 ) {
                     Text("查看总结结果", fontWeight = FontWeight.Bold)
                 }
@@ -232,49 +232,51 @@ fun AudioSummaryScreen(
     }
 
     if (showResultDialog) {
-            androidx.compose.ui.window.Dialog(
-                onDismissRequest = { showResultDialog = false },
-                properties = androidx.compose.ui.window.DialogProperties(
+        androidx.compose.ui.window.Dialog(
+            onDismissRequest = { showResultDialog = false },
+            properties =
+                androidx.compose.ui.window.DialogProperties(
                     usePlatformDefaultWidth = false,
                     dismissOnBackPress = true,
-                )
-            ) {
-                Scaffold(
-                    topBar = {
-                        @OptIn(ExperimentalMaterial3Api::class)
-                        TopAppBar(
-                            title = { Text(stringResource(R.string.audio_summary)) },
-                            navigationIcon = {
-                                IconButton(onClick = { showResultDialog = false }) {
-                                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
-                                }
-                            },
-                            actions = {
-                                val context = androidx.compose.ui.platform.LocalContext.current
-                                val scope = rememberCoroutineScope()
-                                IconButton(onClick = {
-                                    scope.launch {
-                                        com.example.common.utils.PdfExporter.exportToPdf(context, "音频总结", uiState.summaryResult)
-                                    }
-                                }) {
-                                    Icon(Icons.Default.Download, contentDescription = "Export PDF")
-                                }
+                ),
+        ) {
+            Scaffold(
+                topBar = {
+                    @OptIn(ExperimentalMaterial3Api::class)
+                    TopAppBar(
+                        title = { Text(stringResource(R.string.audio_summary)) },
+                        navigationIcon = {
+                            IconButton(onClick = { showResultDialog = false }) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                             }
-                        )
-                    }
-                ) { paddingValues ->
-                    Column(
-                        modifier = Modifier
+                        },
+                        actions = {
+                            val context = androidx.compose.ui.platform.LocalContext.current
+                            val scope = rememberCoroutineScope()
+                            IconButton(onClick = {
+                                scope.launch {
+                                    com.example.common.utils.PdfExporter.exportToPdf(context, "音频总结", uiState.summaryResult)
+                                }
+                            }) {
+                                Icon(Icons.Default.Download, contentDescription = "Export PDF")
+                            }
+                        },
+                    )
+                },
+            ) { paddingValues ->
+                Column(
+                    modifier =
+                        Modifier
                             .fillMaxSize()
                             .padding(paddingValues)
                             .padding(16.dp)
-                            .verticalScroll(rememberScrollState())
-                    ) {
-                        SafeMarkdownText(markdown = uiState.summaryResult)
-                    }
+                            .verticalScroll(rememberScrollState()),
+                ) {
+                    SafeMarkdownText(markdown = uiState.summaryResult)
                 }
             }
         }
+    }
 
     if (showHistoryDialog) {
         AlertDialog(

@@ -84,10 +84,11 @@ class VideoDownloader(
     }
 
     private fun isNativeAbiMismatchError(e: Throwable): Boolean {
-        val msg = buildString {
-            append(e.message.orEmpty())
-            e.cause?.message?.let { append(it) }
-        }.lowercase()
+        val msg =
+            buildString {
+                append(e.message.orEmpty())
+                e.cause?.message?.let { append(it) }
+            }.lowercase()
         return msg.contains("cannot link executable") ||
             msg.contains("em_aarch64") ||
             msg.contains("em_x86_64") ||
@@ -361,7 +362,7 @@ class VideoDownloader(
                     }
                 }
 
-                val processId = "video_download_${attemptTimestamp}"
+                val processId = "video_download_$attemptTimestamp"
                 activeProcessId = processId
 
                 try {

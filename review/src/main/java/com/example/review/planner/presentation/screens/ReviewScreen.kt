@@ -78,7 +78,7 @@ fun SmartReviewPlannerScreen(
             SmartReviewPlannerView(
                 viewModel = viewModel,
                 uiState = uiState,
-                onShowResult = { showResultDialog = true }
+                onShowResult = { showResultDialog = true },
             )
         }
     }
@@ -86,10 +86,11 @@ fun SmartReviewPlannerScreen(
     if (showResultDialog) {
         androidx.compose.ui.window.Dialog(
             onDismissRequest = { showResultDialog = false },
-            properties = androidx.compose.ui.window.DialogProperties(
-                usePlatformDefaultWidth = false,
-                dismissOnBackPress = true,
-            )
+            properties =
+                androidx.compose.ui.window.DialogProperties(
+                    usePlatformDefaultWidth = false,
+                    dismissOnBackPress = true,
+                ),
         ) {
             Scaffold(
                 topBar = {
@@ -115,16 +116,17 @@ fun SmartReviewPlannerScreen(
                             }) {
                                 Icon(Icons.Default.Download, contentDescription = "Export PDF")
                             }
-                        }
+                        },
                     )
-                }
+                },
             ) { paddingValues ->
                 Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues)
-                        .padding(16.dp)
-                        .verticalScroll(rememberScrollState())
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .padding(paddingValues)
+                            .padding(16.dp)
+                            .verticalScroll(rememberScrollState()),
                 ) {
                     SafeMarkdownText(markdown = uiState.reviewPlan)
                 }
@@ -187,7 +189,7 @@ fun KnowledgeReinforcementScreen(
             KnowledgeReinforcementView(
                 viewModel = viewModel,
                 uiState = uiState,
-                onShowResult = { showResultDialog = true }
+                onShowResult = { showResultDialog = true },
             )
         }
     }
@@ -195,10 +197,11 @@ fun KnowledgeReinforcementScreen(
     if (showResultDialog) {
         androidx.compose.ui.window.Dialog(
             onDismissRequest = { showResultDialog = false },
-            properties = androidx.compose.ui.window.DialogProperties(
-                usePlatformDefaultWidth = false,
-                dismissOnBackPress = true,
-            )
+            properties =
+                androidx.compose.ui.window.DialogProperties(
+                    usePlatformDefaultWidth = false,
+                    dismissOnBackPress = true,
+                ),
         ) {
             Scaffold(
                 topBar = {
@@ -224,16 +227,17 @@ fun KnowledgeReinforcementScreen(
                             }) {
                                 Icon(Icons.Default.Download, contentDescription = "Export PDF")
                             }
-                        }
+                        },
                     )
-                }
+                },
             ) { paddingValues ->
                 Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues)
-                        .padding(16.dp)
-                        .verticalScroll(rememberScrollState())
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .padding(paddingValues)
+                            .padding(16.dp)
+                            .verticalScroll(rememberScrollState()),
                 ) {
                     SafeMarkdownText(markdown = uiState.reinforcementQuiz)
                 }
@@ -401,7 +405,7 @@ fun HistoryDialog(
 fun SmartReviewPlannerView(
     viewModel: ReviewViewModel,
     uiState: com.example.review.planner.presentation.viewmodels.ReviewUiState,
-    onShowResult: () -> Unit = {}
+    onShowResult: () -> Unit = {},
 ) {
     val subjectInput = uiState.subjectInput
     val isGenerating = uiState.isGeneratingPlan
@@ -506,7 +510,7 @@ fun SmartReviewPlannerView(
 fun KnowledgeReinforcementView(
     viewModel: ReviewViewModel,
     uiState: com.example.review.planner.presentation.viewmodels.ReviewUiState,
-    onShowResult: () -> Unit = {}
+    onShowResult: () -> Unit = {},
 ) {
     val input = uiState.knowledgePointInput
     val isGenerating = uiState.isGeneratingQuiz

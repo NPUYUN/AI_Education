@@ -14,11 +14,10 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import com.example.common.ui.components.SafeMarkdownText
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -45,6 +44,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import com.example.common.R
 import com.example.common.presentation.components.GlobalApiSettingsDialog
+import com.example.common.ui.components.SafeMarkdownText
 import com.example.summarizer.videosummarizer.presentation.viewmodels.DownloadTask
 import com.example.summarizer.videosummarizer.presentation.viewmodels.SummaryStatus
 import com.example.summarizer.videosummarizer.presentation.viewmodels.VideoDownloadViewModel
@@ -253,55 +253,57 @@ fun VideoDownloadScreen(
     }
 
     if (selectedSummaryTask != null) {
-            androidx.compose.ui.window.Dialog(
-                onDismissRequest = { selectedSummaryTask = null },
-                properties = androidx.compose.ui.window.DialogProperties(
+        androidx.compose.ui.window.Dialog(
+            onDismissRequest = { selectedSummaryTask = null },
+            properties =
+                androidx.compose.ui.window.DialogProperties(
                     usePlatformDefaultWidth = false,
                     dismissOnBackPress = true,
-                )
-            ) {
-                Scaffold(
-                    topBar = {
-                        @OptIn(ExperimentalMaterial3Api::class)
-                        TopAppBar(
-                            title = { Text(stringResource(R.string.video_summary)) },
-                            navigationIcon = {
-                                IconButton(onClick = { selectedSummaryTask = null }) {
-                                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
-                                }
-                            },
-                            actions = {
-                                val context = LocalContext.current
-                                val scope = rememberCoroutineScope()
-                                IconButton(onClick = {
-                                    scope.launch {
-                                        com.example.common.utils.PdfExporter.exportToPdf(
-                                            context,
-                                            selectedSummaryTask!!.title,
-                                            selectedSummaryTask!!.summary.summary
-                                        )
-                                    }
-                                }) {
-                                    Icon(Icons.Default.Download, contentDescription = "Export PDF")
-                                }
+                ),
+        ) {
+            Scaffold(
+                topBar = {
+                    @OptIn(ExperimentalMaterial3Api::class)
+                    TopAppBar(
+                        title = { Text(stringResource(R.string.video_summary)) },
+                        navigationIcon = {
+                            IconButton(onClick = { selectedSummaryTask = null }) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                             }
-                        )
-                    }
-                ) { paddingValues ->
-                    Column(
-                        modifier = Modifier
+                        },
+                        actions = {
+                            val context = LocalContext.current
+                            val scope = rememberCoroutineScope()
+                            IconButton(onClick = {
+                                scope.launch {
+                                    com.example.common.utils.PdfExporter.exportToPdf(
+                                        context,
+                                        selectedSummaryTask!!.title,
+                                        selectedSummaryTask!!.summary.summary,
+                                    )
+                                }
+                            }) {
+                                Icon(Icons.Default.Download, contentDescription = "Export PDF")
+                            }
+                        },
+                    )
+                },
+            ) { paddingValues ->
+                Column(
+                    modifier =
+                        Modifier
                             .fillMaxSize()
                             .padding(paddingValues)
                             .padding(16.dp)
-                            .verticalScroll(rememberScrollState())
-                    ) {
-                        SafeMarkdownText(markdown = selectedSummaryTask!!.summary.summary)
-                    }
+                            .verticalScroll(rememberScrollState()),
+                ) {
+                    SafeMarkdownText(markdown = selectedSummaryTask!!.summary.summary)
                 }
             }
         }
+    }
 
-        if (showHistoryDialog) {
+    if (showHistoryDialog) {
         AlertDialog(
             onDismissRequest = { showHistoryDialog = false },
             title = { Text("历史记录") },
@@ -652,7 +654,7 @@ fun DownloadTaskCard(
                         Spacer(modifier = Modifier.height(8.dp))
                         Button(
                             onClick = { onShowSummary(task) },
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
                         ) {
                             Text("查看总结结果")
                         }

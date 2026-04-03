@@ -14,28 +14,27 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.*
-import androidx.compose.ui.window.Dialog
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.runtime.rememberCoroutineScope
-import kotlinx.coroutines.launch
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material3.*
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
@@ -48,6 +47,7 @@ import com.example.common.ui.components.SafeMarkdownText
 import com.example.common.utils.DateFormatUtils
 import com.example.solver.comprehensive.presentation.viewmodels.SolverViewModel
 import com.example.solver.geometry_solver.presentation.components.GeometryStepCard
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -449,21 +449,21 @@ fun SolverScreen(
                                     modifier = Modifier.padding(bottom = 8.dp),
                                 )
                                 HorizontalDivider(modifier = Modifier.padding(bottom = 8.dp))
-                                
+
                                 if (uiState.parsedQuestionContent.isNotBlank()) {
                                     Text("【题目内容】", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                                     Spacer(modifier = Modifier.height(4.dp))
                                     SafeMarkdownText(markdown = uiState.parsedQuestionContent)
                                     Spacer(modifier = Modifier.height(12.dp))
                                 }
-                                
+
                                 if (uiState.questionText.isNotBlank()) {
                                     Text("【您的描述】", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(uiState.questionText)
                                     Spacer(modifier = Modifier.height(12.dp))
                                 }
-                                
+
                                 if (uiState.parsedFinalAnswer.isNotBlank()) {
                                     Text("【最终答案】", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                                     Spacer(modifier = Modifier.height(4.dp))
@@ -475,7 +475,7 @@ fun SolverScreen(
                                         modifier = Modifier.fillMaxWidth(),
                                     )
                                 }
-                                
+
                                 Spacer(modifier = Modifier.height(16.dp))
                                 Button(
                                     onClick = { showSolutionDetailDialog = true },
@@ -483,7 +483,7 @@ fun SolverScreen(
                                 ) {
                                     Text("查看解题详情")
                                 }
-                                
+
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Button(
                                     onClick = { showErrorBookDialog = true },
@@ -510,10 +510,11 @@ fun SolverScreen(
         if (showSolutionDetailDialog) {
             Dialog(
                 onDismissRequest = { showSolutionDetailDialog = false },
-                properties = androidx.compose.ui.window.DialogProperties(
-                    usePlatformDefaultWidth = false,
-                    dismissOnBackPress = true,
-                )
+                properties =
+                    androidx.compose.ui.window.DialogProperties(
+                        usePlatformDefaultWidth = false,
+                        dismissOnBackPress = true,
+                    ),
             ) {
                 Scaffold(
                     topBar = {
@@ -530,10 +531,11 @@ fun SolverScreen(
                                 val context = androidx.compose.ui.platform.LocalContext.current
                                 IconButton(onClick = {
                                     scope.launch {
-                                        val fullContent = buildString {
-                                            append("# 解题详情\n\n")
-                                            append(uiState.solutionResult)
-                                        }
+                                        val fullContent =
+                                            buildString {
+                                                append("# 解题详情\n\n")
+                                                append(uiState.solutionResult)
+                                            }
                                         com.example.common.utils.PdfExporter.exportToPdf(
                                             context = context,
                                             title = "解题详情",
@@ -543,16 +545,17 @@ fun SolverScreen(
                                 }) {
                                     Icon(Icons.Default.Download, contentDescription = "Export PDF")
                                 }
-                            }
+                            },
                         )
-                    }
+                    },
                 ) { paddingValues ->
                     Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(paddingValues)
-                            .padding(16.dp)
-                            .verticalScroll(rememberScrollState()),
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .padding(paddingValues)
+                                .padding(16.dp)
+                                .verticalScroll(rememberScrollState()),
                     ) {
                         SafeMarkdownText(
                             markdown = uiState.solutionResult,
@@ -563,13 +566,21 @@ fun SolverScreen(
                             val title =
                                 when (uiState.selectedTab) {
                                     0 -> stringResource(R.string.geometry_drawing)
-                                    1 -> if (uiState.isFunction) stringResource(R.string.function_drawing) else stringResource(R.string.algebra)
-                                    else -> when (uiState.comprehensiveType) {
-                                        stringResource(R.string.physics) -> stringResource(R.string.physics_diagram)
-                                        stringResource(R.string.chemistry) -> stringResource(R.string.chemistry_diagram)
-                                        stringResource(R.string.biology) -> stringResource(R.string.biology_diagram)
-                                        else -> stringResource(R.string.comprehensive_diagram)
-                                    }
+                                    1 ->
+                                        if (uiState.isFunction) {
+                                            stringResource(
+                                                R.string.function_drawing,
+                                            )
+                                        } else {
+                                            stringResource(R.string.algebra)
+                                        }
+                                    else ->
+                                        when (uiState.comprehensiveType) {
+                                            stringResource(R.string.physics) -> stringResource(R.string.physics_diagram)
+                                            stringResource(R.string.chemistry) -> stringResource(R.string.chemistry_diagram)
+                                            stringResource(R.string.biology) -> stringResource(R.string.biology_diagram)
+                                            else -> stringResource(R.string.comprehensive_diagram)
+                                        }
                                 }
                             Text(title, style = MaterialTheme.typography.titleMedium)
                             Spacer(modifier = Modifier.height(8.dp))
@@ -578,9 +589,10 @@ fun SolverScreen(
                                 GeometryStepCard(
                                     step,
                                     prevShapes = prev.toList(),
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(bottom = 12.dp),
+                                    modifier =
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .padding(bottom = 12.dp),
                                 )
                                 prev += step.shapes
                             }

@@ -24,15 +24,16 @@
 * **个人中心与配置**: 全局 LLM 模型参数（API Key、Base URL、模型选择）统一管理与无缝切换。
 
 ### 2. 📝 智能解题 (Solver)
-* **多模式输入**: 支持拍照解题（集成 CameraX，内置照片旋转与裁剪功能）、相册上传以及历史记录极速回溯。支持图文混合提问。
+* **多模式输入**: 支持拍照解题（集成 CameraX，内置照片旋转与裁剪功能）、相册上传以及历史记录极速回溯。支持图文混合提问，并引入了“确认并解题”的交互式流程设计。
 * **智能分类与解析**: 自动识别题目所属学科（几何、代数、物理、化学、生物等），并加载针对性的专属系统 Prompt。在识别包含图片的题目时，具备纯视觉模型（如 `qwen-vl-plus`）的智能回退机制。
 * **动态图元渲染 (Geometry Canvas)**: 深度集成 `exp4j` 数学引擎，可根据 AI 输出的 JSON 指令动态绘制函数图像（包含切线、阴影区域）、几何图形、物理受力分析图及化学实验示意图。
+* **双视界解析**: 优雅分离主屏幕最终答案与全屏弹窗详细推导过程，带来极致清晰的阅读体验。
 * **错题本联动**: 解题成功后支持一键加入错题本，并在解题历史中进行状态同步。
 
 ### 3. 📑 智能总结 (Summarizer)
 * **多格式文本总结**: 支持直接粘贴长文本，或导入并解析 PDF (PDFBox)、Word (XML解析)、HTML (Jsoup)、TXT/CSV 等多格式文件，提取核心摘要。
-* **音视频总结**: 基于 Sherpa ONNX 实现高效的离线语音识别 (ASR) 转写，并结合大模型进行提炼总结。
-* **对话复盘与导出**: 支持导入 Room 数据库中的历史对话进行复盘总结。所有总结结果（文本、音视频、对话）均支持**一键导出为排版精美的 PDF 文档**，方便本地存档与分享。
+* **音视频总结**: 基于 Sherpa ONNX 实现高效的离线语音识别 (ASR) 转写。底层深度重构实现了**流式内存分块读取机制**，从根本上解决了处理长音视频时的 JNI OOM 与 C++ abort 闪退问题，并结合大模型进行提炼总结。
+* **对话复盘与全局导出**: 支持导入 Room 数据库中的历史对话进行复盘总结。所有的总结结果（包含文本、音视频、对话）与复习模块数据均支持**一键导出为排版精美的 PDF 文档**，方便本地存档与分享。
 
 ### 4. 📚 智能复习 (Review)
 * **艾宾浩斯复习计划**: 支持自定义学科的复习排期，结合记忆曲线算法智能规划每日复习任务。
@@ -44,11 +45,12 @@
 
 ### 架构规范
 * **架构模式**: Clean Architecture + MVVM + 单向数据流 (MVI 思想的 StateFlow 管理)。
-* **多模块化 (Multi-module)**: 以业务为边界拆分主模块 (`app`, `common`, `ai_tutor`, `solver`, `summarizer`, `review`)，模块内严格按 `models`, `services`, `presentation` 进行组件分层。
+* **多模块化解耦 (Multi-module)**: 以业务为边界拆分主模块 (`app`, `common`, `ai_tutor`, `solver`, `summarizer`, `review`)。通过 Hilt 依赖注入实现了全新的 `FeatureApi` 路由机制，彻底消除了 `app` 模块对各业务模块界面的硬编码依赖。模块内严格按 `models`, `services`, `presentation` 进行组件分层。
 * **高可用性与离线降级**: 内置 `NetworkMonitor` 实时监听网络状态，提供全局的离线降级策略（无网环境下无缝切换至本地错题本、历史记录、离线语音转写及本地图元渲染）。
 
 ### 核心技术框架
-* **UI 层**: Jetpack Compose (全面应用了 Material 3 规范、深色模式适配与系统级无障碍访问支持 Accessibility)。
+* **UI 层**: Jetpack Compose (全面应用了 Material 3 规范、统一的 `CenterAlignedTopAppBar`、NavHost 全局 `AnimatedVisibility` 动效过渡、深色模式适配与系统级无障碍访问支持 Accessibility)。
+* **Markdown 与数学公式**: 全局升级 `SafeMarkdownText` 组件，集成 Markwon 与自定义 LaTeX 正则引擎 (支持 `$$` 与 `$`)，结合 Coil 实现图文混排的稳定渲染。
 * **依赖注入**: Dagger Hilt，包括自定义 Coroutine DispatcherProvider 增强可测试性。
 * **本地持久化**: Room Database (包含关联表、TypeConverters) 与 DataStore/SharedPreferences。
 * **网络与通信**: Retrofit, OkHttp, 统一的基于 SSE (Server-Sent Events) 的流式输出大模型接口。底层网络客户端支持针对长文本生成场景的自定义超时配置（如时间轴地图生成支持 90s 长时连接）。
