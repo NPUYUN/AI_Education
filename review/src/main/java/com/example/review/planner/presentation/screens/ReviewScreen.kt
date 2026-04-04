@@ -18,6 +18,10 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.History
+import androidx.compose.ui.graphics.Color
+import androidx.compose.material.icons.filled.BookmarkAdd
+import androidx.compose.material.icons.filled.Cancel
+import androidx.compose.material.icons.filled.GridOn
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -279,6 +283,16 @@ fun ErrorBookScreen(
         PracticeScreenOverlay(viewModel, uiState)
         return
     }
+    
+    if (uiState.showPracticeResultScreen) {
+        PracticeResultScreenOverlay(viewModel, uiState)
+        return
+    }
+
+    if (uiState.showPracticeHistoryForRecordId != null) {
+        PracticeHistoryScreenOverlay(viewModel, uiState)
+        return
+    }
 
     Scaffold(
         topBar = {
@@ -325,6 +339,278 @@ fun ErrorBookScreen(
     ) { paddingValues ->
         Box(modifier = Modifier.padding(paddingValues).padding(16.dp)) {
             ErrorBookView(viewModel, uiState)
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun PracticeHistoryScreenOverlay(
+    viewModel: ReviewViewModel,
+    uiState: com.example.review.planner.presentation.viewmodels.ReviewUiState,
+) {
+    BackHandler {
+        viewModel.closePracticeHistory()
+    }
+
+    val historyList = uiState.practiceHistory.filter { it.type == "practice_${uiState.showPracticeHistoryForRecordId}" }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("历史测试记录", fontWeight = FontWeight.Bold) },
+                navigationIcon = {
+                    IconButton(onClick = { viewModel.closePracticeHistory() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
+        }
+    ) { paddingValues ->
+        if (historyList.isEmpty()) {
+            Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
+                Text("暂无测试记录", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize().padding(paddingValues),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(historyList, key = { it.id }) { history ->
+                    val dismissState = androidx.compose.material3.rememberSwipeToDismissBoxState()
+                    var showDeleteConfirm by remember { mutableStateOf(false) }
+
+                    if (dismissState.currentValue == androidx.compose.material3.SwipeToDismissBoxValue.EndToStart ||
+                        dismissState.currentValue == androidx.compose.material3.SwipeToDismissBoxValue.StartToEnd) {
+                        LaunchedEffect(Unit) {
+                            showDeleteConfirm = true
+                        }
+                    }
+
+                    if (showDeleteConfirm) {
+                        AlertDialog(
+                            onDismissRequest = { 
+                                showDeleteConfirm = false
+                            },
+                            title = { Text("删除记录") },
+                            text = { Text("确定要删除这条测试记录吗？") },
+                            confirmButton = {
+                                TextButton(onClick = {
+                                    showDeleteConfirm = false
+                                    viewModel.deleteHistory(history)
+                                }) {
+                                    Text("删除", color = MaterialTheme.colorScheme.error)
+                                }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { 
+                                    showDeleteConfirm = false 
+                                }) {
+                                    Text("取消")
+                                }
+                            }
+                        )
+                    }
+
+                    androidx.compose.material3.SwipeToDismissBox(
+                        state = dismissState,
+                        backgroundContent = {
+                            val color = MaterialTheme.colorScheme.errorContainer
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(color, RoundedCornerShape(12.dp))
+                                    .padding(horizontal = 20.dp),
+                                contentAlignment = Alignment.CenterEnd
+                            ) {
+                                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.onErrorContainer)
+                            }
+                        },
+                        enableDismissFromStartToEnd = false,
+                        enableDismissFromEndToStart = true
+                    ) {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { viewModel.loadPracticeHistoryDetail(history) },
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+                                Text(
+                                    text = "测试时间：${sdf.format(Date(history.timestamp))}",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                
+                                val typeToken = object : com.google.gson.reflect.TypeToken<Map<String, Any>>() {}.type
+                                val data: Map<String, Any>? = try { com.google.gson.Gson().fromJson(history.resultContent, typeToken) } catch(e:Exception) { null }
+                                
+                                if (data != null) {
+                                    val total = (data["problems"] as? List<*>)?.size ?: 0
+                                    val score = (data["totalScore"] as? Double)?.toInt() ?: 0
+                                    val accuracy = (data["accuracy"] as? Double)?.toInt() ?: 0
+                                    Text(
+                                        text = "共 $total 题，得分：$score，正确率：$accuracy%",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                } else {
+                                    Text(
+                                        text = "无法解析历史记录摘要",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun PracticeResultScreenOverlay(
+    viewModel: ReviewViewModel,
+    uiState: com.example.review.planner.presentation.viewmodels.ReviewUiState,
+) {
+    BackHandler {
+        viewModel.closePracticeResultScreen()
+    }
+
+    val problems = uiState.practiceProblems
+    val results = uiState.practiceGradingResults
+    if (problems.isEmpty() || results.isEmpty()) return
+
+    val totalQuestions = problems.size
+    val correctCount = results.count { it.isCorrect }
+    val totalScore = results.sumOf { it.score }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("测试结果", fontWeight = FontWeight.Bold) },
+                navigationIcon = {
+                    IconButton(onClick = { viewModel.closePracticeResultScreen() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            // Summary Card
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+            ) {
+                Row(
+                    modifier = Modifier.padding(24.dp).fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceAround
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("得分", style = MaterialTheme.typography.bodyMedium)
+                        Text("$totalScore", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("正确率", style = MaterialTheme.typography.bodyMedium)
+                        val accuracy = if (totalQuestions > 0) (correctCount * 100 / totalQuestions) else 0
+                        Text("$accuracy%", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+
+            // Results List
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = 32.dp)
+            ) {
+                items(totalQuestions) { index ->
+                    val problem = problems[index]
+                    val result = results.getOrNull(index) ?: return@items
+                    var expanded by remember { mutableStateOf(false) }
+
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                            .clickable { expanded = !expanded }
+                            .animateContentSize(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Row(
+                                verticalAlignment = Alignment.Top,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(
+                                    imageVector = if (result.isCorrect) Icons.Default.CheckCircle else Icons.Default.Cancel,
+                                    contentDescription = null,
+                                    tint = if (result.isCorrect) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.padding(top = 4.dp, end = 8.dp)
+                                )
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        "第 ${index + 1} 题",
+                                        fontWeight = FontWeight.Bold,
+                                        style = MaterialTheme.typography.titleMedium
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    SafeMarkdownText(markdown = problem.questionText, modifier = Modifier.fillMaxWidth())
+                                    
+                                    if (!expanded) {
+                                        Text("点击查看解析", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(top = 8.dp))
+                                    }
+                                }
+                            }
+
+                            if (expanded) {
+                                Spacer(modifier = Modifier.height(16.dp))
+                                HorizontalDivider()
+                                Spacer(modifier = Modifier.height(16.dp))
+                                
+                                Text("你的作答：", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(uiState.practiceAnswers[index] ?: "未作答", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Text("标准答案：", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                                Spacer(modifier = Modifier.height(4.dp))
+                                SafeMarkdownText(markdown = problem.answer, modifier = Modifier.fillMaxWidth())
+
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Text("AI 批改解析：", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                                Spacer(modifier = Modifier.height(4.dp))
+                                SafeMarkdownText(markdown = result.explanation, modifier = Modifier.fillMaxWidth())
+                                
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Button(
+                                    onClick = { 
+                                        viewModel.addGeneratedProblemToErrorBook(problem) 
+                                    },
+                                    modifier = Modifier.align(Alignment.End)
+                                ) {
+                                    Icon(Icons.Default.BookmarkAdd, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("加入错题本")
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -709,6 +995,8 @@ fun ErrorBookView(
                                 }
 
                                 Spacer(modifier = Modifier.height(12.dp))
+                                
+                                var expanded by remember { mutableStateOf(false) }
 
                                 Text(
                                     stringResource(R.string.question_colon),
@@ -716,39 +1004,65 @@ fun ErrorBookView(
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurface,
                                 )
-                                Text(
-                                    record.questionContent,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                
+                                if (!expanded) {
+                                    Text(
+                                        text = record.questionContent.replace(Regex("\\s+"), " ").take(100) + "...",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 2,
+                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        "点击查看详情",
+                                        color = MaterialTheme.colorScheme.primary,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        modifier = Modifier.clickable { expanded = true }.padding(vertical = 4.dp)
+                                    )
+                                } else {
+                                    SafeMarkdownText(
+                                        markdown = record.questionContent,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
 
-                                Spacer(modifier = Modifier.height(8.dp))
+                                    Spacer(modifier = Modifier.height(8.dp))
 
-                                Text(
-                                    stringResource(R.string.error_reason_colon),
-                                    fontWeight = FontWeight.Bold,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.error,
-                                )
-                                Text(
-                                    record.errorReason,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
+                                    Text(
+                                        stringResource(R.string.error_reason_colon),
+                                        fontWeight = FontWeight.Bold,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.error,
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    SafeMarkdownText(
+                                        markdown = record.errorReason,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
 
-                                Spacer(modifier = Modifier.height(8.dp))
+                                    Spacer(modifier = Modifier.height(8.dp))
 
-                                Text(
-                                    stringResource(R.string.correct_analysis_colon),
-                                    fontWeight = FontWeight.Bold,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.primary,
-                                )
-                                Text(
-                                    record.correctSolution,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
+                                    Text(
+                                        stringResource(R.string.correct_analysis_colon),
+                                        fontWeight = FontWeight.Bold,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.primary,
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    SafeMarkdownText(
+                                        markdown = record.correctSolution,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                    
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        "收起详情",
+                                        color = MaterialTheme.colorScheme.primary,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        modifier = Modifier.clickable { expanded = false }.padding(vertical = 4.dp)
+                                    )
+                                }
 
                                 Spacer(modifier = Modifier.height(12.dp))
                                 val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
@@ -757,6 +1071,14 @@ fun ErrorBookView(
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
                                 )
+                                
+                                Spacer(modifier = Modifier.height(8.dp))
+                                TextButton(
+                                    onClick = { viewModel.openPracticeHistory(record.id) },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text("查看历史复习")
+                                }
                             }
                         }
                     }
@@ -781,17 +1103,11 @@ fun ErrorBookView(
                     horizontalArrangement = Arrangement.SpaceEvenly,
                 ) {
                     Button(
-                        onClick = { viewModel.startRedoPractice() },
-                        modifier = Modifier.weight(1f).padding(end = 8.dp),
-                    ) {
-                        Text("一键测试")
-                    }
-                    Button(
                         onClick = { showGenerateDialog = true },
-                        modifier = Modifier.weight(1f).padding(start = 8.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                     ) {
-                        Text("一键生成")
+                        Text("一键测试", fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -801,24 +1117,27 @@ fun ErrorBookView(
     if (showGenerateDialog) {
         AlertDialog(
             onDismissRequest = { showGenerateDialog = false },
-            title = { Text("生成相似题目") },
+            title = { Text("生成测试卷") },
             text = {
                 Column {
-                    Text("请选择要生成的题目总数: ${generateCount.toInt()}题")
+                    Text("请选择要生成的题目数量：${generateCount.toInt()}道")
+                    Spacer(modifier = Modifier.height(16.dp))
                     Slider(
                         value = generateCount,
                         onValueChange = { generateCount = it },
-                        valueRange = 1f..20f,
-                        steps = 19,
+                        valueRange = 1f..10f,
+                        steps = 8,
                     )
                 }
             },
             confirmButton = {
-                TextButton(onClick = {
-                    showGenerateDialog = false
-                    viewModel.generateSimilarPractice(generateCount.toInt())
-                }) {
-                    Text("确定")
+                TextButton(
+                    onClick = {
+                        showGenerateDialog = false
+                        viewModel.generatePracticeFromErrors(generateCount.toInt())
+                    },
+                ) {
+                    Text("确认生成")
                 }
             },
             dismissButton = {
@@ -827,6 +1146,24 @@ fun ErrorBookView(
                 }
             },
         )
+    }
+
+    if (uiState.isGeneratingPractice) {
+        androidx.compose.ui.window.Dialog(onDismissRequest = { }) {
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surface,
+            ) {
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    CircularProgressIndicator()
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("正在生成试卷，请稍候...", style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+        }
     }
 }
 
@@ -840,141 +1177,229 @@ fun PracticeScreenOverlay(
         viewModel.closePracticeScreen()
     }
 
+    val problems = uiState.practiceProblems
+    if (problems.isEmpty()) return
+
+    val currentIndex = uiState.currentPracticeIndex
+    val currentProblem = problems[currentIndex]
+    val total = problems.size
+    
+    var showAnswerSheet by remember { mutableStateOf(false) }
+    var showSubmitConfirmDialog by remember { mutableStateOf(false) }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("做题与批改", fontWeight = FontWeight.Bold) },
+                title = { Text("做题进度 ${currentIndex + 1}/$total", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = { viewModel.closePracticeScreen() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
-                actions = {
-                    val scope = rememberCoroutineScope()
-                    val context = androidx.compose.ui.platform.LocalContext.current
-                    if (uiState.practiceContent.isNotBlank()) {
-                        IconButton(onClick = {
-                            scope.launch {
-                                val fullContent =
-                                    buildString {
-                                        append(uiState.practiceContent)
-                                        if (uiState.practiceAnswerInput.isNotBlank()) {
-                                            append("\n\n---\n\n**你的作答：**\n\n")
-                                            append(uiState.practiceAnswerInput)
-                                        }
-                                        if (uiState.practiceGradingResult.isNotBlank()) {
-                                            append("\n\n---\n\n**批改结果：**\n\n")
-                                            append(uiState.practiceGradingResult)
-                                        }
-                                    }
-                                com.example.common.utils.PdfExporter.exportToPdf(
-                                    context = context,
-                                    title = "做题与批改",
-                                    content = fullContent,
-                                )
-                            }
-                        }) {
-                            Icon(Icons.Default.Download, contentDescription = "Export PDF")
-                        }
-                    }
-                },
             )
         },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { showAnswerSheet = true },
+                containerColor = MaterialTheme.colorScheme.tertiaryContainer
+            ) {
+                Icon(Icons.Default.GridOn, contentDescription = "答题卡")
+            }
+        }
     ) { paddingValues ->
         Column(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .padding(16.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(16.dp)
         ) {
-            if (uiState.isGeneratingPractice) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        CircularProgressIndicator()
+            LinearProgressIndicator(
+                progress = { (currentIndex + 1) / total.toFloat() },
+                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                color = MaterialTheme.colorScheme.primary
+            )
+            
+            // Question area
+            Card(
+                modifier = Modifier.fillMaxWidth().weight(1f).shadow(2.dp, RoundedCornerShape(16.dp)),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxSize().padding(16.dp).verticalScroll(rememberScrollState()),
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.padding(end = 8.dp)
+                        ) {
+                            Text(
+                                text = currentProblem.questionType ?: "练习题",
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            )
+                        }
+                        if (currentProblem.difficulty != null) {
+                            Surface(
+                                color = MaterialTheme.colorScheme.errorContainer,
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text(
+                                    text = currentProblem.difficulty,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onErrorContainer,
+                                )
+                            }
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    SafeMarkdownText(
+                        markdown = currentProblem.questionText,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    
+                    if (!currentProblem.options.isNullOrEmpty()) {
                         Spacer(modifier = Modifier.height(16.dp))
-                        Text("正在生成高质量题目...")
+                        currentProblem.options.forEach { option ->
+                            SafeMarkdownText(
+                                markdown = option,
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+                    HorizontalDivider()
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text("你的作答：", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = uiState.practiceAnswers[currentIndex] ?: "",
+                        onValueChange = { viewModel.updatePracticeAnswer(it) },
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp),
+                        placeholder = { Text("请在此输入你的答案...") },
+                        shape = RoundedCornerShape(12.dp),
+                    )
+                }
+            }
+            
+            // Bottom Buttons
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Button(
+                    onClick = { viewModel.setCurrentPracticeIndex(currentIndex - 1) },
+                    enabled = currentIndex > 0,
+                    modifier = Modifier.weight(1f).padding(end = 8.dp)
+                ) {
+                    Text("上一题")
+                }
+                
+                if (currentIndex < total - 1) {
+                    Button(
+                        onClick = { viewModel.setCurrentPracticeIndex(currentIndex + 1) },
+                        modifier = Modifier.weight(1f).padding(start = 8.dp)
+                    ) {
+                        Text("下一题")
+                    }
+                } else {
+                    Button(
+                        onClick = { showSubmitConfirmDialog = true },
+                        modifier = Modifier.weight(1f).padding(start = 8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                    ) {
+                        Text("交卷")
                     }
                 }
-            } else {
-                Card(
-                    modifier = Modifier.fillMaxWidth().weight(1f).shadow(2.dp, RoundedCornerShape(16.dp)),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                ) {
-                    LazyColumn(
-                        modifier =
-                            Modifier
-                                .fillMaxSize()
-                                .padding(16.dp),
-                    ) {
-                        item {
-                            SafeMarkdownText(
-                                markdown = uiState.practiceContent,
-                                modifier = Modifier.fillMaxWidth(),
-                            )
-
-                            Spacer(modifier = Modifier.height(24.dp))
-                            HorizontalDivider()
-                            Spacer(modifier = Modifier.height(16.dp))
-
-                            Text("你的作答：", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-                            Spacer(modifier = Modifier.height(8.dp))
-
-                            OutlinedTextField(
-                                value = uiState.practiceAnswerInput,
-                                onValueChange = { viewModel.updatePracticeAnswer(it) },
-                                modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp),
-                                placeholder = { Text("请在此输入你的答案，按题目顺序作答...") },
-                                shape = RoundedCornerShape(12.dp),
-                            )
-
-                            Spacer(modifier = Modifier.height(16.dp))
-
-                            Button(
-                                onClick = { viewModel.gradePractice() },
-                                modifier = Modifier.fillMaxWidth(),
-                                enabled = !uiState.isGradingPractice,
-                                shape = RoundedCornerShape(16.dp),
-                            ) {
-                                if (uiState.isGradingPractice) {
-                                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text("正在批改...")
-                                } else {
-                                    Text("提交批改")
-                                }
-                            }
-                        }
-
-                        item {
-                            AnimatedVisibility(
-                                visible = uiState.practiceGradingResult.isNotBlank(),
-                                enter = fadeIn() + expandVertically(),
-                            ) {
-                                Column {
-                                    Spacer(modifier = Modifier.height(24.dp))
-                                    Surface(
-                                        color = MaterialTheme.colorScheme.secondaryContainer,
-                                        shape = RoundedCornerShape(12.dp),
-                                    ) {
-                                        Column(modifier = Modifier.padding(16.dp)) {
-                                            Text(
-                                                "批改结果",
-                                                fontWeight = FontWeight.Bold,
-                                                color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                            )
-                                            Spacer(modifier = Modifier.height(8.dp))
-                                            SafeMarkdownText(
-                                                markdown = uiState.practiceGradingResult,
-                                                modifier = Modifier.fillMaxWidth(),
-                                            )
-                                        }
+            }
+        }
+    }
+    
+    if (showAnswerSheet) {
+        @OptIn(ExperimentalMaterial3Api::class)
+        ModalBottomSheet(onDismissRequest = { showAnswerSheet = false }) {
+            Column(modifier = Modifier.padding(16.dp).fillMaxWidth()) {
+                Text("答题卡", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 16.dp))
+                
+                // Grid of questions
+                val rows = (total + 4) / 5
+                for (r in 0 until rows) {
+                    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
+                        for (c in 0 until 5) {
+                            val i = r * 5 + c
+                            if (i < total) {
+                                val isAnswered = !uiState.practiceAnswers[i].isNullOrBlank()
+                                Surface(
+                                    modifier = Modifier.size(48.dp).clickable {
+                                        viewModel.setCurrentPracticeIndex(i)
+                                        showAnswerSheet = false
+                                    },
+                                    shape = RoundedCornerShape(24.dp),
+                                    color = if (isAnswered) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                                    border = if (i == currentIndex) androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Text("${i + 1}", color = if (isAnswered) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
                                 }
+                            } else {
+                                Spacer(modifier = Modifier.size(48.dp))
                             }
                         }
                     }
+                }
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                Button(
+                    onClick = { 
+                        showAnswerSheet = false
+                        showSubmitConfirmDialog = true 
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("交卷")
+                }
+                Spacer(modifier = Modifier.height(32.dp))
+            }
+        }
+    }
+    
+    if (showSubmitConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showSubmitConfirmDialog = false },
+            title = { Text("确认交卷") },
+            text = { Text("确定要提交试卷吗？交卷后将进行自动批改。") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showSubmitConfirmDialog = false
+                    viewModel.submitPractice()
+                }) {
+                    Text("确定")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSubmitConfirmDialog = false }) {
+                    Text("取消")
+                }
+            }
+        )
+    }
+    
+    if (uiState.isGradingPractice) {
+        androidx.compose.ui.window.Dialog(onDismissRequest = { }) {
+            Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface) {
+                Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    CircularProgressIndicator()
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("正在进行AI批改...", style = MaterialTheme.typography.bodyMedium)
                 }
             }
         }

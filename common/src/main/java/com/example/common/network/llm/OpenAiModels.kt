@@ -7,6 +7,7 @@ data class ChatRequest(
     @SerializedName("messages") val messages: List<ChatMessage>,
     @SerializedName("parameters") val parameters: ChatParameters? = null,
     @SerializedName("stream") val stream: Boolean = false,
+    @SerializedName("response_format") val responseFormat: Map<String, String>? = null,
 )
 
 data class ChatMessage(

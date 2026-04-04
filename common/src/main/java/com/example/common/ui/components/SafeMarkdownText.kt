@@ -2,17 +2,20 @@ package com.example.common.ui.components
 
 import android.text.method.LinkMovementMethod
 import android.widget.TextView
+import androidx.annotation.VisibleForTesting
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.viewinterop.AndroidView
 import io.noties.markwon.Markwon
 import io.noties.markwon.ext.latex.JLatexMathPlugin
 import io.noties.markwon.ext.tables.TablePlugin
+import io.noties.markwon.inlineparser.MarkwonInlineParserPlugin
 
 @Composable
 fun SafeMarkdownText(
@@ -31,12 +34,20 @@ fun SafeMarkdownText(
         remember(markdown) {
             normalizeMarkdownForDisplay(markdown)
         }
+    val textSizePx = with(LocalDensity.current) { currentStyle.fontSize.toPx() }
     val markwon =
-        remember(context) {
+        remember(context, textSizePx) {
             Markwon
                 .builder(context)
+                .usePlugin(MarkwonInlineParserPlugin.create())
                 .usePlugin(TablePlugin.create(context))
-                .usePlugin(JLatexMathPlugin.create(48f, 0f))
+                .usePlugin(
+                    JLatexMathPlugin.create(textSizePx) { builder ->
+                        builder.inlinesEnabled(true)
+                        builder.blocksEnabled(true)
+                        builder.blocksLegacy(true) // Enable blocksLegacy so it allows $...$ blocks or other formats without breaking inline parser
+                    }
+                )
                 .build()
         }
 
@@ -57,7 +68,8 @@ fun SafeMarkdownText(
     )
 }
 
-private fun normalizeMarkdownForDisplay(rawMarkdown: String): String {
+@VisibleForTesting
+internal fun normalizeMarkdownForDisplay(rawMarkdown: String): String {
     if (rawMarkdown.isBlank()) return "暂无内容"
 
     var text =
@@ -69,14 +81,14 @@ private fun normalizeMarkdownForDisplay(rawMarkdown: String): String {
 
     // Normalize LaTeX formulas
     // Some models use [ ... ] for block math and \( ... \) for inline math
-    // We convert them to standard $...$ and $$...$$ for JLatexMathPlugin
+    // We convert them to standard $$...$$ for JLatexMathPlugin
     text =
         text.replace(Regex("""\\\[(.*?)\\\]""", RegexOption.DOT_MATCHES_ALL)) {
             "$$" + it.groupValues[1] + "$$"
         }
     text =
         text.replace(Regex("""\\\((.*?)\\\)""", RegexOption.DOT_MATCHES_ALL)) {
-            "$" + it.groupValues[1] + "$"
+            "$$" + it.groupValues[1] + "$$"
         }
     // Handle cases where the model outputs `[ R = ... ]` without escaping the bracket
     text =
@@ -128,11 +140,11 @@ private fun normalizeMathDelimiters(input: String): String {
     // Unescape math delimiters frequently produced by JSON/LLM output.
     text = text.replace("\\$", "$")
 
-    // \(...\) -> $...$ (inline math)
+    // \(...\) -> $$...$$ (inline math)
     text =
         Regex("""\\\((.+?)\\\)""", setOf(RegexOption.DOT_MATCHES_ALL))
             .replace(text) { match ->
-                "$${match.groupValues[1].trim()}$"
+                "$$${match.groupValues[1].trim()}$$"
             }
 
     // \[...\] -> $$...$$ (block math)
@@ -142,18 +154,28 @@ private fun normalizeMathDelimiters(input: String): String {
                 "\n$$\n${match.groupValues[1].trim()}\n$$\n"
             }
 
-    // Normalize "$ expr $" into "$expr$" for better parser compatibility.
+    // Normalize "$ expr $" into "$$expr$$" for better parser compatibility.
+    // MarkwonInlineParserPlugin relies on `$$` for inline math natively when blocks are disabled or legacy mode is not configured,
+    // but the default JLatexMathPlugin actually overrides blocks rendering. 
+    // We convert all $...$ into $$...$$
     text =
-        Regex("""\$\s+([^$\n][^$]*?)\s+\$""")
+        Regex("""(?<!\$)\$(?!\$)(.+?)(?<!\$)\$(?!\$)""", setOf(RegexOption.DOT_MATCHES_ALL))
             .replace(text) { match ->
-                "$${match.groupValues[1].trim()}$"
+                "$$${match.groupValues[1].trim()}$$"
             }
 
     // Normalize "$$ expr $$" into canonical block form.
+    // If the expression has newlines inside, we treat it as block math.
+    // Otherwise, we leave it as inline $$...$$
     text =
-        Regex("""\$\$\s+(.+?)\s+\$\$""", setOf(RegexOption.DOT_MATCHES_ALL))
+        Regex("""\$\$\s*([\s\S]+?)\s*\$\$""", setOf(RegexOption.DOT_MATCHES_ALL))
             .replace(text) { match ->
-                "\n$$\n${match.groupValues[1].trim()}\n$$\n"
+                val content = match.groupValues[1].trim()
+                if (content.contains('\n')) {
+                    "\n$$\n$content\n$$\n"
+                } else {
+                    "$$$content$$"
+                }
             }
 
     return text

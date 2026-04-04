@@ -1,4 +1,4 @@
-# AI Education (Smart Learning Assistant)
+# Dongda Zhida
 
 <p align="center">
   <img src="https://img.shields.io/badge/Platform-Android-green.svg" alt="Android">

@@ -21,6 +21,7 @@ class SolverFeatureApi
             navController: NavHostController,
             modifier: Modifier,
             onNavigateToCamera: (String) -> Unit,
+            onNavigateToImagePreview: (String, String) -> Unit,
             outerSavedStateHandle: androidx.lifecycle.SavedStateHandle?,
             sharedViewModel: Any?,
         ) {
@@ -40,6 +41,7 @@ class SolverFeatureApi
                 SolverScreen(
                     viewModel = solverViewModel,
                     onCameraClick = { onNavigateToCamera("solver") },
+                    onImagePicked = { uri -> onNavigateToImagePreview(uri, "solver") },
                 )
             }
         }

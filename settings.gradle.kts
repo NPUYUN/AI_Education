@@ -29,7 +29,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Ai_Education"
+rootProject.name = "东大智搭"
 include(":app")
 include(":common")
 include(":ai_tutor")

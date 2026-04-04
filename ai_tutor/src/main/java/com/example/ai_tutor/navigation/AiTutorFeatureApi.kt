@@ -21,6 +21,7 @@ class AiTutorFeatureApi
             navController: NavHostController,
             modifier: Modifier,
             onNavigateToCamera: (String) -> Unit,
+            onNavigateToImagePreview: (String, String) -> Unit,
             outerSavedStateHandle: androidx.lifecycle.SavedStateHandle?,
             sharedViewModel: Any?,
         ) {

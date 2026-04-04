@@ -2,8 +2,9 @@ package com.example.review.planner.presentation.viewmodels
 
 import com.example.common.config.GlobalConfigRepository
 import com.example.common.database.PreferencesManager
-import com.example.common.database.dao.ChatDao
 import com.example.common.database.dao.ErrorBookDao
+import com.example.common.database.dao.ChatDao
+import com.example.common.database.dao.ReviewHistoryDao
 import com.example.common.database.models.ErrorBookEntity
 import com.example.common.utils.NetworkMonitor
 import com.example.review.planner.services.ReviewRepository
@@ -26,6 +27,7 @@ class ReviewViewModelTest {
     private lateinit var mockRepository: ReviewRepository
     private lateinit var mockErrorBookDao: ErrorBookDao
     private lateinit var mockChatDao: ChatDao
+    private lateinit var mockReviewHistoryDao: ReviewHistoryDao
     private lateinit var mockGlobalConfigRepository: GlobalConfigRepository
     private lateinit var mockPreferencesManager: PreferencesManager
     private lateinit var mockNetworkMonitor: NetworkMonitor
@@ -38,6 +40,7 @@ class ReviewViewModelTest {
         mockRepository = mock()
         mockErrorBookDao = mock()
         mockChatDao = mock()
+        mockReviewHistoryDao = mock()
         mockGlobalConfigRepository = mock()
         mockPreferencesManager = mock()
         mockNetworkMonitor = mock()
@@ -49,6 +52,7 @@ class ReviewViewModelTest {
         whenever(mockChatDao.getSessions(any())).thenReturn(flowOf(emptyList()))
         whenever(mockPreferencesManager.getString(any(), any())).thenReturn(flowOf(""))
         whenever(mockNetworkMonitor.isConnected).thenReturn(MutableStateFlow(true))
+        whenever(mockReviewHistoryDao.getAllHistory()).thenReturn(flowOf(emptyList()))
     }
 
     @After
@@ -70,9 +74,10 @@ class ReviewViewModelTest {
                     mockRepository,
                     mockErrorBookDao,
                     mockChatDao,
+                    mockReviewHistoryDao,
                     mockGlobalConfigRepository,
                     mockPreferencesManager,
-                    mockNetworkMonitor,
+                    mockNetworkMonitor
                 )
             advanceUntilIdle()
 
@@ -87,9 +92,10 @@ class ReviewViewModelTest {
                     mockRepository,
                     mockErrorBookDao,
                     mockChatDao,
+                    mockReviewHistoryDao,
                     mockGlobalConfigRepository,
                     mockPreferencesManager,
-                    mockNetworkMonitor,
+                    mockNetworkMonitor
                 )
             advanceUntilIdle()
 
@@ -105,9 +111,10 @@ class ReviewViewModelTest {
                     mockRepository,
                     mockErrorBookDao,
                     mockChatDao,
+                    mockReviewHistoryDao,
                     mockGlobalConfigRepository,
                     mockPreferencesManager,
-                    mockNetworkMonitor,
+                    mockNetworkMonitor
                 )
             advanceUntilIdle()
 
@@ -131,9 +138,10 @@ class ReviewViewModelTest {
                     mockRepository,
                     mockErrorBookDao,
                     mockChatDao,
+                    mockReviewHistoryDao,
                     mockGlobalConfigRepository,
                     mockPreferencesManager,
-                    mockNetworkMonitor,
+                    mockNetworkMonitor
                 )
             advanceUntilIdle()
 
@@ -160,9 +168,10 @@ class ReviewViewModelTest {
                     mockRepository,
                     mockErrorBookDao,
                     mockChatDao,
+                    mockReviewHistoryDao,
                     mockGlobalConfigRepository,
                     mockPreferencesManager,
-                    mockNetworkMonitor,
+                    mockNetworkMonitor
                 )
             advanceUntilIdle()
 
@@ -179,6 +188,25 @@ class ReviewViewModelTest {
         }
 
     @Test
+    fun `closePracticeScreen updates state`() =
+        runTest(testDispatcher) {
+            viewModel =
+                ReviewViewModel(
+                    mockRepository,
+                    mockErrorBookDao,
+                    mockChatDao,
+                    mockReviewHistoryDao,
+                    mockGlobalConfigRepository,
+                    mockPreferencesManager,
+                    mockNetworkMonitor
+                )
+            advanceUntilIdle()
+
+            viewModel.closePracticeScreen()
+            assertFalse(viewModel.uiState.value.showPracticeScreen)
+        }
+
+    @Test
     fun `deleteErrorRecord calls dao`() =
         runTest(testDispatcher) {
             viewModel =
@@ -186,9 +214,10 @@ class ReviewViewModelTest {
                     mockRepository,
                     mockErrorBookDao,
                     mockChatDao,
+                    mockReviewHistoryDao,
                     mockGlobalConfigRepository,
                     mockPreferencesManager,
-                    mockNetworkMonitor,
+                    mockNetworkMonitor
                 )
             advanceUntilIdle()
 

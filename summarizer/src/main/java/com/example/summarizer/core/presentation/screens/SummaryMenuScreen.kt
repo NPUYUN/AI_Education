@@ -40,13 +40,7 @@ fun SummaryMenuScreen(
         visible = true
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.smart_summary)) },
-            )
-        },
-    ) { paddingValues ->
+    Scaffold { paddingValues ->
         val screenHeight = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp.dp
 
         Column(

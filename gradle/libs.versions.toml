@@ -52,6 +52,7 @@ compose-markdown = { group = "com.github.jeziellago", name = "compose-markdown",
 markwon-core = { group = "io.noties.markwon", name = "core", version.ref = "markwon" }
 markwon-ext-latex = { group = "io.noties.markwon", name = "ext-latex", version.ref = "markwon" }
 markwon-ext-tables = { group = "io.noties.markwon", name = "ext-tables", version.ref = "markwon" }
+markwon-inline-parser = { group = "io.noties.markwon", name = "inline-parser", version.ref = "markwon" }
 gson = { group = "com.google.code.gson", name = "gson", version.ref = "gson" }
 osmdroid-android = { group = "org.osmdroid", name = "osmdroid-android", version.ref = "osmdroid" }
 # mnn = { group = "com.taobao.android", name = "mnn", version.ref = "mnn" }

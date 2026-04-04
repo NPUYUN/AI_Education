@@ -166,9 +166,9 @@ class ReviewRepository
             apiKey: String,
             baseUrl: String,
             modelName: String,
-            sourceProblems: List<String>,
+            sourceProblems: List<com.example.common.database.models.ErrorBookEntity>,
             count: Int,
-        ): Result<String> =
+        ): Result<List<com.example.review.planner.models.GeneratedProblem>> =
             withContext(dispatcherProvider.io) {
                 try {
                     val retrofit =
@@ -193,27 +193,57 @@ class ReviewRepository
 
                     val service = retrofit.create(OpenAiService::class.java)
 
-                    val problemsStr = sourceProblems.joinToString("\n\n") { "原题：$it" }
-                    val prompt = "请根据以下错题，生成 $count 道相似的练习题（注意难度和考点要相似，题型可以有选择题或解答题，题目分布要均匀）。请在最后附上这 $count 道题的详细答案解析。请使用Markdown格式输出。\n\n$problemsStr"
+                    val problemsStr = sourceProblems.joinToString("\n\n") { "原题内容：${it.questionContent}\n知识点/错误原因：${it.errorReason}" }
+                    val prompt = """
+请严格根据以下错题信息，生成 $count 道相似变式题。
+必须保证生成题目与原题高度相关，向量相似度阈值预估要求达到 0.85 以上。
+
+必须以 JSON 格式返回结果，返回结构必须如下：
+{
+  "problems": [
+    {
+      "questionText": "题干内容...",
+      "options": ["A. 选项", "B. 选项", "C. 选项", "D. 选项"], // 如果是解答题可为 null 或空数组
+      "answer": "正确答案",
+      "explanation": "详细解析",
+      "knowledgePointId": "原题知识点标签",
+      "difficulty": "难度(如:中等,困难)",
+      "questionType": "题型(选择题/解答题)",
+      "similarityScore": 0.90 // 必须是一个0到1之间的数字，预估与原题的相似度
+    }
+  ]
+}
+
+原题信息：
+$problemsStr
+                    """.trimIndent()
 
                     val messages =
                         listOf(
-                            ChatMessage(role = "system", content = "你是一个专业的出题老师，擅长根据学生的错题生成高质量的相似变式题。"),
+                            ChatMessage(role = "system", content = "你是一个专业的出题老师，仅输出纯JSON格式，不要包裹在 ```json 中。"),
                             ChatMessage(role = "user", content = prompt),
                         )
 
-                    val request = ChatRequest(model = modelName, messages = messages)
+                    val request = ChatRequest(model = modelName, messages = messages, responseFormat = mapOf("type" to "json_object"))
                     val response = service.chat(request)
-                    val content =
+                    var content =
                         response.choices?.firstOrNull()?.message?.content?.toString()
                             ?: response.output?.choices?.firstOrNull()?.message?.content?.toString()
                             ?: response.output?.text
                             ?: ""
+                            
+                    // Clean markdown fences if any
+                    content = content.trim().removePrefix("```json").removePrefix("```").removeSuffix("```").trim()
 
                     if (content.isBlank()) {
                         Result.failure(Exception("生成结果为空"))
                     } else {
-                        Result.success(content.trim())
+                        val parsed = com.google.gson.Gson().fromJson(content, com.example.review.planner.models.GenerateProblemsResponse::class.java)
+                        if (parsed.problems.any { (it.similarityScore ?: 0.0) < 0.85 }) {
+                             Result.failure(Exception("生成题目相关性过低，请稍后重试"))
+                        } else {
+                             Result.success(parsed.problems)
+                        }
                     }
                 } catch (e: Exception) {
                     Result.failure(e)
@@ -224,8 +254,8 @@ class ReviewRepository
             apiKey: String,
             baseUrl: String,
             modelName: String,
-            problemsAndAnswers: String,
-        ): Result<String> =
+            problemsAndAnswers: List<Pair<com.example.review.planner.models.GeneratedProblem, String>>,
+        ): Result<List<com.example.review.planner.presentation.viewmodels.PracticeGradingResult>> =
             withContext(dispatcherProvider.io) {
                 try {
                     val retrofit =
@@ -250,26 +280,49 @@ class ReviewRepository
 
                     val service = retrofit.create(OpenAiService::class.java)
 
-                    val prompt = "以下是学生做的一组题目及答案。请逐一判断对错，并给出批改意见和正确解析。请使用Markdown格式输出。\n\n$problemsAndAnswers"
+                    val problemsStr = problemsAndAnswers.mapIndexed { index, (problem, answer) ->
+                        "第${index + 1}题：\n【题目内容】\n${problem.questionText}\n【标准答案】\n${problem.answer}\n【学生答案】\n$answer"
+                    }.joinToString("\n\n---\n\n")
+
+                    val prompt = """
+以下是学生做的一组题目及答案。请逐一判断对错，并给出批改意见和正确解析。
+请以 JSON 格式返回结果，返回结构必须如下：
+{
+  "results": [
+    {
+      "isCorrect": true, // 是否正确
+      "score": 100, // 此题得分，满分100
+      "explanation": "详细批改意见和解析..."
+    }
+  ]
+}
+
+题目及作答：
+$problemsStr
+                    """.trimIndent()
 
                     val messages =
                         listOf(
-                            ChatMessage(role = "system", content = "你是一个认真负责的阅卷老师，负责批改学生的练习题，判断正误并给出清晰的解析。"),
+                            ChatMessage(role = "system", content = "你是一个认真负责的阅卷老师，负责批改学生的练习题。仅输出纯JSON格式，不要包裹在 ```json 中。"),
                             ChatMessage(role = "user", content = prompt),
                         )
 
-                    val request = ChatRequest(model = modelName, messages = messages)
+                    val request = ChatRequest(model = modelName, messages = messages, responseFormat = mapOf("type" to "json_object"))
                     val response = service.chat(request)
-                    val content =
+                    var content =
                         response.choices?.firstOrNull()?.message?.content?.toString()
                             ?: response.output?.choices?.firstOrNull()?.message?.content?.toString()
                             ?: response.output?.text
                             ?: ""
+                            
+                    // Clean markdown fences if any
+                    content = content.trim().removePrefix("```json").removePrefix("```").removeSuffix("```").trim()
 
                     if (content.isBlank()) {
                         Result.failure(Exception("批改结果为空"))
                     } else {
-                        Result.success(content.trim())
+                        val parsed = com.google.gson.Gson().fromJson(content, com.example.review.planner.models.GradeTestResponse::class.java)
+                        Result.success(parsed.results)
                     }
                 } catch (e: Exception) {
                     Result.failure(e)

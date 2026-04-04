@@ -18,6 +18,8 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+import com.example.review.planner.models.GeneratedProblem
+
 data class ReviewUiState(
     val selectedTab: Int = 0,
     // Planner
@@ -35,14 +37,24 @@ data class ReviewUiState(
     val selectedErrorIds: Set<Long> = emptySet(),
     // Practice Screen
     val isGeneratingPractice: Boolean = false,
-    val practiceContent: String = "",
-    val practiceAnswerInput: String = "",
+    val practiceProblems: List<GeneratedProblem> = emptyList(),
+    val currentPracticeIndex: Int = 0,
+    val practiceAnswers: Map<Int, String> = emptyMap(), // map of index to answer
     val isGradingPractice: Boolean = false,
-    val practiceGradingResult: String = "",
+    val practiceGradingResults: List<PracticeGradingResult> = emptyList(), // grading result per question
     val showPracticeScreen: Boolean = false,
+    val showPracticeResultScreen: Boolean = false,
+    val showPracticeHistoryForRecordId: Long? = null,
     // History
     val plannerHistory: List<ReviewHistoryEntity> = emptyList(),
     val reinforcementHistory: List<ReviewHistoryEntity> = emptyList(),
+    val practiceHistory: List<ReviewHistoryEntity> = emptyList(),
+)
+
+data class PracticeGradingResult(
+    val isCorrect: Boolean,
+    val score: Int,
+    val explanation: String
 )
 
 @HiltViewModel
@@ -70,13 +82,17 @@ class ReviewViewModel
                 }
             }
             viewModelScope.launch {
-                reviewHistoryDao.getHistoryByType("planner").collect { history ->
-                    _uiState.update { it.copy(plannerHistory = history) }
-                }
-            }
-            viewModelScope.launch {
-                reviewHistoryDao.getHistoryByType("reinforcement").collect { history ->
-                    _uiState.update { it.copy(reinforcementHistory = history) }
+                reviewHistoryDao.getAllHistory().collect { allHistory ->
+                    val plannerHistory = allHistory.filter { it.type == "planner" }
+                    val reinforcementHistory = allHistory.filter { it.type == "reinforcement" }
+                    val practiceHistory = allHistory.filter { it.type.startsWith("practice_") }
+                    _uiState.update { 
+                        it.copy(
+                            plannerHistory = plannerHistory,
+                            reinforcementHistory = reinforcementHistory,
+                            practiceHistory = practiceHistory
+                        ) 
+                    }
                 }
             }
             viewModelScope.launch {
@@ -307,41 +323,21 @@ class ReviewViewModel
             }
         }
 
-        fun startRedoPractice() {
+        fun generatePracticeFromErrors(count: Int) {
             val selectedIds = _uiState.value.selectedErrorIds
             if (selectedIds.isEmpty()) return
 
             val selectedRecords = _uiState.value.errorRecords.filter { selectedIds.contains(it.id) }
-            val practiceContent =
-                selectedRecords.mapIndexed { index, record ->
-                    "**第 ${index + 1} 题（${record.subject}）**\n${record.questionContent}"
-                }.joinToString("\n\n")
-
-            _uiState.update {
-                it.copy(
-                    practiceContent = practiceContent,
-                    practiceAnswerInput = "",
-                    practiceGradingResult = "",
-                    isGeneratingPractice = false,
-                    showPracticeScreen = true,
-                )
-            }
-        }
-
-        fun generateSimilarPractice(count: Int) {
-            val selectedIds = _uiState.value.selectedErrorIds
-            if (selectedIds.isEmpty()) return
-
-            val selectedRecords = _uiState.value.errorRecords.filter { selectedIds.contains(it.id) }
-            val sourceProblems = selectedRecords.map { it.questionContent }
 
             _uiState.update {
                 it.copy(
                     isGeneratingPractice = true,
-                    practiceContent = "",
-                    practiceAnswerInput = "",
-                    practiceGradingResult = "",
-                    showPracticeScreen = true,
+                    practiceProblems = emptyList(),
+                    currentPracticeIndex = 0,
+                    practiceAnswers = emptyMap(),
+                    isGradingPractice = false,
+                    practiceGradingResults = emptyList(),
+                    showPracticeResultScreen = false,
                 )
             }
 
@@ -351,10 +347,16 @@ class ReviewViewModel
                     val modelName = globalConfigRepository.getAiTutorModelName().firstOrNull() ?: AppConstants.DEFAULT_MODEL_NAME
                     val baseUrl = globalConfigRepository.getAiTutorBaseUrl().firstOrNull() ?: AppConstants.BASE_URL
 
-                    val result = repository.generateSimilarProblems(apiKey, baseUrl, modelName, sourceProblems, count)
+                    val result = repository.generateSimilarProblems(apiKey, baseUrl, modelName, selectedRecords, count)
 
                     if (result.isSuccess) {
-                        _uiState.update { it.copy(isGeneratingPractice = false, practiceContent = result.getOrNull() ?: "") }
+                        _uiState.update { 
+                            it.copy(
+                                isGeneratingPractice = false, 
+                                practiceProblems = result.getOrNull() ?: emptyList(),
+                                showPracticeScreen = true
+                            ) 
+                        }
                     } else {
                         val exception = result.exceptionOrNull()
                         val errorMsg = exception?.toUserFriendlyMessage() ?: "未知错误"
@@ -370,23 +372,73 @@ class ReviewViewModel
         }
 
         fun closePracticeScreen() {
-            _uiState.update { it.copy(showPracticeScreen = false) }
+            _uiState.update { it.copy(showPracticeScreen = false, showPracticeResultScreen = false) }
+        }
+        
+        fun closePracticeResultScreen() {
+            _uiState.update { it.copy(showPracticeResultScreen = false, showPracticeScreen = false) }
+        }
+
+        fun openPracticeHistory(recordId: Long) {
+            _uiState.update { it.copy(showPracticeHistoryForRecordId = recordId) }
+        }
+
+        fun closePracticeHistory() {
+            _uiState.update { it.copy(showPracticeHistoryForRecordId = null) }
+        }
+
+        fun loadPracticeHistoryDetail(history: ReviewHistoryEntity) {
+            try {
+                val typeToken = object : com.google.gson.reflect.TypeToken<Map<String, Any>>() {}.type
+                val data: Map<String, Any> = com.google.gson.Gson().fromJson(history.resultContent, typeToken)
+                
+                val problemsStr = com.google.gson.Gson().toJson(data["problems"])
+                val problems = com.google.gson.Gson().fromJson(problemsStr, Array<GeneratedProblem>::class.java).toList()
+                
+                val resultsStr = com.google.gson.Gson().toJson(data["results"])
+                val results = com.google.gson.Gson().fromJson(resultsStr, Array<PracticeGradingResult>::class.java).toList()
+                
+                val answersStr = com.google.gson.Gson().toJson(data["answers"])
+                val answersTypeToken = object : com.google.gson.reflect.TypeToken<Map<Int, String>>() {}.type
+                val answers: Map<Int, String> = com.google.gson.Gson().fromJson(answersStr, answersTypeToken)
+                
+                _uiState.update { 
+                    it.copy(
+                        practiceProblems = problems,
+                        practiceGradingResults = results,
+                        practiceAnswers = answers,
+                        showPracticeResultScreen = true,
+                        showPracticeHistoryForRecordId = null // close the list overlay
+                    ) 
+                }
+            } catch (e: Exception) {
+                viewModelScope.launch { _errorEvents.send("加载历史记录失败") }
+            }
         }
 
         fun updatePracticeAnswer(answer: String) {
-            _uiState.update { it.copy(practiceAnswerInput = answer) }
+            _uiState.update { state ->
+                val newAnswers = state.practiceAnswers.toMutableMap()
+                newAnswers[state.currentPracticeIndex] = answer
+                state.copy(practiceAnswers = newAnswers)
+            }
         }
 
-        fun gradePractice() {
-            val content = _uiState.value.practiceContent
-            val answer = _uiState.value.practiceAnswerInput
+        fun setCurrentPracticeIndex(index: Int) {
+            _uiState.update { it.copy(currentPracticeIndex = index) }
+        }
 
-            if (content.isBlank() || answer.isBlank()) {
-                viewModelScope.launch { _errorEvents.send("题目或答案不能为空") }
-                return
+        fun submitPractice() {
+            val state = _uiState.value
+            val problems = state.practiceProblems
+            val answers = state.practiceAnswers
+            
+            val problemsAndAnswers = problems.mapIndexed { index, problem ->
+                val ans = answers[index] ?: "未作答"
+                Pair(problem, ans)
             }
 
-            _uiState.update { it.copy(isGradingPractice = true, practiceGradingResult = "") }
+            _uiState.update { it.copy(isGradingPractice = true, practiceGradingResults = emptyList()) }
 
             viewModelScope.launch {
                 try {
@@ -394,11 +446,40 @@ class ReviewViewModel
                     val modelName = globalConfigRepository.getAiTutorModelName().firstOrNull() ?: AppConstants.DEFAULT_MODEL_NAME
                     val baseUrl = globalConfigRepository.getAiTutorBaseUrl().firstOrNull() ?: AppConstants.BASE_URL
 
-                    val combinedInput = "【题目内容】\n$content\n\n【学生答案】\n$answer"
-                    val result = repository.gradeTest(apiKey, baseUrl, modelName, combinedInput)
+                    val result = repository.gradeTest(apiKey, baseUrl, modelName, problemsAndAnswers)
 
                     if (result.isSuccess) {
-                        _uiState.update { it.copy(isGradingPractice = false, practiceGradingResult = result.getOrNull() ?: "") }
+                        val results = result.getOrNull() ?: emptyList()
+                        _uiState.update { 
+                            it.copy(
+                                isGradingPractice = false, 
+                                practiceGradingResults = results,
+                                showPracticeResultScreen = true,
+                                showPracticeScreen = false
+                            ) 
+                        }
+                        
+                        // Save history
+                        val correctCount = results.count { it.isCorrect }
+                        val accuracy = if (problems.isNotEmpty()) (correctCount * 100 / problems.size) else 0
+                        
+                        val historyData = mapOf(
+                            "problems" to problems,
+                            "results" to results,
+                            "answers" to answers,
+                            "accuracy" to accuracy,
+                            "totalScore" to results.sumOf { it.score }
+                        )
+                        val historyContent = com.google.gson.Gson().toJson(historyData)
+                        
+                        val selectedIdsStr = _uiState.value.selectedErrorIds.joinToString(",")
+                        reviewHistoryDao.insertHistory(
+                            ReviewHistoryEntity(
+                                type = "practice_$selectedIdsStr",
+                                inputParameters = "错题变式测试",
+                                resultContent = historyContent,
+                            ),
+                        )
                     } else {
                         val exception = result.exceptionOrNull()
                         val errorMsg = exception?.toUserFriendlyMessage() ?: "未知错误"
@@ -412,4 +493,23 @@ class ReviewViewModel
                 }
             }
         }
+        
+        fun addGeneratedProblemToErrorBook(problem: GeneratedProblem) {
+            viewModelScope.launch {
+                try {
+                    val entity = ErrorBookEntity(
+                        subject = problem.knowledgePointId ?: "变式训练",
+                        questionContent = problem.questionText + if (!problem.options.isNullOrEmpty()) "\n\n" + problem.options.joinToString("\n") else "",
+                        errorReason = "变式训练生成题目",
+                        correctSolution = problem.answer + "\n\n" + problem.explanation,
+                        timestamp = System.currentTimeMillis()
+                    )
+                    errorBookDao.insertErrorRecord(entity)
+                    _errorEvents.send("已添加到错题本")
+                } catch (e: Exception) {
+                    _errorEvents.send("添加失败: ${e.message}")
+                }
+            }
+        }
     }
+

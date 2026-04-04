@@ -38,9 +38,6 @@ import androidx.compose.ui.window.Dialog
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
-import com.canhub.cropper.CropImageContract
-import com.canhub.cropper.CropImageContractOptions
-import com.canhub.cropper.CropImageOptions
 import com.example.common.R
 import com.example.common.database.models.SolveHistoryEntity
 import com.example.common.ui.components.SafeMarkdownText
@@ -54,6 +51,7 @@ import kotlinx.coroutines.launch
 fun SolverScreen(
     viewModel: SolverViewModel,
     onCameraClick: () -> Unit = {},
+    onImagePicked: (String) -> Unit = {},
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -84,37 +82,12 @@ fun SolverScreen(
         }
     }
 
-    val imageCropFailedMsg = stringResource(R.string.image_crop_failed)
-    val cropImageLauncher =
-        rememberLauncherForActivityResult(CropImageContract()) { result ->
-            if (result.isSuccessful) {
-                val uriContent = result.uriContent
-                viewModel.setImageUri(uriContent)
-                if (uriContent != null) {
-                    isDetailScreen = true
-                }
-            } else {
-                val exception = result.error
-                Toast.makeText(context, imageCropFailedMsg, Toast.LENGTH_SHORT).show()
-            }
-        }
-
     val imagePickerLauncher =
         rememberLauncherForActivityResult(
             contract = ActivityResultContracts.GetContent(),
         ) { uri: Uri? ->
             if (uri != null) {
-                val cropOptions =
-                    CropImageContractOptions(
-                        uri = uri,
-                        cropImageOptions =
-                            CropImageOptions(
-                                imageSourceIncludeCamera = false,
-                                imageSourceIncludeGallery = false,
-                                guidelines = com.canhub.cropper.CropImageView.Guidelines.ON,
-                            ),
-                    )
-                cropImageLauncher.launch(cropOptions)
+                onImagePicked(uri.toString())
             }
         }
 
@@ -145,20 +118,12 @@ fun SolverScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        if (isDetailScreen) {
-                            stringResource(
-                                R.string.smart_problem_solving,
-                            )
-                        } else {
-                            stringResource(R.string.smart_problem_solving)
-                        },
-                    )
-                },
-                navigationIcon = {
-                    if (isDetailScreen) {
+            if (isDetailScreen) {
+                TopAppBar(
+                    title = {
+                        Text(stringResource(R.string.problem_solving))
+                    },
+                    navigationIcon = {
                         IconButton(onClick = {
                             isDetailScreen = false
                             viewModel.setImageUri(null)
@@ -166,9 +131,9 @@ fun SolverScreen(
                         }) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                         }
-                    }
-                },
-            )
+                    },
+                )
+            }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { paddingValues ->
@@ -283,7 +248,16 @@ fun SolverScreen(
                                         Column(modifier = Modifier.weight(1f)) {
                                             Text("${item.subject}｜${DateFormatUtils.format(item.timestamp)}")
                                             Spacer(modifier = Modifier.height(4.dp))
-                                            Text(item.questionContent.take(30))
+                                            val displayDesc = if (item.questionContent.startsWith("【知识点】\n")) {
+                                                "【核心考点】" + item.questionContent.substringAfter("【知识点】\n").substringBefore("\n【").take(40) + "..."
+                                            } else if (item.questionContent.startsWith("【用户描述】\n")) {
+                                                item.questionContent.substringAfter("【用户描述】\n").substringBefore("\n【").take(30) + "..."
+                                            } else if (item.questionContent.startsWith("【题目总结】\n")) {
+                                                item.questionContent.substringAfter("【题目总结】\n").substringBefore("\n【").take(30) + "..."
+                                            } else {
+                                                item.questionContent.take(30)
+                                            }
+                                            Text(displayDesc)
                                         }
                                         if (item.isInErrorBook) {
                                             AssistChip(onClick = {}, label = { Text(stringResource(R.string.already_in_error_book)) })
@@ -329,7 +303,16 @@ fun SolverScreen(
                                         Column(modifier = Modifier.weight(1f)) {
                                             Text("${item.subject}｜${DateFormatUtils.format(item.timestamp)}")
                                             Spacer(modifier = Modifier.height(4.dp))
-                                            Text(item.questionContent)
+                                            val displayDesc = if (item.questionContent.startsWith("【知识点】\n")) {
+                                                "【核心考点】" + item.questionContent.substringAfter("【知识点】\n").substringBefore("\n【").take(40) + "..."
+                                            } else if (item.questionContent.startsWith("【用户描述】\n")) {
+                                                item.questionContent.substringAfter("【用户描述】\n").substringBefore("\n【").take(30) + "..."
+                                            } else if (item.questionContent.startsWith("【题目总结】\n")) {
+                                                item.questionContent.substringAfter("【题目总结】\n").substringBefore("\n【").take(30) + "..."
+                                            } else {
+                                                item.questionContent.take(30)
+                                            }
+                                            Text(displayDesc)
                                         }
                                         if (item.isInErrorBook) {
                                             AssistChip(onClick = {}, label = { Text(stringResource(R.string.already_in_error_book)) })
@@ -453,7 +436,10 @@ fun SolverScreen(
                                 if (uiState.parsedQuestionContent.isNotBlank()) {
                                     Text("【题目内容】", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                                     Spacer(modifier = Modifier.height(4.dp))
-                                    SafeMarkdownText(markdown = uiState.parsedQuestionContent)
+                                    SafeMarkdownText(
+                                        markdown = uiState.parsedQuestionContent,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
                                     Spacer(modifier = Modifier.height(12.dp))
                                 }
 
@@ -467,7 +453,10 @@ fun SolverScreen(
                                 if (uiState.parsedFinalAnswer.isNotBlank()) {
                                     Text("【最终答案】", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                                     Spacer(modifier = Modifier.height(4.dp))
-                                    SafeMarkdownText(markdown = uiState.parsedFinalAnswer)
+                                    SafeMarkdownText(
+                                        markdown = uiState.parsedFinalAnswer,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
                                 } else {
                                     // Fallback if parsing failed
                                     SafeMarkdownText(
@@ -674,7 +663,7 @@ fun SolverScreen(
                             Spacer(modifier = Modifier.height(8.dp))
                         }
                         Text(stringResource(R.string.question_colon), fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
-                        Text(item.questionContent)
+                        SafeMarkdownText(markdown = item.questionContent, modifier = Modifier.fillMaxWidth())
                         Spacer(modifier = Modifier.height(8.dp))
                         HorizontalDivider()
                         Spacer(modifier = Modifier.height(8.dp))
@@ -683,6 +672,19 @@ fun SolverScreen(
                             markdown = item.solution,
                             modifier = Modifier.fillMaxWidth(),
                         )
+                        
+                        if (!item.isInErrorBook) {
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Button(
+                                onClick = { 
+                                    viewModel.addHistoryToErrorBook(item)
+                                    selectedHistory = null
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(stringResource(R.string.add_to_error_book))
+                            }
+                        }
                     }
                 },
                 confirmButton = {

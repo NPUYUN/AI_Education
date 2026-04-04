@@ -11,6 +11,7 @@ interface FeatureApi {
         modifier: Modifier = Modifier,
         // Optional dependencies passed from app module
         onNavigateToCamera: (String) -> Unit = {},
+        onNavigateToImagePreview: (String, String) -> Unit = { _, _ -> },
         outerSavedStateHandle: androidx.lifecycle.SavedStateHandle? = null,
         // Since AiTutorViewModel is scoped to MainScreen currently, we pass it down.
         // In a fully decoupled app, it should be hiltViewModel() inside the graph.

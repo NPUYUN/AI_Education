@@ -113,6 +113,7 @@ dependencies {
     api(libs.markwon.core)
     api(libs.markwon.ext.latex)
     api(libs.markwon.ext.tables)
+    api(libs.markwon.inline.parser)
 
     // Hilt
     api(libs.hilt.android)

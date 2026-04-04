@@ -1,4 +1,4 @@
-# AI Education (智学助手)
+# 东大智搭 (Dongda Zhida)
 
 <p align="center">
   <img src="https://img.shields.io/badge/Platform-Android-green.svg" alt="Android">

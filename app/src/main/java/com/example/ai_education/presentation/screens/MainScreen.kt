@@ -49,6 +49,7 @@ fun MainScreen(
     onNavigateToSettings: () -> Unit,
     onLogout: () -> Unit,
     onNavigateToCamera: (String) -> Unit,
+    onNavigateToImagePreview: (String, String) -> Unit,
     viewModel: AiTutorViewModel,
     outerSavedStateHandle: androidx.lifecycle.SavedStateHandle? = null,
     aiTutorFeatureApi: com.example.ai_tutor.navigation.AiTutorFeatureApi,
@@ -329,11 +330,11 @@ fun MainScreen(
                             Text(label)
                         },
                         navigationIcon = {
-                            if (isMainTab) {
+                            if (isMainTab && currentRoute == "home") {
                                 IconButton(onClick = { scope.launch { drawerState.open() } }) {
                                     Icon(Icons.Default.Menu, contentDescription = stringResource(R.string.open_menu))
                                 }
-                            } else {
+                            } else if (!isMainTab) {
                                 IconButton(onClick = {
                                     navController.popBackStack()
                                 }) {
@@ -496,6 +497,7 @@ fun MainScreen(
                     navGraphBuilder = this,
                     navController = navController,
                     onNavigateToCamera = onNavigateToCamera,
+                    onNavigateToImagePreview = onNavigateToImagePreview,
                     outerSavedStateHandle = outerSavedStateHandle,
                     sharedViewModel = viewModel,
                 )
@@ -504,6 +506,7 @@ fun MainScreen(
                     navGraphBuilder = this,
                     navController = navController,
                     onNavigateToCamera = onNavigateToCamera,
+                    onNavigateToImagePreview = onNavigateToImagePreview,
                     outerSavedStateHandle = outerSavedStateHandle,
                 )
 
@@ -511,6 +514,7 @@ fun MainScreen(
                     navGraphBuilder = this,
                     navController = navController,
                     onNavigateToCamera = onNavigateToCamera,
+                    onNavigateToImagePreview = onNavigateToImagePreview,
                     outerSavedStateHandle = outerSavedStateHandle,
                 )
 
@@ -518,6 +522,7 @@ fun MainScreen(
                     navGraphBuilder = this,
                     navController = navController,
                     onNavigateToCamera = onNavigateToCamera,
+                    onNavigateToImagePreview = onNavigateToImagePreview,
                     outerSavedStateHandle = outerSavedStateHandle,
                 )
 

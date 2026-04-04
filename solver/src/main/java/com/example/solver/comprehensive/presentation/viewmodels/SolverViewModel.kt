@@ -113,7 +113,7 @@ class SolverViewModel
 
             viewModelScope.launch {
                 try {
-                    val questionContent = if (state.questionText.isNotBlank()) state.questionText else "图片题目（暂无文字描述）"
+                    val questionContent = if (state.questionText.isNotBlank()) state.questionText else if (state.parsedQuestionContent.isNotBlank()) state.parsedQuestionContent else "图片题目（暂无文字描述）"
                     val entity =
                         ErrorBookEntity(
                             subject = subject,
@@ -128,6 +128,25 @@ class SolverViewModel
                     _uiState.value = _uiState.value.copy(isAddedToErrorBook = true)
                 } catch (e: Exception) {
                     _errorEvents.send("保存到错题本失败: ${e.message}")
+                }
+            }
+        }
+
+        fun addHistoryToErrorBook(history: com.example.common.database.models.SolveHistoryEntity) {
+            viewModelScope.launch {
+                try {
+                    val entity =
+                        com.example.common.database.models.ErrorBookEntity(
+                            subject = history.subject,
+                            questionContent = history.questionContent,
+                            errorReason = "从历史记录收录",
+                            correctSolution = history.solution,
+                        )
+                    errorBookDao.insertErrorRecord(entity)
+                    solveHistoryDao.markInErrorBook(history.id)
+                    _errorEvents.send("已成功收录至错题本")
+                } catch (e: Exception) {
+                    _errorEvents.send("收录失败: ${e.message}")
                 }
             }
         }
@@ -215,8 +234,24 @@ class SolverViewModel
 
                         val qcMatch = Regex("""【题目内容】\s*(.*?)(?=\n【|$)""", RegexOption.DOT_MATCHES_ALL).find(solution)
                         val faMatch = Regex("""【最终答案】\s*(.*?)(?=\n【|$)""", RegexOption.DOT_MATCHES_ALL).find(solution)
-                        val parsedQC = qcMatch?.groupValues?.get(1)?.trim() ?: ""
-                        val parsedFA = faMatch?.groupValues?.get(1)?.trim() ?: ""
+                        var parsedQC = qcMatch?.groupValues?.get(1)?.trim() ?: ""
+                        var parsedFA = faMatch?.groupValues?.get(1)?.trim() ?: ""
+
+                        // Strip outer math block if the whole text is wrapped
+                        if (parsedQC.startsWith("$$") && parsedQC.endsWith("$$") && parsedQC.length > 4) {
+                            parsedQC = parsedQC.substring(2, parsedQC.length - 2).trim()
+                        } else if (parsedQC.startsWith("\\[") && parsedQC.endsWith("\\]") && parsedQC.length > 4) {
+                            parsedQC = parsedQC.substring(2, parsedQC.length - 2).trim()
+                        }
+
+                        if (parsedFA.startsWith("$$") && parsedFA.endsWith("$$") && parsedFA.length > 4) {
+                            parsedFA = parsedFA.substring(2, parsedFA.length - 2).trim()
+                        } else if (parsedFA.startsWith("\\[") && parsedFA.endsWith("\\]") && parsedFA.length > 4) {
+                            parsedFA = parsedFA.substring(2, parsedFA.length - 2).trim()
+                        }
+
+                        val kpMatch = Regex("""【(核心定理与模型|破题思路|物理情景分析与模型建构|核心考点与原理|核心机制与原理|原理阐释与算法设计)】\s*(.*?)(?=\n【|$)""", RegexOption.DOT_MATCHES_ALL).find(solution)
+                        val parsedKP = kpMatch?.groupValues?.get(2)?.trim() ?: ""
 
                         _uiState.value =
                             _uiState.value.copy(
@@ -243,6 +278,9 @@ class SolverViewModel
 
                         val combinedQuestionContent =
                             buildString {
+                                if (parsedKP.isNotBlank()) {
+                                    append("【知识点】\n$parsedKP\n\n")
+                                }
                                 if (_uiState.value.questionText.isNotBlank()) {
                                     append("【用户描述】\n${_uiState.value.questionText}\n\n")
                                 }
