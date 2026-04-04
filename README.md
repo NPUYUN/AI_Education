@@ -14,6 +14,15 @@ A comprehensive, multimodal, LLM-powered smart education Android application. Th
 
 ---
 
+## 🚀 Quick Start & Testing Guide
+
+For detailed environment setup, API Key configuration, core module test cases, and safety optimization guidelines for AI Prompts, please refer to:
+👉 **[Usage and Testing Guide (Chinese)](使用与测试指南.md)**
+
+This is crucial for newly onboarding developers and testers, ensuring all future modifications follow architectural standards and do not disrupt core business logic.
+
+---
+
 ## 🌟 Core Modules
 
 This project is divided into four core business modules to deeply cover all learning scenarios:
@@ -27,7 +36,7 @@ This project is divided into four core business modules to deeply cover all lear
 * **Multimodal Input**: Supports photo-based problem solving (integrated with CameraX, featuring built-in image rotation and cropping), gallery uploads, and quick history retrieval. Supports mixed text and image queries with an interactive "wait-to-solve" flow.
 * **Smart Classification & Parsing**: Automatically identifies the subject of the problem (Geometry, Algebra, Physics, Chemistry, Biology, etc.) and loads subject-specific system Prompts. Features an intelligent fallback mechanism to pure vision models (e.g., `qwen-vl-plus`) when identifying problems containing images.
 * **Dynamic Geometry Canvas**: Deeply integrated with the `exp4j` math engine to dynamically draw function graphs (including tangents and shaded areas), geometric shapes, physics force diagrams, and chemistry experiment schematics based on AI-output JSON instructions.
-* **Split Result View**: Elegantly separates the final answer (shown on the main screen) from the detailed step-by-step derivation (displayed in a full-screen dialog).
+* **Split Result View & Knowledge Point Extraction**: Elegantly separates the final answer (shown on the main screen) from the detailed step-by-step derivation (displayed in a full-screen dialog), and intelligently extracts core knowledge points as a concise summary for historical records.
 * **Error Book Integration**: Supports one-click addition to the Error Book after successful problem solving, synchronizing states in the solving history.
 
 ### 3. 📑 Intelligent Summarizer
@@ -37,7 +46,7 @@ This project is divided into four core business modules to deeply cover all lear
 
 ### 4. 📚 Smart Review
 * **Ebbinghaus Review Planner**: Supports customized review schedules for different subjects, intelligently planning daily review tasks using the memory curve algorithm.
-* **Error Book & Reinforcement**: Provides error search, categorized browsing, and reinforcement quizzes to form a complete learning feedback loop.
+* **Error Book & Smart Variants**: Features collapsible error cards, categorized browsing, and an integrated "One-click Test" that forces the AI to output structured JSON variant problems (estimated similarity ≥0.85). It also offers an immersive single-question answering modal, an interactive answer sheet grid, AI batch grading, and the ability to track historical variant test records.
 
 ---
 
@@ -49,8 +58,8 @@ This project is divided into four core business modules to deeply cover all lear
 * **High Availability & Offline Fallback**: Built-in `NetworkMonitor` listens to network states in real-time, providing global offline fallback strategies (seamless switching to local Error Book, history, offline ASR, and local canvas rendering when offline).
 
 ### Core Frameworks
-* **UI Layer**: Jetpack Compose (fully applies Material 3 specifications, unified `CenterAlignedTopAppBar`, NavHost `AnimatedVisibility` transitions, Dark Mode adaptation, and system-level Accessibility support).
-* **Markdown & Math**: Enhanced `SafeMarkdownText` globally integrating Markwon with custom LaTeX regex parsing (`$$`, `$`) and Coil for mixed text-and-image rendering.
+* **UI Layer**: Jetpack Compose (fully applies Material 3 specifications, globally unified and deduplicated `CenterAlignedTopAppBar` navigation, NavHost `AnimatedVisibility` transitions, Dark Mode adaptation, and system-level Accessibility support).
+* **Markdown & Math**: Globally enhanced `SafeMarkdownText` component, integrating Markwon with custom LaTeX regex parsing (`$$` and `$`). It dynamically calculates the base font size using `LocalDensity`, thoroughly fixing underlying rendering bugs where block formulas wrapping Chinese text caused microscopic fonts.
 * **Dependency Injection**: Dagger Hilt, including custom Coroutine DispatcherProvider for enhanced testability.
 * **Local Persistence**: Room Database (with relational tables, TypeConverters) and DataStore/SharedPreferences.
 * **Networking**: Retrofit, OkHttp, unified Server-Sent Events (SSE) streaming API for LLMs. Custom timeouts for long-text generations (e.g., 90s for Timeline Map).

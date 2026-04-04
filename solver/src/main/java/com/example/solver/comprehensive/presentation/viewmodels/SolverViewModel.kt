@@ -113,7 +113,14 @@ class SolverViewModel
 
             viewModelScope.launch {
                 try {
-                    val questionContent = if (state.questionText.isNotBlank()) state.questionText else if (state.parsedQuestionContent.isNotBlank()) state.parsedQuestionContent else "图片题目（暂无文字描述）"
+                    val questionContent =
+                        if (state.questionText.isNotBlank()) {
+                            state.questionText
+                        } else if (state.parsedQuestionContent.isNotBlank()) {
+                            state.parsedQuestionContent
+                        } else {
+                            "图片题目（暂无文字描述）"
+                        }
                     val entity =
                         ErrorBookEntity(
                             subject = subject,
@@ -250,7 +257,11 @@ class SolverViewModel
                             parsedFA = parsedFA.substring(2, parsedFA.length - 2).trim()
                         }
 
-                        val kpMatch = Regex("""【(核心定理与模型|破题思路|物理情景分析与模型建构|核心考点与原理|核心机制与原理|原理阐释与算法设计)】\s*(.*?)(?=\n【|$)""", RegexOption.DOT_MATCHES_ALL).find(solution)
+                        val kpMatch =
+                            Regex(
+                                """【(核心定理与模型|破题思路|物理情景分析与模型建构|核心考点与原理|核心机制与原理|原理阐释与算法设计)】\s*(.*?)(?=\n【|$)""",
+                                RegexOption.DOT_MATCHES_ALL,
+                            ).find(solution)
                         val parsedKP = kpMatch?.groupValues?.get(2)?.trim() ?: ""
 
                         _uiState.value =

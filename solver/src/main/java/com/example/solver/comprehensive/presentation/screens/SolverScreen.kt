@@ -248,15 +248,19 @@ fun SolverScreen(
                                         Column(modifier = Modifier.weight(1f)) {
                                             Text("${item.subject}｜${DateFormatUtils.format(item.timestamp)}")
                                             Spacer(modifier = Modifier.height(4.dp))
-                                            val displayDesc = if (item.questionContent.startsWith("【知识点】\n")) {
-                                                "【核心考点】" + item.questionContent.substringAfter("【知识点】\n").substringBefore("\n【").take(40) + "..."
-                                            } else if (item.questionContent.startsWith("【用户描述】\n")) {
-                                                item.questionContent.substringAfter("【用户描述】\n").substringBefore("\n【").take(30) + "..."
-                                            } else if (item.questionContent.startsWith("【题目总结】\n")) {
-                                                item.questionContent.substringAfter("【题目总结】\n").substringBefore("\n【").take(30) + "..."
-                                            } else {
-                                                item.questionContent.take(30)
-                                            }
+                                            val displayDesc =
+                                                if (item.questionContent.startsWith("【知识点】\n")) {
+                                                    "【核心考点】" +
+                                                        item.questionContent.substringAfter(
+                                                            "【知识点】\n",
+                                                        ).substringBefore("\n【").take(40) + "..."
+                                                } else if (item.questionContent.startsWith("【用户描述】\n")) {
+                                                    item.questionContent.substringAfter("【用户描述】\n").substringBefore("\n【").take(30) + "..."
+                                                } else if (item.questionContent.startsWith("【题目总结】\n")) {
+                                                    item.questionContent.substringAfter("【题目总结】\n").substringBefore("\n【").take(30) + "..."
+                                                } else {
+                                                    item.questionContent.take(30)
+                                                }
                                             Text(displayDesc)
                                         }
                                         if (item.isInErrorBook) {
@@ -303,15 +307,19 @@ fun SolverScreen(
                                         Column(modifier = Modifier.weight(1f)) {
                                             Text("${item.subject}｜${DateFormatUtils.format(item.timestamp)}")
                                             Spacer(modifier = Modifier.height(4.dp))
-                                            val displayDesc = if (item.questionContent.startsWith("【知识点】\n")) {
-                                                "【核心考点】" + item.questionContent.substringAfter("【知识点】\n").substringBefore("\n【").take(40) + "..."
-                                            } else if (item.questionContent.startsWith("【用户描述】\n")) {
-                                                item.questionContent.substringAfter("【用户描述】\n").substringBefore("\n【").take(30) + "..."
-                                            } else if (item.questionContent.startsWith("【题目总结】\n")) {
-                                                item.questionContent.substringAfter("【题目总结】\n").substringBefore("\n【").take(30) + "..."
-                                            } else {
-                                                item.questionContent.take(30)
-                                            }
+                                            val displayDesc =
+                                                if (item.questionContent.startsWith("【知识点】\n")) {
+                                                    "【核心考点】" +
+                                                        item.questionContent.substringAfter(
+                                                            "【知识点】\n",
+                                                        ).substringBefore("\n【").take(40) + "..."
+                                                } else if (item.questionContent.startsWith("【用户描述】\n")) {
+                                                    item.questionContent.substringAfter("【用户描述】\n").substringBefore("\n【").take(30) + "..."
+                                                } else if (item.questionContent.startsWith("【题目总结】\n")) {
+                                                    item.questionContent.substringAfter("【题目总结】\n").substringBefore("\n【").take(30) + "..."
+                                                } else {
+                                                    item.questionContent.take(30)
+                                                }
                                             Text(displayDesc)
                                         }
                                         if (item.isInErrorBook) {
@@ -438,7 +446,7 @@ fun SolverScreen(
                                     Spacer(modifier = Modifier.height(4.dp))
                                     SafeMarkdownText(
                                         markdown = uiState.parsedQuestionContent,
-                                        modifier = Modifier.fillMaxWidth()
+                                        modifier = Modifier.fillMaxWidth(),
                                     )
                                     Spacer(modifier = Modifier.height(12.dp))
                                 }
@@ -455,7 +463,7 @@ fun SolverScreen(
                                     Spacer(modifier = Modifier.height(4.dp))
                                     SafeMarkdownText(
                                         markdown = uiState.parsedFinalAnswer,
-                                        modifier = Modifier.fillMaxWidth()
+                                        modifier = Modifier.fillMaxWidth(),
                                     )
                                 } else {
                                     // Fallback if parsing failed
@@ -672,15 +680,15 @@ fun SolverScreen(
                             markdown = item.solution,
                             modifier = Modifier.fillMaxWidth(),
                         )
-                        
+
                         if (!item.isInErrorBook) {
                             Spacer(modifier = Modifier.height(16.dp))
                             Button(
-                                onClick = { 
+                                onClick = {
                                     viewModel.addHistoryToErrorBook(item)
                                     selectedHistory = null
                                 },
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier.fillMaxWidth(),
                             ) {
                                 Text(stringResource(R.string.add_to_error_book))
                             }

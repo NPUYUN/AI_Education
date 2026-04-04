@@ -5,12 +5,11 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class SafeMarkdownTextTest {
-
     @Test
     fun `normalizeMarkdownForDisplay handles empty string`() {
         val result = normalizeMarkdownForDisplay("")
         assertEquals("暂无内容", result)
-        
+
         val blankResult = normalizeMarkdownForDisplay("   \n  ")
         assertEquals("暂无内容", blankResult)
     }
@@ -19,7 +18,7 @@ class SafeMarkdownTextTest {
     fun `normalizeMarkdownForDisplay handles inline and block latex math`() {
         val input = "Here is some inline math \\(x = 1\\) and some block math \\[ y = x^2 \\] and standard \$z=3\$."
         val result = normalizeMarkdownForDisplay(input)
-        
+
         // \(...\) -> $$...$$
         assertTrue(result.contains("\$\$x = 1\$\$"))
         // \[...\] -> block $$...$$

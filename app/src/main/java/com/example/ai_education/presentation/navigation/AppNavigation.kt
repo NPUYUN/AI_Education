@@ -79,9 +79,9 @@ fun AppNavigation(
                     navController.navigate("login") { popUpTo("main") { inclusive = true } }
                 },
                 onNavigateToCamera = { source -> navController.navigate("camera?source=$source") },
-                onNavigateToImagePreview = { uri, source -> 
+                onNavigateToImagePreview = { uri, source ->
                     val encodedUri = java.net.URLEncoder.encode(uri, "UTF-8")
-                    navController.navigate("preview/$encodedUri?source=$source") 
+                    navController.navigate("preview/$encodedUri?source=$source")
                 },
                 viewModel = aiTutorViewModel,
                 outerSavedStateHandle = backStackEntry.savedStateHandle,

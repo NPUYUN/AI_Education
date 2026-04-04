@@ -46,7 +46,7 @@ fun SafeMarkdownText(
                         builder.inlinesEnabled(true)
                         builder.blocksEnabled(true)
                         builder.blocksLegacy(true) // Enable blocksLegacy so it allows $...$ blocks or other formats without breaking inline parser
-                    }
+                    },
                 )
                 .build()
         }
@@ -156,7 +156,7 @@ private fun normalizeMathDelimiters(input: String): String {
 
     // Normalize "$ expr $" into "$$expr$$" for better parser compatibility.
     // MarkwonInlineParserPlugin relies on `$$` for inline math natively when blocks are disabled or legacy mode is not configured,
-    // but the default JLatexMathPlugin actually overrides blocks rendering. 
+    // but the default JLatexMathPlugin actually overrides blocks rendering.
     // We convert all $...$ into $$...$$
     text =
         Regex("""(?<!\$)\$(?!\$)(.+?)(?<!\$)\$(?!\$)""", setOf(RegexOption.DOT_MATCHES_ALL))

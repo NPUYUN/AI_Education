@@ -70,9 +70,9 @@ video_summarizer/
 ## 4. 组件层级规范
 
 Compose UI 组件按复用范围和职责划分为三个层级：
-1. **基础组件 (Base Components)**：位于 `common/presentation/components`。提供与业务无关的基础 UI（如全局使用的 `TopBar`、标准化的错误卡片、加载动画指示器）。
+1. **基础组件 (Base Components)**：位于 `common/presentation/components`。提供与业务无关的基础 UI（如升级版的 `SafeMarkdownText`、标准化的错误卡片、加载动画指示器）。
 2. **业务组件 (Business Components)**：位于各子模块的 `presentation/components`。例如 `summarizer` 模块中的文件选择卡片，具有特定的业务逻辑但可在该模块内部多页面复用。
-3. **页面组件 (Page Components)**：位于各子模块的 `presentation/screens`。负责组合业务组件、拦截系统级事件（如返回键），并唯一负责与 ViewModel 的交互。
+3. **页面组件 (Page Components)**：位于各子模块的 `presentation/screens`。负责组合业务组件、拦截系统级事件（如返回键），并唯一负责与 ViewModel 的交互。为保证系统样式统一，顶栏（`CenterAlignedTopAppBar`）已提升至全局宿主层 (`MainScreen`) 统一管理，子页面无需重复渲染。
 
 ## 5. 状态流与异常处理规范
 

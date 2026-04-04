@@ -2,8 +2,8 @@ package com.example.review.planner.presentation.viewmodels
 
 import com.example.common.config.GlobalConfigRepository
 import com.example.common.database.PreferencesManager
-import com.example.common.database.dao.ErrorBookDao
 import com.example.common.database.dao.ChatDao
+import com.example.common.database.dao.ErrorBookDao
 import com.example.common.database.dao.ReviewHistoryDao
 import com.example.common.database.models.ErrorBookEntity
 import com.example.common.utils.NetworkMonitor
@@ -77,7 +77,7 @@ class ReviewViewModelTest {
                     mockReviewHistoryDao,
                     mockGlobalConfigRepository,
                     mockPreferencesManager,
-                    mockNetworkMonitor
+                    mockNetworkMonitor,
                 )
             advanceUntilIdle()
 
@@ -95,7 +95,7 @@ class ReviewViewModelTest {
                     mockReviewHistoryDao,
                     mockGlobalConfigRepository,
                     mockPreferencesManager,
-                    mockNetworkMonitor
+                    mockNetworkMonitor,
                 )
             advanceUntilIdle()
 
@@ -114,7 +114,7 @@ class ReviewViewModelTest {
                     mockReviewHistoryDao,
                     mockGlobalConfigRepository,
                     mockPreferencesManager,
-                    mockNetworkMonitor
+                    mockNetworkMonitor,
                 )
             advanceUntilIdle()
 
@@ -141,7 +141,7 @@ class ReviewViewModelTest {
                     mockReviewHistoryDao,
                     mockGlobalConfigRepository,
                     mockPreferencesManager,
-                    mockNetworkMonitor
+                    mockNetworkMonitor,
                 )
             advanceUntilIdle()
 
@@ -171,7 +171,7 @@ class ReviewViewModelTest {
                     mockReviewHistoryDao,
                     mockGlobalConfigRepository,
                     mockPreferencesManager,
-                    mockNetworkMonitor
+                    mockNetworkMonitor,
                 )
             advanceUntilIdle()
 
@@ -198,7 +198,7 @@ class ReviewViewModelTest {
                     mockReviewHistoryDao,
                     mockGlobalConfigRepository,
                     mockPreferencesManager,
-                    mockNetworkMonitor
+                    mockNetworkMonitor,
                 )
             advanceUntilIdle()
 
@@ -217,7 +217,7 @@ class ReviewViewModelTest {
                     mockReviewHistoryDao,
                     mockGlobalConfigRepository,
                     mockPreferencesManager,
-                    mockNetworkMonitor
+                    mockNetworkMonitor,
                 )
             advanceUntilIdle()
 

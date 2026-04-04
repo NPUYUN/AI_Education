@@ -194,7 +194,8 @@ class ReviewRepository
                     val service = retrofit.create(OpenAiService::class.java)
 
                     val problemsStr = sourceProblems.joinToString("\n\n") { "原题内容：${it.questionContent}\n知识点/错误原因：${it.errorReason}" }
-                    val prompt = """
+                    val prompt =
+                        """
 请严格根据以下错题信息，生成 $count 道相似变式题。
 必须保证生成题目与原题高度相关，向量相似度阈值预估要求达到 0.85 以上。
 
@@ -216,7 +217,7 @@ class ReviewRepository
 
 原题信息：
 $problemsStr
-                    """.trimIndent()
+                        """.trimIndent()
 
                     val messages =
                         listOf(
@@ -231,18 +232,22 @@ $problemsStr
                             ?: response.output?.choices?.firstOrNull()?.message?.content?.toString()
                             ?: response.output?.text
                             ?: ""
-                            
+
                     // Clean markdown fences if any
                     content = content.trim().removePrefix("```json").removePrefix("```").removeSuffix("```").trim()
 
                     if (content.isBlank()) {
                         Result.failure(Exception("生成结果为空"))
                     } else {
-                        val parsed = com.google.gson.Gson().fromJson(content, com.example.review.planner.models.GenerateProblemsResponse::class.java)
+                        val parsed =
+                            com.google.gson.Gson().fromJson(
+                                content,
+                                com.example.review.planner.models.GenerateProblemsResponse::class.java,
+                            )
                         if (parsed.problems.any { (it.similarityScore ?: 0.0) < 0.85 }) {
-                             Result.failure(Exception("生成题目相关性过低，请稍后重试"))
+                            Result.failure(Exception("生成题目相关性过低，请稍后重试"))
                         } else {
-                             Result.success(parsed.problems)
+                            Result.success(parsed.problems)
                         }
                     }
                 } catch (e: Exception) {
@@ -280,11 +285,13 @@ $problemsStr
 
                     val service = retrofit.create(OpenAiService::class.java)
 
-                    val problemsStr = problemsAndAnswers.mapIndexed { index, (problem, answer) ->
-                        "第${index + 1}题：\n【题目内容】\n${problem.questionText}\n【标准答案】\n${problem.answer}\n【学生答案】\n$answer"
-                    }.joinToString("\n\n---\n\n")
+                    val problemsStr =
+                        problemsAndAnswers.mapIndexed { index, (problem, answer) ->
+                            "第${index + 1}题：\n【题目内容】\n${problem.questionText}\n【标准答案】\n${problem.answer}\n【学生答案】\n$answer"
+                        }.joinToString("\n\n---\n\n")
 
-                    val prompt = """
+                    val prompt =
+                        """
 以下是学生做的一组题目及答案。请逐一判断对错，并给出批改意见和正确解析。
 请以 JSON 格式返回结果，返回结构必须如下：
 {
@@ -299,7 +306,7 @@ $problemsStr
 
 题目及作答：
 $problemsStr
-                    """.trimIndent()
+                        """.trimIndent()
 
                     val messages =
                         listOf(
@@ -314,14 +321,18 @@ $problemsStr
                             ?: response.output?.choices?.firstOrNull()?.message?.content?.toString()
                             ?: response.output?.text
                             ?: ""
-                            
+
                     // Clean markdown fences if any
                     content = content.trim().removePrefix("```json").removePrefix("```").removeSuffix("```").trim()
 
                     if (content.isBlank()) {
                         Result.failure(Exception("批改结果为空"))
                     } else {
-                        val parsed = com.google.gson.Gson().fromJson(content, com.example.review.planner.models.GradeTestResponse::class.java)
+                        val parsed =
+                            com.google.gson.Gson().fromJson(
+                                content,
+                                com.example.review.planner.models.GradeTestResponse::class.java,
+                            )
                         Result.success(parsed.results)
                     }
                 } catch (e: Exception) {
