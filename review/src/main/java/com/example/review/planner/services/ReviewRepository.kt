@@ -94,7 +94,7 @@ class ReviewRepository
             modelName: String,
             knowledgePoint: String,
             recentContext: String,
-        ): Result<String> =
+        ): Result<com.example.review.planner.models.ReinforcementResponse> =
             withContext(dispatcherProvider.io) {
                 try {
                     val retrofit =
@@ -127,13 +127,29 @@ class ReviewRepository
                     if (recentContext.isNotBlank()) {
                         promptBuilder.append("以下是我最近的学习记录（对话和错题），请从中提取关键知识点进行总结：\n$recentContext\n")
                     }
-                    promptBuilder.append("请先清晰地总结核心知识点，然后生成3道选择题与1道简答或证明题，附详细答案解析与易错点提示，使用Markdown格式。")
+                    promptBuilder.append("请先清晰地总结核心知识点，然后生成3道选择题与1道简答或证明题，附详细答案解析与易错点提示。\n")
+                    promptBuilder.append("必须以 JSON 格式返回结果，返回结构必须如下：\n")
+                    promptBuilder.append("{\n")
+                    promptBuilder.append("  \"summary\": \"核心知识点总结(Markdown格式)...\",\n")
+                    promptBuilder.append("  \"problems\": [\n")
+                    promptBuilder.append("    {\n")
+                    promptBuilder.append("      \"questionText\": \"题干内容...\",\n")
+                    promptBuilder.append("      \"options\": [\"A. 选项\", \"B. 选项\", \"C. 选项\", \"D. 选项\"], // 如果是解答题可为 null 或空数组\n")
+                    promptBuilder.append("      \"answer\": \"正确答案\",\n")
+                    promptBuilder.append("      \"explanation\": \"详细解析\",\n")
+                    promptBuilder.append("      \"knowledgePointId\": \"知识点标签\",\n")
+                    promptBuilder.append("      \"difficulty\": \"难度\",\n")
+                    promptBuilder.append("      \"questionType\": \"题型\",\n")
+                    promptBuilder.append("      \"similarityScore\": 1.0\n")
+                    promptBuilder.append("    }\n")
+                    promptBuilder.append("  ]\n")
+                    promptBuilder.append("}\n")
 
                     val messages =
                         listOf(
                             ChatMessage(
                                 role = "system",
-                                content = "你是一个经验丰富的学科教师，善于从学生的学习记录中发现知识盲区，并提供针对性的知识点总结和高质量的巩固练习。",
+                                content = "你是一个经验丰富的学科教师，善于从学生的学习记录中发现知识盲区，并提供针对性的知识点总结和高质量的巩固练习。仅输出纯JSON格式，不要包裹在 ```json 中。",
                             ),
                             ChatMessage(role = "user", content = promptBuilder.toString()),
                         )
@@ -142,20 +158,24 @@ class ReviewRepository
                         ChatRequest(
                             model = modelName,
                             messages = messages,
+                            responseFormat = mapOf("type" to "json_object"),
                         )
 
                     val response = service.chat(request)
-
-                    val content =
+                    var content =
                         response.choices?.firstOrNull()?.message?.content?.toString()
                             ?: response.output?.choices?.firstOrNull()?.message?.content?.toString()
                             ?: response.output?.text
                             ?: ""
+                            
+                    // Clean markdown fences if any
+                    content = content.trim().removePrefix("```json").removePrefix("```").removeSuffix("```").trim()
 
                     if (content.isBlank()) {
                         Result.failure(Exception("生成结果为空"))
                     } else {
-                        Result.success(content.trim())
+                        val parsed = com.google.gson.Gson().fromJson(content, com.example.review.planner.models.ReinforcementResponse::class.java)
+                        Result.success(parsed)
                     }
                 } catch (e: Exception) {
                     Result.failure(e)
@@ -298,7 +318,7 @@ $problemsStr
   "results": [
     {
       "isCorrect": true, // 是否正确
-      "score": 100, // 此题得分，满分100
+      "score": 100, // 此题得分。请根据题目总数计算，确保所有题目的 score 总和严格等于 100。例如有4道题，每题满分就是25分。
       "explanation": "详细批改意见和解析..."
     }
   ]

@@ -28,13 +28,14 @@ data class ReviewUiState(
     val useRecentContextForPlan: Boolean = true,
     // Reinforcement
     val knowledgePointInput: String = "",
-    val reinforcementQuiz: String = "",
+    val reinforcementSummary: String = "",
     val isGeneratingQuiz: Boolean = false,
     val useRecentContextForQuiz: Boolean = true,
     // Error Book
     val errorRecords: List<ErrorBookEntity> = emptyList(),
     val selectedErrorIds: Set<Long> = emptySet(),
     // Practice Screen
+    val practiceSource: String = "error_book", // "error_book" or "reinforcement"
     val isGeneratingPractice: Boolean = false,
     val practiceProblems: List<GeneratedProblem> = emptyList(),
     val currentPracticeIndex: Int = 0,
@@ -229,7 +230,7 @@ class ReviewViewModel
                 return
             }
 
-            _uiState.update { it.copy(isGeneratingQuiz = true, reinforcementQuiz = "") }
+            _uiState.update { it.copy(isGeneratingQuiz = true, reinforcementSummary = "") }
             viewModelScope.launch {
                 try {
                     val apiKey = globalConfigRepository.getAiTutorApiKey().firstOrNull()?.takeIf { it.isNotBlank() } ?: AppConstants.DEFAULT_API_KEY
@@ -240,16 +241,32 @@ class ReviewViewModel
                     val result = repository.generateReinforcementQuiz(apiKey, baseUrl, modelName, kp, recentContext)
 
                     if (result.isSuccess) {
-                        val quizContent = result.getOrNull() ?: ""
-                        _uiState.update { it.copy(isGeneratingQuiz = false, reinforcementQuiz = quizContent) }
+                        val response = result.getOrNull()!!
+                        _uiState.update { 
+                            it.copy(
+                                isGeneratingQuiz = false, 
+                                reinforcementSummary = response.summary,
+                                practiceProblems = response.problems,
+                                practiceSource = "reinforcement",
+                                currentPracticeIndex = 0,
+                                practiceAnswers = emptyMap(),
+                                isGradingPractice = false,
+                                practiceGradingResults = emptyList(),
+                                showPracticeScreen = false,
+                                showPracticeResultScreen = false
+                            ) 
+                        }
 
                         // Save history
                         val inputParams = if (useRecent) "知识点/需求: $kp\n[包含最近学习记录]" else "知识点/需求: $kp"
+                        val historyData = mapOf("summary" to response.summary, "problems" to response.problems)
+                        val historyContent = com.google.gson.Gson().toJson(historyData)
+                        
                         reviewHistoryDao.insertHistory(
                             ReviewHistoryEntity(
                                 type = "reinforcement",
                                 inputParameters = inputParams,
-                                resultContent = quizContent,
+                                resultContent = historyContent,
                             ),
                         )
                     } else {
@@ -270,8 +287,42 @@ class ReviewViewModel
             _uiState.update { it.copy(reviewPlan = historyEntity.resultContent) }
         }
 
-        fun loadReinforcementHistory(historyEntity: ReviewHistoryEntity) {
-            _uiState.update { it.copy(reinforcementQuiz = historyEntity.resultContent) }
+        fun loadReinforcementHistory(history: ReviewHistoryEntity) {
+            try {
+                // Try parsing as JSON first
+                val typeToken = object : com.google.gson.reflect.TypeToken<Map<String, Any>>() {}.type
+                val data: Map<String, Any> = com.google.gson.Gson().fromJson(history.resultContent, typeToken)
+                val summary = data["summary"] as? String ?: ""
+                val problemsStr = com.google.gson.Gson().toJson(data["problems"])
+                val problems = com.google.gson.Gson().fromJson(problemsStr, Array<GeneratedProblem>::class.java).toList()
+
+                _uiState.update {
+                    it.copy(
+                        reinforcementSummary = summary,
+                        practiceProblems = problems,
+                        practiceSource = "reinforcement",
+                        currentPracticeIndex = 0,
+                        practiceAnswers = emptyMap(),
+                        isGradingPractice = false,
+                        practiceGradingResults = emptyList(),
+                        showPracticeScreen = false,
+                        showPracticeResultScreen = false
+                    )
+                }
+            } catch (e: Exception) {
+                // Fallback for legacy plain-text markdown histories
+                _uiState.update { 
+                    it.copy(
+                        reinforcementSummary = history.resultContent,
+                        practiceProblems = emptyList(),
+                        practiceSource = "reinforcement"
+                    ) 
+                }
+            }
+        }
+
+        fun startPractice() {
+            _uiState.update { it.copy(showPracticeScreen = true) }
         }
 
         fun deleteHistory(historyEntity: ReviewHistoryEntity) {
@@ -331,6 +382,7 @@ class ReviewViewModel
             _uiState.update {
                 it.copy(
                     isGeneratingPractice = true,
+                    practiceSource = "error_book",
                     practiceProblems = emptyList(),
                     currentPracticeIndex = 0,
                     practiceAnswers = emptyMap(),
@@ -472,12 +524,15 @@ class ReviewViewModel
                                 "totalScore" to results.sumOf { it.score },
                             )
                         val historyContent = com.google.gson.Gson().toJson(historyData)
-
+                        
                         val selectedIdsStr = _uiState.value.selectedErrorIds.joinToString(",")
+                        val historyType = if (state.practiceSource == "reinforcement") "practice_reinforcement" else "practice_$selectedIdsStr"
+                        val historyParams = if (state.practiceSource == "reinforcement") "知识巩固测验" else "错题变式测试"
+                        
                         reviewHistoryDao.insertHistory(
                             ReviewHistoryEntity(
-                                type = "practice_$selectedIdsStr",
-                                inputParameters = "错题变式测试",
+                                type = historyType,
+                                inputParameters = historyParams,
                                 resultContent = historyContent,
                             ),
                         )

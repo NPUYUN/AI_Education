@@ -60,6 +60,21 @@ fun SmartReviewPlannerScreen(
     var showHistoryDialog by remember { mutableStateOf(false) }
     var showResultDialog by remember { mutableStateOf(false) }
 
+    if (uiState.showPracticeScreen) {
+        PracticeScreenOverlay(viewModel, uiState)
+        return
+    }
+
+    if (uiState.showPracticeResultScreen) {
+        PracticeResultScreenOverlay(viewModel, uiState)
+        return
+    }
+
+    if (uiState.showPracticeHistoryForRecordId != null) {
+        PracticeHistoryScreenOverlay(viewModel, uiState)
+        return
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -171,6 +186,21 @@ fun KnowledgeReinforcementScreen(
     var showHistoryDialog by remember { mutableStateOf(false) }
     var showResultDialog by remember { mutableStateOf(false) }
 
+    if (uiState.showPracticeScreen) {
+        PracticeScreenOverlay(viewModel, uiState)
+        return
+    }
+
+    if (uiState.showPracticeResultScreen) {
+        PracticeResultScreenOverlay(viewModel, uiState)
+        return
+    }
+
+    if (uiState.showPracticeHistoryForRecordId != null) {
+        PracticeHistoryScreenOverlay(viewModel, uiState)
+        return
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -225,7 +255,7 @@ fun KnowledgeReinforcementScreen(
                                     com.example.common.utils.PdfExporter.exportToPdf(
                                         context = context,
                                         title = context.getString(R.string.knowledge_point_consolidation),
-                                        content = uiState.reinforcementQuiz,
+                                        content = uiState.reinforcementSummary,
                                     )
                                 }
                             }) {
@@ -243,7 +273,22 @@ fun KnowledgeReinforcementScreen(
                             .padding(16.dp)
                             .verticalScroll(rememberScrollState()),
                 ) {
-                    SafeMarkdownText(markdown = uiState.reinforcementQuiz)
+                    SafeMarkdownText(markdown = uiState.reinforcementSummary)
+                    
+                    if (uiState.practiceProblems.isNotEmpty() && uiState.practiceSource == "reinforcement") {
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Button(
+                            onClick = { 
+                                showResultDialog = false
+                                viewModel.startPractice() 
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("开始随堂测试 (共 ${uiState.practiceProblems.size} 题)", fontWeight = FontWeight.Bold)
+                        }
+                        Spacer(modifier = Modifier.height(32.dp))
+                    }
                 }
             }
         }
@@ -461,8 +506,13 @@ fun PracticeHistoryScreenOverlay(
 
                                 if (data != null) {
                                     val total = (data["problems"] as? List<*>)?.size ?: 0
-                                    val score = (data["totalScore"] as? Double)?.toInt() ?: 0
                                     val accuracy = (data["accuracy"] as? Double)?.toInt() ?: 0
+                                    val rawScore = (data["totalScore"] as? Double)?.toInt() ?: 0
+                                    val score = if (total > 0 && rawScore > 100) {
+                                        (rawScore.toFloat() / (total * 100) * 100).toInt()
+                                    } else {
+                                        rawScore.coerceAtMost(100)
+                                    }
                                     Text(
                                         text = "共 $total 题，得分：$score，正确率：$accuracy%",
                                         style = MaterialTheme.typography.bodyMedium,
@@ -500,7 +550,18 @@ fun PracticeResultScreenOverlay(
 
     val totalQuestions = problems.size
     val correctCount = results.count { it.isCorrect }
-    val totalScore = results.sumOf { it.score }
+    // 强制将总得分归一化到 100 分制
+    val totalScore = if (totalQuestions > 0) {
+        val rawSum = results.sumOf { it.score }
+        val maxRawSum = totalQuestions * 100 // In case AI still outputs 100 per question
+        if (maxRawSum > 100 && rawSum > 100) {
+            (rawSum.toFloat() / maxRawSum * 100).toInt()
+        } else {
+            rawSum.coerceAtMost(100)
+        }
+    } else {
+        0
+    }
 
     Scaffold(
         topBar = {
@@ -817,7 +878,7 @@ fun KnowledgeReinforcementView(
 ) {
     val input = uiState.knowledgePointInput
     val isGenerating = uiState.isGeneratingQuiz
-    val quiz = uiState.reinforcementQuiz
+    val summary = uiState.reinforcementSummary
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -864,7 +925,7 @@ fun KnowledgeReinforcementView(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        if (quiz.isNotBlank()) {
+        if (summary.isNotBlank()) {
             Button(
                 onClick = onShowResult,
                 modifier = Modifier.fillMaxWidth().height(56.dp),

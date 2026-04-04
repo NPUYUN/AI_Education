@@ -18,6 +18,11 @@ data class GenerateProblemsResponse(
     @SerializedName("problems") val problems: List<GeneratedProblem>,
 )
 
+data class ReinforcementResponse(
+    @SerializedName("summary") val summary: String,
+    @SerializedName("problems") val problems: List<GeneratedProblem>,
+)
+
 data class GradeTestResponse(
     @SerializedName("results") val results: List<PracticeGradingResult>,
 )

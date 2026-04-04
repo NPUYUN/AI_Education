@@ -176,15 +176,21 @@ class ReviewViewModelTest {
             advanceUntilIdle()
 
             viewModel.updateKnowledgePointInput("Math")
-            whenever(mockRepository.generateReinforcementQuiz(any(), any(), any(), any(), any())).thenReturn(Result.success("Quiz Data"))
+            val mockResponse = com.example.review.planner.models.ReinforcementResponse(
+                summary = "Quiz Summary",
+                problems = listOf()
+            )
+            whenever(mockRepository.generateReinforcementQuiz(any(), any(), any(), any(), any())).thenReturn(Result.success(mockResponse))
 
+            viewModel.toggleUseRecentContextForQuiz(false)
             viewModel.generateReinforcementQuiz()
             assertTrue(viewModel.uiState.value.isGeneratingQuiz)
 
             advanceUntilIdle()
 
-            assertEquals("Quiz Data", viewModel.uiState.value.reinforcementQuiz)
+            assertEquals("Quiz Summary", viewModel.uiState.value.reinforcementSummary)
             assertFalse(viewModel.uiState.value.isGeneratingQuiz)
+            assertEquals("reinforcement", viewModel.uiState.value.practiceSource)
         }
 
     @Test
