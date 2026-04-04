@@ -167,14 +167,18 @@ class ReviewRepository
                             ?: response.output?.choices?.firstOrNull()?.message?.content?.toString()
                             ?: response.output?.text
                             ?: ""
-                            
+
                     // Clean markdown fences if any
                     content = content.trim().removePrefix("```json").removePrefix("```").removeSuffix("```").trim()
 
                     if (content.isBlank()) {
                         Result.failure(Exception("生成结果为空"))
                     } else {
-                        val parsed = com.google.gson.Gson().fromJson(content, com.example.review.planner.models.ReinforcementResponse::class.java)
+                        val parsed =
+                            com.google.gson.Gson().fromJson(
+                                content,
+                                com.example.review.planner.models.ReinforcementResponse::class.java,
+                            )
                         Result.success(parsed)
                     }
                 } catch (e: Exception) {

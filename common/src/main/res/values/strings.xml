@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="knowledge_card_management">知识卡片管理</string>
     <string name="select_local_video_and_summarize">选择本地视频并生成摘要</string>
@@ -8,7 +8,7 @@
     <string name="failed">失败</string>
     <string name="re_summarize">重新摘要</string>
     <string name="summary_completed">摘要完成</string>
-    <string name="ai_tutor_login">AI Tutor 登录</string>
+    <string name="ai_tutor_login">AI 辅导登录</string>
     <string name="permission_granted_press_to_speak">权限已获取，请长按说话</string>
     <string name="remove_image">移除图片</string>
     <string name="how_to_solve_quadratic_equation">如何解一元二次方程？</string>
@@ -147,12 +147,29 @@
     <string name="new_conversation">新对话</string>
     <string name="input_weak_knowledge_point">输入薄弱知识点 (如：二次函数)</string>
     <string name="open_folder">打开文件夹</string>
+
+    
+    <string name="language_settings">语言设置</string>
+    <string name="language_chinese">中文 (Chinese)</string>
+    <string name="language_english">English (英文)</string>
+
     <string name="close">关闭</string>
     <string name="problem_solving_details">解题详情</string>
     <string name="audio_file_not_selected">尚未选择音频文件</string>
     <string name="start_special_breakthrough">开始专项突破</string>
     <string name="search_tags">搜索标签...</string>
     <string name="welcome_back_new_topic">欢迎回来，聊聊新话题</string>
+    <string name="ai_tutor_suggestion_plan">如何制定高效的学习计划?</string>
+    <string name="ai_tutor_suggestion_physics">帮我解释一下量子力学的基本原理</string>
+    <string name="ai_tutor_suggestion_english">请修改这篇英语作文的语法错误</string>
+
+    
+    <string name="tag_multiple_choice">选择题</string>
+    <string name="tag_fill_in_blank">填空题</string>
+    <string name="tag_essay_question">解答题</string>
+    <string name="tag_easy">简单</string>
+    <string name="tag_medium">中等</string>
+    <string name="tag_hard">困难</string>
     <string name="ebbinghaus_smart_review_plan">艾宾浩斯智能复习计划</string>
     <string name="cannot_open_system_player">无法打开系统播放器</string>
     <string name="smart_summary">智能总结</string>
@@ -207,7 +224,7 @@
     <string name="start_solving_auto_recognize">开始解题（自动识别题型：%s）</string>
     <string name="confirm_and_start_solving">确认并开始解题</string>
     
-    <!-- SplashScreen -->
+    
     <string name="ai_tutor_assistant">AI 辅导助手</string>
     <string name="preparing_environment">正在准备运行环境...</string>
     <string name="loading_voice_wakeup_model">正在加载: 语音唤醒模型</string>
@@ -218,19 +235,19 @@
     <string name="failed_with_message">失败: %s</string>
     <string name="retry">重试</string>
 
-    <!-- CameraScreen -->
+    
     <string name="education_assistant_camera">教育助手相机</string>
     <string name="camera_hint_solver">对准题目，拍下照片进行解题</string>
     <string name="camera_hint_art">拍画作业生成艺术评论</string>
 
-    <!-- ImagePreviewScreen -->
+    
     <string name="solve_it">解答一下</string>
     <string name="what_is_this">这是什么</string>
     <string name="translate_it">翻译一下</string>
     <string name="cancel">取消</string>
     <string name="complete">完成</string>
 
-    <!-- VoskVoiceManager -->
+    
     <string name="checking_voice_model">正在检查语音模型...</string>
     <string name="voice_model_downloading_in_background">语音模型后台下载中</string>
     <string name="initialization_failed">初始化失败: %s</string>
@@ -238,4 +255,81 @@
     <string name="start_recording_failed">启动录音失败: %s</string>
     <string name="unknown_error">未知错误</string>
     <string name="recording_timeout">录音超时</string>
+    <string name="review_plan_history">复习计划历史</string>
+    <string name="start_practice_test">开始随堂测试 (共 %1$s 题)</string>
+    <string name="knowledge_reinforcement_history">知识巩固历史</string>
+    <string name="error_book_title_md"># 错题本\n\n</string>
+    <string name="error_reason_title_md">\n\n**错误原因/知识点：**\n\n</string>
+    <string name="history_test_records">历史测试记录</string>
+    <string name="no_test_records">暂无测试记录</string>
+    <string name="delete_record">删除记录</string>
+    <string name="confirm_delete_test_record">确定要删除这条测试记录吗？</string>
+    <string name="delete_action">删除</string>
+    <string name="cancel_action">取消</string>
+    <string name="test_time_format">测试时间：%1$s</string>
+    <string name="test_result_format">共 %1$s 题，得分：%2$s，正确率：%3$s%</string>
+    <string name="cannot_parse_history_summary">无法解析历史记录摘要</string>
+    <string name="test_result_title">测试结果</string>
+    <string name="score_title">得分</string>
+    <string name="accuracy_title">正确率</string>
+    <string name="question_index_format">第 %1$s 题</string>
+    <string name="click_to_view_analysis">点击查看解析</string>
+    <string name="your_answer">你的作答：</string>
+    <string name="not_answered">未作答</string>
+    <string name="standard_answer">标准答案：</string>
+    <string name="ai_grading_analysis">AI 批改解析：</string>
+    <string name="add_to_error_book_action">加入错题本</string>
+    <string name="no_history_records">暂无历史记录</string>
+    <string name="input_additional_requirements">输入附加需求或科目（可选）</string>
+    <string name="generate_plan_based_on_history">基于最近学习记录（对话和错题）找出薄弱点生成计划</string>
+    <string name="view_review_plan">查看复习计划</string>
+    <string name="input_additional_knowledge_points">输入附加需求或知识点（可选）</string>
+    <string name="summarize_knowledge_points_based_on_history">基于最近学习记录总结知识点</string>
+    <string name="view_knowledge_reinforcement_result">查看知识巩固结果</string>
+    <string name="deselect_all">取消全选</string>
+    <string name="select_all">全选</string>
+    <string name="click_to_view_details">点击查看详情</string>
+    <string name="collapse_details">收起详情</string>
+    <string name="view_history_review">查看历史复习</string>
+    <string name="one_click_test">一键测试</string>
+    <string name="generate_test_paper">生成测试卷</string>
+    <string name="select_question_count">请选择要生成的题目数量：%1$s道</string>
+    <string name="confirm_generate">确认生成</string>
+    <string name="generating_test_paper">正在生成试卷，请稍候...</string>
+    <string name="progress_format">做题进度 %1$s/%2$s</string>
+    <string name="answer_sheet">答题卡</string>
+    <string name="practice_question">练习题</string>
+    <string name="input_answer_hint">请在此输入你的答案...</string>
+    <string name="previous_question">上一题</string>
+    <string name="next_question">下一题</string>
+    <string name="submit_paper">交卷</string>
+    <string name="confirm_submit_paper">确认交卷</string>
+    <string name="confirm_submit_paper_desc">确定要提交试卷吗？交卷后将进行自动批改。</string>
+    <string name="confirm_action">确定</string>
+    <string name="ai_grading_in_progress">正在进行AI批改...</string>
+    <string name="listening_in_progress">正在听...</string>
+    <string name="new_chat_action">新对话</string>
+    <string name="image_added_hint">[图片已添加] 请输入您的问题...</string>
+    <string name="model_not_support_image">当前设置的模型 (%1$s) 可能不支持图片输入，请在设置中更换支持视觉的模型（如 qwen-vl-plus）。</string>
+    <string name="offline_mode_warning">当前处于无网络环境。\n已开启离线降级策略：\n您可以继续查看历史记录、错题本，或使用离线语音功能。大模型问答暂不可用，请连接网络后重试。</string>
+    <string name="api_key_not_configured">尚未配置 API Key，请在弹出的设置中进行配置。</string>
+    <string name="api_key_invalid">API Key 无效或未授权</string>
+    <string name="image_chat">图片对话</string>
+    <string name="chat_action">对话</string>
+    <string name="cannot_process_image">无法处理图片。</string>
+    <string name="yaw_angle">偏航角 (Yaw)</string>
+    <string name="pitch_angle">俯仰角 (Pitch)</string>
+    <string name="knowledge_point_title_md">【知识点】\n</string>
+    <string name="core_knowledge_point">【核心考点】</string>
+    <string name="user_description_title_md">【用户描述】\n</string>
+    <string name="question_summary_title_md">【题目总结】\n</string>
+    <string name="question_content_title">【题目内容】</string>
+    <string name="your_description_title">【您的描述】</string>
+    <string name="final_answer_title">【最终答案】</string>
+    <string name="view_solving_details">查看解题详情</string>
+    <string name="solving_details">解题详情</string>
+    <string name="solving_details_title_md"># 解题详情\n\n</string>
+    <string name="no_content">暂无内容</string>
+    <string name="view_summary_result">查看总结结果</string>
+    <string name="history_records">历史记录</string>
 </resources>

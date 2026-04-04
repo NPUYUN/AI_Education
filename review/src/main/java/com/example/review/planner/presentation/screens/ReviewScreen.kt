@@ -155,7 +155,7 @@ fun SmartReviewPlannerScreen(
 
     if (showHistoryDialog) {
         HistoryDialog(
-            title = "复习计划历史",
+            title = stringResource(com.example.common.R.string.review_plan_history),
             historyList = uiState.plannerHistory,
             onDismiss = { showHistoryDialog = false },
             onSelect = {
@@ -274,18 +274,18 @@ fun KnowledgeReinforcementScreen(
                             .verticalScroll(rememberScrollState()),
                 ) {
                     SafeMarkdownText(markdown = uiState.reinforcementSummary)
-                    
+
                     if (uiState.practiceProblems.isNotEmpty() && uiState.practiceSource == "reinforcement") {
                         Spacer(modifier = Modifier.height(24.dp))
                         Button(
-                            onClick = { 
+                            onClick = {
                                 showResultDialog = false
-                                viewModel.startPractice() 
+                                viewModel.startPractice()
                             },
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
+                            shape = RoundedCornerShape(12.dp),
                         ) {
-                            Text("开始随堂测试 (共 ${uiState.practiceProblems.size} 题)", fontWeight = FontWeight.Bold)
+                            Text(stringResource(com.example.common.R.string.start_practice_test, uiState.practiceProblems.size), fontWeight = FontWeight.Bold)
                         }
                         Spacer(modifier = Modifier.height(32.dp))
                     }
@@ -296,7 +296,7 @@ fun KnowledgeReinforcementScreen(
 
     if (showHistoryDialog) {
         HistoryDialog(
-            title = "知识巩固历史",
+            title = stringResource(com.example.common.R.string.knowledge_reinforcement_history),
             historyList = uiState.reinforcementHistory,
             onDismiss = { showHistoryDialog = false },
             onSelect = {
@@ -356,12 +356,12 @@ fun ErrorBookScreen(
                             scope.launch {
                                 val fullContent =
                                     buildString {
-                                        append("# 错题本\n\n")
+                                        append(context.getString(com.example.common.R.string.error_book_title_md))
                                         uiState.errorRecords.forEachIndexed { index, record ->
                                             append("## ${index + 1}. [${record.subject}]\n\n")
                                             append(record.questionContent)
                                             if (!record.errorReason.isNullOrBlank()) {
-                                                append("\n\n**错误原因/知识点：**\n\n")
+                                                append(context.getString(com.example.common.R.string.error_reason_title_md))
                                                 append(record.errorReason)
                                             }
                                             append("\n\n---\n\n")
@@ -403,7 +403,7 @@ fun PracticeHistoryScreenOverlay(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("历史测试记录", fontWeight = FontWeight.Bold) },
+                title = { Text(stringResource(com.example.common.R.string.history_test_records), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = { viewModel.closePracticeHistory() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -414,7 +414,7 @@ fun PracticeHistoryScreenOverlay(
     ) { paddingValues ->
         if (historyList.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
-                Text("暂无测试记录", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(com.example.common.R.string.no_test_records), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         } else {
             LazyColumn(
@@ -439,21 +439,21 @@ fun PracticeHistoryScreenOverlay(
                             onDismissRequest = {
                                 showDeleteConfirm = false
                             },
-                            title = { Text("删除记录") },
-                            text = { Text("确定要删除这条测试记录吗？") },
+                            title = { Text(stringResource(com.example.common.R.string.delete_record)) },
+                            text = { Text(stringResource(com.example.common.R.string.confirm_delete_test_record)) },
                             confirmButton = {
                                 TextButton(onClick = {
                                     showDeleteConfirm = false
                                     viewModel.deleteHistory(history)
                                 }) {
-                                    Text("删除", color = MaterialTheme.colorScheme.error)
+                                    Text(stringResource(com.example.common.R.string.delete_action), color = MaterialTheme.colorScheme.error)
                                 }
                             },
                             dismissButton = {
                                 TextButton(onClick = {
                                     showDeleteConfirm = false
                                 }) {
-                                    Text("取消")
+                                    Text(stringResource(com.example.common.R.string.cancel_action))
                                 }
                             },
                         )
@@ -488,7 +488,7 @@ fun PracticeHistoryScreenOverlay(
                             Column(modifier = Modifier.padding(16.dp)) {
                                 val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
                                 Text(
-                                    text = "测试时间：${sdf.format(Date(history.timestamp))}",
+                                    text = stringResource(com.example.common.R.string.test_time_format, sdf.format(Date(history.timestamp))),
                                     style = MaterialTheme.typography.labelMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
@@ -508,19 +508,20 @@ fun PracticeHistoryScreenOverlay(
                                     val total = (data["problems"] as? List<*>)?.size ?: 0
                                     val accuracy = (data["accuracy"] as? Double)?.toInt() ?: 0
                                     val rawScore = (data["totalScore"] as? Double)?.toInt() ?: 0
-                                    val score = if (total > 0 && rawScore > 100) {
-                                        (rawScore.toFloat() / (total * 100) * 100).toInt()
-                                    } else {
-                                        rawScore.coerceAtMost(100)
-                                    }
+                                    val score =
+                                        if (total > 0 && rawScore > 100) {
+                                            (rawScore.toFloat() / (total * 100) * 100).toInt()
+                                        } else {
+                                            rawScore.coerceAtMost(100)
+                                        }
                                     Text(
-                                        text = "共 $total 题，得分：$score，正确率：$accuracy%",
+                                        text = stringResource(com.example.common.R.string.test_result_format, total, score, accuracy),
                                         style = MaterialTheme.typography.bodyMedium,
                                         fontWeight = FontWeight.Bold,
                                     )
                                 } else {
                                     Text(
-                                        text = "无法解析历史记录摘要",
+                                        text = stringResource(com.example.common.R.string.cannot_parse_history_summary),
                                         style = MaterialTheme.typography.bodyMedium,
                                         fontWeight = FontWeight.Bold,
                                     )
@@ -551,22 +552,23 @@ fun PracticeResultScreenOverlay(
     val totalQuestions = problems.size
     val correctCount = results.count { it.isCorrect }
     // 强制将总得分归一化到 100 分制
-    val totalScore = if (totalQuestions > 0) {
-        val rawSum = results.sumOf { it.score }
-        val maxRawSum = totalQuestions * 100 // In case AI still outputs 100 per question
-        if (maxRawSum > 100 && rawSum > 100) {
-            (rawSum.toFloat() / maxRawSum * 100).toInt()
+    val totalScore =
+        if (totalQuestions > 0) {
+            val rawSum = results.sumOf { it.score }
+            val maxRawSum = totalQuestions * 100 // In case AI still outputs 100 per question
+            if (maxRawSum > 100 && rawSum > 100) {
+                (rawSum.toFloat() / maxRawSum * 100).toInt()
+            } else {
+                rawSum.coerceAtMost(100)
+            }
         } else {
-            rawSum.coerceAtMost(100)
+            0
         }
-    } else {
-        0
-    }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("测试结果", fontWeight = FontWeight.Bold) },
+                title = { Text(stringResource(com.example.common.R.string.test_result_title), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = { viewModel.closePracticeResultScreen() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -592,11 +594,11 @@ fun PracticeResultScreenOverlay(
                     horizontalArrangement = Arrangement.SpaceAround,
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("得分", style = MaterialTheme.typography.bodyMedium)
+                        Text(stringResource(com.example.common.R.string.score_title), style = MaterialTheme.typography.bodyMedium)
                         Text("$totalScore", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
                     }
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("正确率", style = MaterialTheme.typography.bodyMedium)
+                        Text(stringResource(com.example.common.R.string.accuracy_title), style = MaterialTheme.typography.bodyMedium)
                         val accuracy = if (totalQuestions > 0) (correctCount * 100 / totalQuestions) else 0
                         Text("$accuracy%", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
                     }
@@ -636,7 +638,7 @@ fun PracticeResultScreenOverlay(
                                 )
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
-                                        "第 ${index + 1} 题",
+                                        stringResource(com.example.common.R.string.question_index_format, index + 1),
                                         fontWeight = FontWeight.Bold,
                                         style = MaterialTheme.typography.titleMedium,
                                     )
@@ -645,7 +647,7 @@ fun PracticeResultScreenOverlay(
 
                                     if (!expanded) {
                                         Text(
-                                            "点击查看解析",
+                                            stringResource(com.example.common.R.string.click_to_view_analysis),
                                             color = MaterialTheme.colorScheme.primary,
                                             style = MaterialTheme.typography.labelMedium,
                                             modifier = Modifier.padding(top = 8.dp),
@@ -659,17 +661,17 @@ fun PracticeResultScreenOverlay(
                                 HorizontalDivider()
                                 Spacer(modifier = Modifier.height(16.dp))
 
-                                Text("你的作答：", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                                Text(stringResource(com.example.common.R.string.your_answer), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                                 Spacer(modifier = Modifier.height(4.dp))
-                                Text(uiState.practiceAnswers[index] ?: "未作答", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(uiState.practiceAnswers[index] ?: stringResource(com.example.common.R.string.not_answered), color = MaterialTheme.colorScheme.onSurfaceVariant)
 
                                 Spacer(modifier = Modifier.height(12.dp))
-                                Text("标准答案：", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                                Text(stringResource(com.example.common.R.string.standard_answer), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                                 Spacer(modifier = Modifier.height(4.dp))
                                 SafeMarkdownText(markdown = problem.answer, modifier = Modifier.fillMaxWidth())
 
                                 Spacer(modifier = Modifier.height(12.dp))
-                                Text("AI 批改解析：", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                                Text(stringResource(com.example.common.R.string.ai_grading_analysis), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                                 Spacer(modifier = Modifier.height(4.dp))
                                 SafeMarkdownText(markdown = result.explanation, modifier = Modifier.fillMaxWidth())
 
@@ -682,7 +684,7 @@ fun PracticeResultScreenOverlay(
                                 ) {
                                     Icon(Icons.Default.BookmarkAdd, contentDescription = null, modifier = Modifier.size(18.dp))
                                     Spacer(modifier = Modifier.width(8.dp))
-                                    Text("加入错题本")
+                                    Text(stringResource(com.example.common.R.string.add_to_error_book_action))
                                 }
                             }
                         }
@@ -707,7 +709,7 @@ fun HistoryDialog(
         text = {
             if (historyList.isEmpty()) {
                 Box(modifier = Modifier.fillMaxWidth().height(100.dp), contentAlignment = Alignment.Center) {
-                    Text("暂无历史记录", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(com.example.common.R.string.no_history_records), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             } else {
                 LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp)) {
@@ -782,7 +784,7 @@ fun SmartReviewPlannerView(
         OutlinedTextField(
             value = subjectInput,
             onValueChange = { viewModel.updateSubjectInput(it) },
-            label = { Text("输入附加需求或科目（可选）") },
+            label = { Text(stringResource(com.example.common.R.string.input_additional_requirements)) },
             modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
             enabled = !isGenerating,
             shape = RoundedCornerShape(12.dp),
@@ -799,7 +801,7 @@ fun SmartReviewPlannerView(
                 checked = uiState.useRecentContextForPlan,
                 onCheckedChange = { viewModel.toggleUseRecentContextForPlan(it) },
             )
-            Text("基于最近学习记录（对话和错题）找出薄弱点生成计划", style = MaterialTheme.typography.bodyMedium)
+            Text(stringResource(com.example.common.R.string.generate_plan_based_on_history), style = MaterialTheme.typography.bodyMedium)
         }
 
         AnimatedContent(
@@ -861,7 +863,7 @@ fun SmartReviewPlannerView(
                             modifier = Modifier.fillMaxWidth().height(56.dp),
                             shape = RoundedCornerShape(16.dp),
                         ) {
-                            Text("查看复习计划", fontWeight = FontWeight.Bold)
+                            Text(stringResource(com.example.common.R.string.view_review_plan), fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -887,7 +889,7 @@ fun KnowledgeReinforcementView(
         OutlinedTextField(
             value = input,
             onValueChange = { viewModel.updateKnowledgePointInput(it) },
-            label = { Text("输入附加需求或知识点（可选）") },
+            label = { Text(stringResource(com.example.common.R.string.input_additional_knowledge_points)) },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             shape = RoundedCornerShape(12.dp),
@@ -904,7 +906,7 @@ fun KnowledgeReinforcementView(
                 checked = uiState.useRecentContextForQuiz,
                 onCheckedChange = { viewModel.toggleUseRecentContextForQuiz(it) },
             )
-            Text("基于最近学习记录总结知识点", style = MaterialTheme.typography.bodyMedium)
+            Text(stringResource(com.example.common.R.string.summarize_knowledge_points_based_on_history), style = MaterialTheme.typography.bodyMedium)
         }
 
         Button(
@@ -931,7 +933,7 @@ fun KnowledgeReinforcementView(
                 modifier = Modifier.fillMaxWidth().height(56.dp),
                 shape = RoundedCornerShape(16.dp),
             ) {
-                Text("查看知识巩固结果", fontWeight = FontWeight.Bold)
+                Text(stringResource(com.example.common.R.string.view_knowledge_reinforcement_result), fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -968,7 +970,7 @@ fun ErrorBookView(
                         viewModel.selectAllErrors()
                     }
                 }) {
-                    Text(if (selectedIds.size == records.size && records.isNotEmpty()) "取消全选" else "全选")
+                    Text(if (selectedIds.size == records.size && records.isNotEmpty()) stringResource(com.example.common.R.string.deselect_all) else stringResource(com.example.common.R.string.select_all))
                 }
                 IconButton(
                     onClick = { viewModel.addMockErrorRecord() },
@@ -1094,7 +1096,7 @@ fun ErrorBookView(
                                     )
                                     Spacer(modifier = Modifier.height(8.dp))
                                     Text(
-                                        "点击查看详情",
+                                        stringResource(com.example.common.R.string.click_to_view_details),
                                         color = MaterialTheme.colorScheme.primary,
                                         style = MaterialTheme.typography.labelMedium,
                                         modifier = Modifier.clickable { expanded = true }.padding(vertical = 4.dp),
@@ -1135,7 +1137,7 @@ fun ErrorBookView(
 
                                     Spacer(modifier = Modifier.height(8.dp))
                                     Text(
-                                        "收起详情",
+                                        stringResource(com.example.common.R.string.collapse_details),
                                         color = MaterialTheme.colorScheme.primary,
                                         style = MaterialTheme.typography.labelMedium,
                                         modifier = Modifier.clickable { expanded = false }.padding(vertical = 4.dp),
@@ -1155,7 +1157,7 @@ fun ErrorBookView(
                                     onClick = { viewModel.openPracticeHistory(record.id) },
                                     modifier = Modifier.fillMaxWidth(),
                                 ) {
-                                    Text("查看历史复习")
+                                    Text(stringResource(com.example.common.R.string.view_history_review))
                                 }
                             }
                         }
@@ -1185,7 +1187,7 @@ fun ErrorBookView(
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                     ) {
-                        Text("一键测试", fontWeight = FontWeight.Bold)
+                        Text(stringResource(com.example.common.R.string.one_click_test), fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -1195,10 +1197,10 @@ fun ErrorBookView(
     if (showGenerateDialog) {
         AlertDialog(
             onDismissRequest = { showGenerateDialog = false },
-            title = { Text("生成测试卷") },
+            title = { Text(stringResource(com.example.common.R.string.generate_test_paper)) },
             text = {
                 Column {
-                    Text("请选择要生成的题目数量：${generateCount.toInt()}道")
+                    Text(stringResource(com.example.common.R.string.select_question_count, generateCount.toInt()))
                     Spacer(modifier = Modifier.height(16.dp))
                     Slider(
                         value = generateCount,
@@ -1215,12 +1217,12 @@ fun ErrorBookView(
                         viewModel.generatePracticeFromErrors(generateCount.toInt())
                     },
                 ) {
-                    Text("确认生成")
+                    Text(stringResource(com.example.common.R.string.confirm_generate))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showGenerateDialog = false }) {
-                    Text("取消")
+                    Text(stringResource(com.example.common.R.string.cancel_action))
                 }
             },
         )
@@ -1238,7 +1240,7 @@ fun ErrorBookView(
                 ) {
                     CircularProgressIndicator()
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text("正在生成试卷，请稍候...", style = MaterialTheme.typography.bodyMedium)
+                    Text(stringResource(com.example.common.R.string.generating_test_paper), style = MaterialTheme.typography.bodyMedium)
                 }
             }
         }
@@ -1268,7 +1270,7 @@ fun PracticeScreenOverlay(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("做题进度 ${currentIndex + 1}/$total", fontWeight = FontWeight.Bold) },
+                title = { Text(stringResource(com.example.common.R.string.progress_format, currentIndex + 1, total), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = { viewModel.closePracticeScreen() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -1281,7 +1283,7 @@ fun PracticeScreenOverlay(
                 onClick = { showAnswerSheet = true },
                 containerColor = MaterialTheme.colorScheme.tertiaryContainer,
             ) {
-                Icon(Icons.Default.GridOn, contentDescription = "答题卡")
+                Icon(Icons.Default.GridOn, contentDescription = stringResource(com.example.common.R.string.answer_sheet))
             }
         },
     ) { paddingValues ->
@@ -1313,8 +1315,14 @@ fun PracticeScreenOverlay(
                             shape = RoundedCornerShape(8.dp),
                             modifier = Modifier.padding(end = 8.dp),
                         ) {
+                            val typeLabel = when (currentProblem.questionType) {
+                                "multiple_choice" -> stringResource(R.string.tag_multiple_choice)
+                                "fill_in_blank" -> stringResource(R.string.tag_fill_in_blank)
+                                "essay_question" -> stringResource(R.string.tag_essay_question)
+                                else -> currentProblem.questionType ?: stringResource(com.example.common.R.string.practice_question)
+                            }
                             Text(
-                                text = currentProblem.questionType ?: "练习题",
+                                text = typeLabel,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -1325,8 +1333,14 @@ fun PracticeScreenOverlay(
                                 color = MaterialTheme.colorScheme.errorContainer,
                                 shape = RoundedCornerShape(8.dp),
                             ) {
+                                val difficultyLabel = when (currentProblem.difficulty?.lowercase()) {
+                                    "easy" -> stringResource(R.string.tag_easy)
+                                    "medium" -> stringResource(R.string.tag_medium)
+                                    "hard" -> stringResource(R.string.tag_hard)
+                                    else -> currentProblem.difficulty
+                                }
                                 Text(
-                                    text = currentProblem.difficulty,
+                                    text = difficultyLabel,
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                                     style = MaterialTheme.typography.labelMedium,
                                     color = MaterialTheme.colorScheme.onErrorContainer,
@@ -1356,14 +1370,14 @@ fun PracticeScreenOverlay(
                     HorizontalDivider()
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    Text("你的作答：", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                    Text(stringResource(com.example.common.R.string.your_answer), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
                     Spacer(modifier = Modifier.height(8.dp))
 
                     OutlinedTextField(
                         value = uiState.practiceAnswers[currentIndex] ?: "",
                         onValueChange = { viewModel.updatePracticeAnswer(it) },
                         modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp),
-                        placeholder = { Text("请在此输入你的答案...") },
+                        placeholder = { Text(stringResource(com.example.common.R.string.input_answer_hint)) },
                         shape = RoundedCornerShape(12.dp),
                     )
                 }
@@ -1379,7 +1393,7 @@ fun PracticeScreenOverlay(
                     enabled = currentIndex > 0,
                     modifier = Modifier.weight(1f).padding(end = 8.dp),
                 ) {
-                    Text("上一题")
+                    Text(stringResource(com.example.common.R.string.previous_question))
                 }
 
                 if (currentIndex < total - 1) {
@@ -1387,7 +1401,7 @@ fun PracticeScreenOverlay(
                         onClick = { viewModel.setCurrentPracticeIndex(currentIndex + 1) },
                         modifier = Modifier.weight(1f).padding(start = 8.dp),
                     ) {
-                        Text("下一题")
+                        Text(stringResource(com.example.common.R.string.next_question))
                     }
                 } else {
                     Button(
@@ -1395,7 +1409,7 @@ fun PracticeScreenOverlay(
                         modifier = Modifier.weight(1f).padding(start = 8.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                     ) {
-                        Text("交卷")
+                        Text(stringResource(com.example.common.R.string.submit_paper))
                     }
                 }
             }
@@ -1407,7 +1421,7 @@ fun PracticeScreenOverlay(
         ModalBottomSheet(onDismissRequest = { showAnswerSheet = false }) {
             Column(modifier = Modifier.padding(16.dp).fillMaxWidth()) {
                 Text(
-                    "答题卡",
+                    stringResource(com.example.common.R.string.answer_sheet),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(bottom = 16.dp),
@@ -1461,7 +1475,7 @@ fun PracticeScreenOverlay(
                     },
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text("交卷")
+                    Text(stringResource(com.example.common.R.string.submit_paper))
                 }
                 Spacer(modifier = Modifier.height(32.dp))
             }
@@ -1471,19 +1485,19 @@ fun PracticeScreenOverlay(
     if (showSubmitConfirmDialog) {
         AlertDialog(
             onDismissRequest = { showSubmitConfirmDialog = false },
-            title = { Text("确认交卷") },
-            text = { Text("确定要提交试卷吗？交卷后将进行自动批改。") },
+            title = { Text(stringResource(com.example.common.R.string.confirm_submit_paper)) },
+            text = { Text(stringResource(com.example.common.R.string.confirm_submit_paper_desc)) },
             confirmButton = {
                 TextButton(onClick = {
                     showSubmitConfirmDialog = false
                     viewModel.submitPractice()
                 }) {
-                    Text("确定")
+                    Text(stringResource(com.example.common.R.string.confirm_action))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showSubmitConfirmDialog = false }) {
-                    Text("取消")
+                    Text(stringResource(com.example.common.R.string.cancel_action))
                 }
             },
         )
@@ -1495,7 +1509,7 @@ fun PracticeScreenOverlay(
                 Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     CircularProgressIndicator()
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text("正在进行AI批改...", style = MaterialTheme.typography.bodyMedium)
+                    Text(stringResource(com.example.common.R.string.ai_grading_in_progress), style = MaterialTheme.typography.bodyMedium)
                 }
             }
         }

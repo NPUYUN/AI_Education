@@ -161,7 +161,7 @@ fun DialogueSummaryScreen(
                             modifier = Modifier.fillMaxWidth().height(56.dp).padding(top = 16.dp),
                             shape = RoundedCornerShape(12.dp),
                         ) {
-                            Text("查看总结结果", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                            Text(stringResource(com.example.common.R.string.view_summary_result), fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                         }
                     }
                 }
@@ -193,7 +193,7 @@ fun DialogueSummaryScreen(
                             val scope = rememberCoroutineScope()
                             IconButton(onClick = {
                                 scope.launch {
-                                    com.example.common.utils.PdfExporter.exportToPdf(context, "对话总结", uiState.summaryResult)
+                                    com.example.common.utils.PdfExporter.exportToPdf(context, context.getString(com.example.common.R.string.conversation_summary), uiState.summaryResult)
                                 }
                             }) {
                                 Icon(Icons.Default.Download, contentDescription = "Export PDF")
@@ -219,11 +219,11 @@ fun DialogueSummaryScreen(
     if (showHistoryDialog) {
         AlertDialog(
             onDismissRequest = { showHistoryDialog = false },
-            title = { Text("历史记录") },
+            title = { Text(stringResource(com.example.common.R.string.history_records)) },
             text = {
                 if (uiState.historyList.isEmpty()) {
                     Box(modifier = Modifier.fillMaxWidth().height(100.dp), contentAlignment = Alignment.Center) {
-                        Text("暂无历史记录", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(stringResource(com.example.common.R.string.no_history_records), color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 } else {
                     LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp)) {

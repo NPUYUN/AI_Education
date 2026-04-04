@@ -306,11 +306,11 @@ fun VideoDownloadScreen(
     if (showHistoryDialog) {
         AlertDialog(
             onDismissRequest = { showHistoryDialog = false },
-            title = { Text("历史记录") },
+            title = { Text(stringResource(com.example.common.R.string.history_records)) },
             text = {
                 if (uiState.historyList.isEmpty()) {
                     Box(modifier = Modifier.fillMaxWidth().height(100.dp), contentAlignment = Alignment.Center) {
-                        Text("暂无历史记录", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(stringResource(com.example.common.R.string.no_history_records), color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 } else {
                     LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp)) {
@@ -656,7 +656,7 @@ fun DownloadTaskCard(
                             onClick = { onShowSummary(task) },
                             modifier = Modifier.fillMaxWidth(),
                         ) {
-                            Text("查看总结结果")
+                            Text(stringResource(com.example.common.R.string.view_summary_result))
                         }
                     }
                 }

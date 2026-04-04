@@ -176,10 +176,11 @@ class ReviewViewModelTest {
             advanceUntilIdle()
 
             viewModel.updateKnowledgePointInput("Math")
-            val mockResponse = com.example.review.planner.models.ReinforcementResponse(
-                summary = "Quiz Summary",
-                problems = listOf()
-            )
+            val mockResponse =
+                com.example.review.planner.models.ReinforcementResponse(
+                    summary = "Quiz Summary",
+                    problems = listOf(),
+                )
             whenever(mockRepository.generateReinforcementQuiz(any(), any(), any(), any(), any())).thenReturn(Result.success(mockResponse))
 
             viewModel.toggleUseRecentContextForQuiz(false)

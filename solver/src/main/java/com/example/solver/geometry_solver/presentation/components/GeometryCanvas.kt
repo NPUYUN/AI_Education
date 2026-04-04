@@ -123,11 +123,11 @@ fun GeometryControls(
         }
         if (is3D) {
             Row {
-                Text("Yaw")
+                Text(stringResource(com.example.common.R.string.yaw_angle))
                 Slider(value = yawState.floatValue, onValueChange = { yawState.floatValue = it }, valueRange = -90f..90f)
             }
             Row {
-                Text("Pitch")
+                Text(stringResource(com.example.common.R.string.pitch_angle))
                 Slider(value = pitchState.floatValue, onValueChange = { pitchState.floatValue = it }, valueRange = -60f..60f)
             }
         }

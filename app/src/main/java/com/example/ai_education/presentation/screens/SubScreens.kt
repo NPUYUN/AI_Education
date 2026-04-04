@@ -120,6 +120,44 @@ fun SettingsScreen(onBack: () -> Unit) {
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
+            Text(stringResource(R.string.language_settings), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+
+            val currentLocale = androidx.appcompat.app.AppCompatDelegate.getApplicationLocales().toLanguageTags().let {
+                if (it.isEmpty() || it == "und") "zh" else it.split("-")[0]
+            }
+
+            val languages = listOf(
+                "zh" to stringResource(R.string.language_chinese),
+                "en" to stringResource(R.string.language_english)
+            )
+
+            languages.forEach { (langCode, label) ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            androidx.appcompat.app.AppCompatDelegate.setApplicationLocales(
+                                androidx.core.os.LocaleListCompat.forLanguageTags(langCode)
+                            )
+                        }
+                        .padding(vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    RadioButton(
+                        selected = currentLocale == langCode,
+                        onClick = {
+                            androidx.appcompat.app.AppCompatDelegate.setApplicationLocales(
+                                androidx.core.os.LocaleListCompat.forLanguageTags(langCode)
+                            )
+                        },
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(label)
+                }
+            }
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
             Row(
                 modifier =
                     Modifier

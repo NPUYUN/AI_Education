@@ -5,6 +5,7 @@ import android.widget.TextView
 import androidx.annotation.VisibleForTesting
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
@@ -24,6 +25,7 @@ fun SafeMarkdownText(
     style: TextStyle? = null,
 ) {
     val context = LocalContext.current
+    val noContentText = stringResource(com.example.common.R.string.no_content)
     val currentStyle =
         style ?: MaterialTheme.typography.bodyLarge.copy(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -31,8 +33,8 @@ fun SafeMarkdownText(
         )
 
     val safeMarkdown =
-        remember(markdown) {
-            normalizeMarkdownForDisplay(markdown)
+        remember(markdown, noContentText) {
+            normalizeMarkdownForDisplay(markdown, noContentText)
         }
     val textSizePx = with(LocalDensity.current) { currentStyle.fontSize.toPx() }
     val markwon =
@@ -69,8 +71,8 @@ fun SafeMarkdownText(
 }
 
 @VisibleForTesting
-internal fun normalizeMarkdownForDisplay(rawMarkdown: String): String {
-    if (rawMarkdown.isBlank()) return "暂无内容"
+internal fun normalizeMarkdownForDisplay(rawMarkdown: String, noContentText: String = "暂无内容"): String {
+    if (rawMarkdown.isBlank()) return noContentText
 
     var text =
         rawMarkdown
@@ -131,7 +133,7 @@ internal fun normalizeMarkdownForDisplay(rawMarkdown: String): String {
         normalized.append(line).append('\n')
     }
 
-    return normalized.toString().trim().ifEmpty { "暂无内容" }
+    return normalized.toString().trim().ifEmpty { noContentText }
 }
 
 private fun normalizeMathDelimiters(input: String): String {

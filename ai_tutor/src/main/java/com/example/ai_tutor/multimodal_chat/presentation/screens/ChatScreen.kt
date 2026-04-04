@@ -213,12 +213,20 @@ fun WelcomeScreen(
             modifier = Modifier.padding(bottom = 32.dp),
         )
 
-        suggestions.forEach { suggestion ->
-            SuggestionChip(
-                text = suggestion,
-                onClick = { onSuggestionClick(suggestion) },
-            )
-            Spacer(modifier = Modifier.height(12.dp))
+        suggestions.forEach { suggestionKey ->
+            val suggestionText = when(suggestionKey) {
+                "suggestion_plan" -> stringResource(R.string.ai_tutor_suggestion_plan)
+                "suggestion_physics" -> stringResource(R.string.ai_tutor_suggestion_physics)
+                "suggestion_english" -> stringResource(R.string.ai_tutor_suggestion_english)
+                else -> ""
+            }
+            if (suggestionText.isNotBlank()) {
+                SuggestionChip(
+                    text = suggestionText,
+                    onClick = { onSuggestionClick(suggestionText) },
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+            }
         }
     }
 }

@@ -116,13 +116,13 @@ fun MainScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.padding(horizontal = 16.dp),
                         ) {
-                            Icon(Icons.Default.Search, contentDescription = "Search", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Icon(Icons.Default.Search, contentDescription = stringResource(R.string.search), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(stringResource(R.string.search), color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Spacer(modifier = Modifier.weight(1f))
                             Icon(
                                 Icons.Default.Add,
-                                contentDescription = "New Chat",
+                                contentDescription = stringResource(R.string.new_conversation),
                                 tint = MaterialTheme.colorScheme.onSurface,
                                 modifier =
                                     Modifier
@@ -163,14 +163,14 @@ fun MainScreen(
                                                 .crossfade(true)
                                                 .transformations(coil.transform.CircleCropTransformation())
                                                 .build(),
-                                        contentDescription = "Avatar",
+                                        contentDescription = null,
                                         contentScale = ContentScale.Crop,
                                         modifier = Modifier.fillMaxSize().clip(CircleShape),
                                     )
                                 } else {
                                     Icon(
                                         Icons.Default.Person,
-                                        contentDescription = "Avatar",
+                                        contentDescription = null,
                                         tint = MaterialTheme.colorScheme.onPrimaryContainer,
                                     )
                                 }
@@ -310,7 +310,7 @@ fun MainScreen(
                 // Or we can just put it on the Scaffold for all main tabs.
                 // Let's put it for all main tabs for consistency, or dynamically.
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
-                val currentRoute = navBackStackEntry?.destination?.route
+                val currentRoute = navBackStackEntry?.destination?.route ?: "home"
 
                 // Show top bar on main tabs and profile page
                 val isMainTab = items.any { it.first == currentRoute } || currentRoute == "review_menu"
@@ -325,7 +325,7 @@ fun MainScreen(
                                 } else {
                                     items.find {
                                         it.first == currentRoute
-                                    }?.third ?: "AI Tutor"
+                                    }?.third ?: stringResource(R.string.ai_tutor)
                                 }
                             Text(label)
                         },
@@ -388,7 +388,7 @@ fun MainScreen(
             },
             bottomBar = {
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
-                val currentRoute = navBackStackEntry?.destination?.route
+                val currentRoute = navBackStackEntry?.destination?.route ?: "home"
 
                 if (items.any { it.first == currentRoute } || currentRoute == "review_menu") {
                     NavigationBar(

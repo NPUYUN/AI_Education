@@ -85,12 +85,10 @@ class AiTutorViewModel
             _uiState.update { it.copy(showApiSettings = visible) }
         }
 
-        val suggestions =
-            listOf(
-                "如何制定高效的学习计划?",
-                "帮我解释一下量子力学的基本原理",
-                "请修改这篇英语作文的语法错误",
-            )
+        // suggestions are now localized in UI directly or updated from context, but we will leave it as keys or get it from Context if needed.
+        // But since ViewModel doesn't have Context easily without injecting it, we can just use empty strings or pass it from UI.
+        // For simplicity, we can provide them directly in the UI.
+        val suggestions = listOf("suggestion_plan", "suggestion_physics", "suggestion_english")
 
         // Dialogue Context
         private var context = DialogueContext(sessionId = UUID.randomUUID().toString())
@@ -138,7 +136,7 @@ class AiTutorViewModel
                             // Ready
                         }
                         is VoskVoiceManager.VoiceState.Listening -> {
-                            _uiState.update { it.copy(inputText = "正在听...") }
+                            _uiState.update { it.copy(inputText = application.getString(com.example.common.R.string.listening_in_progress)) }
                         }
                         is VoskVoiceManager.VoiceState.Result -> {
                             if (state.text.isNotEmpty()) {
@@ -201,7 +199,7 @@ class AiTutorViewModel
                     ChatSessionEntity(
                         id = newSessionId,
                         userId = userId,
-                        title = "New Chat",
+                        title = application.getString(com.example.common.R.string.new_chat_action),
                         lastMessage = "",
                         timestamp = System.currentTimeMillis(),
                     )
@@ -265,7 +263,7 @@ class AiTutorViewModel
 
         fun onImageCaptured(bitmap: Bitmap) {
             inputImageState.value = bitmap
-            _uiState.update { it.copy(inputText = "[图片已添加] 请输入您的问题...") }
+            _uiState.update { it.copy(inputText = application.getString(com.example.common.R.string.image_added_hint)) }
         }
 
         // ...
@@ -506,7 +504,7 @@ class AiTutorViewModel
             if (image != null && !isModelImageSupported(modelName)) {
                 _uiState.update { state ->
                     state.copy(
-                        messages = state.messages + Message("system", "当前设置的模型 ($modelName) 可能不支持图片输入，请在设置中更换支持视觉的模型（如 qwen-vl-plus）。"),
+                        messages = state.messages + Message("system", application.getString(com.example.common.R.string.model_not_support_image, modelName)),
                         inputText = "",
                     )
                 }
@@ -588,7 +586,7 @@ class AiTutorViewModel
                                 state.messages +
                                     Message(
                                         "system",
-                                        "当前处于无网络环境。\n已开启离线降级策略：\n您可以继续查看历史记录、错题本，或使用离线语音功能。大模型问答暂不可用，请连接网络后重试。",
+                                        application.getString(com.example.common.R.string.offline_mode_warning),
                                     ),
                             isLoading = false,
                         )
@@ -599,7 +597,7 @@ class AiTutorViewModel
                 if (repository == null) {
                     _uiState.update { state ->
                         state.copy(
-                            messages = state.messages + Message("system", "尚未配置 API Key，请在弹出的设置中进行配置。"),
+                            messages = state.messages + Message("system", application.getString(com.example.common.R.string.api_key_not_configured)),
                             isLoading = false,
                             showApiSettings = true,
                         )
@@ -628,7 +626,7 @@ class AiTutorViewModel
                         _uiState.update { state ->
                             state.copy(
                                 messages = state.messages + Message("system", chunk),
-                                showApiSettings = if (chunk.contains("API Key 无效或未授权")) true else state.showApiSettings,
+                                showApiSettings = if (chunk.contains(application.getString(com.example.common.R.string.api_key_invalid))) true else state.showApiSettings,
                                 isLoading = false,
                             )
                         }
@@ -674,8 +672,8 @@ class AiTutorViewModel
                     val titleText =
                         when (val c = msg.content) {
                             is String -> c.take(15)
-                            is List<*> -> (c.find { (it as? ContentItem)?.type == "text" } as? ContentItem)?.text?.take(15) ?: "Image Chat"
-                            else -> "Chat"
+                            is List<*> -> (c.find { (it as? ContentItem)?.type == "text" } as? ContentItem)?.text?.take(15) ?: application.getString(com.example.common.R.string.image_chat)
+                            else -> application.getString(com.example.common.R.string.chat_action)
                         }
                     if (titleText.isNotBlank()) {
                         chatDao.updateSessionTitle(context.sessionId, titleText)
@@ -714,7 +712,7 @@ class AiTutorViewModel
             if (!isModelImageSupported(modelName)) {
                 _uiState.update { state ->
                     state.copy(
-                        messages = state.messages + Message("system", "当前设置的模型 ($modelName) 可能不支持图片输入，请在设置中更换支持视觉的模型（如 qwen-vl-plus）。"),
+                        messages = state.messages + Message("system", application.getString(com.example.common.R.string.model_not_support_image, modelName)),
                     )
                 }
                 return
@@ -761,7 +759,7 @@ class AiTutorViewModel
                             withContext(dispatcherProvider.main) {
                                 _uiState.update { state ->
                                     state.copy(
-                                        messages = state.messages + Message("system", "尚未配置 API Key，请在弹出的设置中进行配置。"),
+                                        messages = state.messages + Message("system", application.getString(com.example.common.R.string.api_key_not_configured)),
                                         isLoading = false,
                                         showApiSettings = true,
                                     )
@@ -823,7 +821,7 @@ class AiTutorViewModel
                                     _uiState.update { state ->
                                         state.copy(
                                             messages = state.messages + Message("system", chunk),
-                                            showApiSettings = if (chunk.contains("API Key 无效或未授权")) true else state.showApiSettings,
+                                            showApiSettings = if (chunk.contains(application.getString(com.example.common.R.string.api_key_invalid))) true else state.showApiSettings,
                                             isLoading = false,
                                         )
                                     }
@@ -860,7 +858,7 @@ class AiTutorViewModel
                         withContext(dispatcherProvider.main) {
                             _uiState.update { state ->
                                 state.copy(
-                                    messages = state.messages + Message("system", "无法处理图片。"),
+                                    messages = state.messages + Message("system", application.getString(com.example.common.R.string.cannot_process_image)),
                                     isLoading = false,
                                 )
                             }

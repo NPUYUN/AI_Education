@@ -297,7 +297,7 @@ fun ImagePreviewScreen(
                             listOf(
                                 stringResource(R.string.solve_it) to "解答一下",
                                 stringResource(R.string.what_is_this) to "这是什么",
-                                stringResource(R.string.translate_it) to "翻译一下",
+                                stringResource(R.string.translate_it) to "翻译一下"
                             )
 
                         actions.forEach { (label, action) ->
