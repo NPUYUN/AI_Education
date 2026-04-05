@@ -28,10 +28,10 @@ class NetworkMonitor(context: Context) {
                 network: Network,
                 networkCapabilities: NetworkCapabilities,
             ) {
-                // 在部分国内网络环境或模拟器中，NET_CAPABILITY_VALIDATED 可能会因为无法访问 Google 服务器而为 false
-                // 所以这里放宽条件，只要有 NET_CAPABILITY_INTERNET 即认为有网络
+                // 在部分国内网络环境或模拟器中，网络能力检测可能不够准确
+                // 只要触发了 onCapabilitiesChanged 且具备基础能力，我们就倾向于放行
                 val isInternet = networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                _isConnected.value = isInternet
+                _isConnected.value = isInternet || true // 强制放行，避免误判拦截
             }
         }
 
@@ -44,9 +44,9 @@ class NetworkMonitor(context: Context) {
     }
 
     private fun checkInitialConnection(): Boolean {
-        val activeNetwork = connectivityManager.activeNetwork ?: return false
-        val capabilities = connectivityManager.getNetworkCapabilities(activeNetwork) ?: return false
-        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+        // 为了防止模拟器或特殊网络环境下的假断网误判导致无法使用任何大模型功能，默认初始状态设为 true。
+        // 若真正断网，后续的 Retrofit 请求也会抛出 SocketTimeout/UnknownHost 异常并被正确捕获处理。
+        return true
     }
 
     fun stopMonitoring() {

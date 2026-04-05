@@ -214,12 +214,13 @@ fun WelcomeScreen(
         )
 
         suggestions.forEach { suggestionKey ->
-            val suggestionText = when(suggestionKey) {
-                "suggestion_plan" -> stringResource(R.string.ai_tutor_suggestion_plan)
-                "suggestion_physics" -> stringResource(R.string.ai_tutor_suggestion_physics)
-                "suggestion_english" -> stringResource(R.string.ai_tutor_suggestion_english)
-                else -> ""
-            }
+            val suggestionText =
+                when (suggestionKey) {
+                    "suggestion_plan" -> stringResource(R.string.ai_tutor_suggestion_plan)
+                    "suggestion_physics" -> stringResource(R.string.ai_tutor_suggestion_physics)
+                    "suggestion_english" -> stringResource(R.string.ai_tutor_suggestion_english)
+                    else -> ""
+                }
             if (suggestionText.isNotBlank()) {
                 SuggestionChip(
                     text = suggestionText,

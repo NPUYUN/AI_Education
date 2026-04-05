@@ -249,15 +249,28 @@ fun SolverScreen(
                                             Text("${item.subject}｜${DateFormatUtils.format(item.timestamp)}")
                                             Spacer(modifier = Modifier.height(4.dp))
                                             val displayDesc =
-                                                if (item.questionContent.startsWith(stringResource(com.example.common.R.string.knowledge_point_title_md))) {
+                                                if (item.questionContent.startsWith(
+                                                        stringResource(com.example.common.R.string.knowledge_point_title_md),
+                                                    )
+                                                ) {
                                                     stringResource(com.example.common.R.string.core_knowledge_point) +
                                                         item.questionContent.substringAfter(
                                                             stringResource(com.example.common.R.string.knowledge_point_title_md),
                                                         ).substringBefore("\n【").take(40) + "..."
-                                                } else if (item.questionContent.startsWith(stringResource(com.example.common.R.string.user_description_title_md))) {
-                                                    item.questionContent.substringAfter(stringResource(com.example.common.R.string.user_description_title_md)).substringBefore("\n【").take(30) + "..."
-                                                } else if (item.questionContent.startsWith(stringResource(com.example.common.R.string.question_summary_title_md))) {
-                                                    item.questionContent.substringAfter(stringResource(com.example.common.R.string.question_summary_title_md)).substringBefore("\n【").take(30) + "..."
+                                                } else if (item.questionContent.startsWith(
+                                                        stringResource(com.example.common.R.string.user_description_title_md),
+                                                    )
+                                                ) {
+                                                    item.questionContent.substringAfter(
+                                                        stringResource(com.example.common.R.string.user_description_title_md),
+                                                    ).substringBefore("\n【").take(30) + "..."
+                                                } else if (item.questionContent.startsWith(
+                                                        stringResource(com.example.common.R.string.question_summary_title_md),
+                                                    )
+                                                ) {
+                                                    item.questionContent.substringAfter(
+                                                        stringResource(com.example.common.R.string.question_summary_title_md),
+                                                    ).substringBefore("\n【").take(30) + "..."
                                                 } else {
                                                     item.questionContent.take(30)
                                                 }
@@ -308,15 +321,28 @@ fun SolverScreen(
                                             Text("${item.subject}｜${DateFormatUtils.format(item.timestamp)}")
                                             Spacer(modifier = Modifier.height(4.dp))
                                             val displayDesc =
-                                                if (item.questionContent.startsWith(stringResource(com.example.common.R.string.knowledge_point_title_md))) {
+                                                if (item.questionContent.startsWith(
+                                                        stringResource(com.example.common.R.string.knowledge_point_title_md),
+                                                    )
+                                                ) {
                                                     stringResource(com.example.common.R.string.core_knowledge_point) +
                                                         item.questionContent.substringAfter(
                                                             stringResource(com.example.common.R.string.knowledge_point_title_md),
                                                         ).substringBefore("\n【").take(40) + "..."
-                                                } else if (item.questionContent.startsWith(stringResource(com.example.common.R.string.user_description_title_md))) {
-                                                    item.questionContent.substringAfter(stringResource(com.example.common.R.string.user_description_title_md)).substringBefore("\n【").take(30) + "..."
-                                                } else if (item.questionContent.startsWith(stringResource(com.example.common.R.string.question_summary_title_md))) {
-                                                    item.questionContent.substringAfter(stringResource(com.example.common.R.string.question_summary_title_md)).substringBefore("\n【").take(30) + "..."
+                                                } else if (item.questionContent.startsWith(
+                                                        stringResource(com.example.common.R.string.user_description_title_md),
+                                                    )
+                                                ) {
+                                                    item.questionContent.substringAfter(
+                                                        stringResource(com.example.common.R.string.user_description_title_md),
+                                                    ).substringBefore("\n【").take(30) + "..."
+                                                } else if (item.questionContent.startsWith(
+                                                        stringResource(com.example.common.R.string.question_summary_title_md),
+                                                    )
+                                                ) {
+                                                    item.questionContent.substringAfter(
+                                                        stringResource(com.example.common.R.string.question_summary_title_md),
+                                                    ).substringBefore("\n【").take(30) + "..."
                                                 } else {
                                                     item.questionContent.take(30)
                                                 }
@@ -442,7 +468,10 @@ fun SolverScreen(
                                 HorizontalDivider(modifier = Modifier.padding(bottom = 8.dp))
 
                                 if (uiState.parsedQuestionContent.isNotBlank()) {
-                                    Text(stringResource(com.example.common.R.string.question_content_title), fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                                    Text(
+                                        stringResource(com.example.common.R.string.question_content_title),
+                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                    )
                                     Spacer(modifier = Modifier.height(4.dp))
                                     SafeMarkdownText(
                                         markdown = uiState.parsedQuestionContent,
@@ -452,14 +481,20 @@ fun SolverScreen(
                                 }
 
                                 if (uiState.questionText.isNotBlank()) {
-                                    Text(stringResource(com.example.common.R.string.your_description_title), fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                                    Text(
+                                        stringResource(com.example.common.R.string.your_description_title),
+                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                    )
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(uiState.questionText)
                                     Spacer(modifier = Modifier.height(12.dp))
                                 }
 
                                 if (uiState.parsedFinalAnswer.isNotBlank()) {
-                                    Text(stringResource(com.example.common.R.string.final_answer_title), fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                                    Text(
+                                        stringResource(com.example.common.R.string.final_answer_title),
+                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                    )
                                     Spacer(modifier = Modifier.height(4.dp))
                                     SafeMarkdownText(
                                         markdown = uiState.parsedFinalAnswer,

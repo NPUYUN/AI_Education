@@ -285,7 +285,10 @@ fun KnowledgeReinforcementScreen(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(12.dp),
                         ) {
-                            Text(stringResource(com.example.common.R.string.start_practice_test, uiState.practiceProblems.size), fontWeight = FontWeight.Bold)
+                            Text(
+                                stringResource(com.example.common.R.string.start_practice_test, uiState.practiceProblems.size),
+                                fontWeight = FontWeight.Bold,
+                            )
                         }
                         Spacer(modifier = Modifier.height(32.dp))
                     }
@@ -488,7 +491,11 @@ fun PracticeHistoryScreenOverlay(
                             Column(modifier = Modifier.padding(16.dp)) {
                                 val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
                                 Text(
-                                    text = stringResource(com.example.common.R.string.test_time_format, sdf.format(Date(history.timestamp))),
+                                    text =
+                                        stringResource(
+                                            com.example.common.R.string.test_time_format,
+                                            sdf.format(Date(history.timestamp)),
+                                        ),
                                     style = MaterialTheme.typography.labelMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
@@ -648,17 +655,32 @@ fun PracticeResultScreenOverlay(
                                 HorizontalDivider()
                                 Spacer(modifier = Modifier.height(16.dp))
 
-                                Text(stringResource(com.example.common.R.string.your_answer), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                                Text(
+                                    stringResource(com.example.common.R.string.your_answer),
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
                                 Spacer(modifier = Modifier.height(4.dp))
-                                Text(uiState.practiceAnswers[index] ?: stringResource(com.example.common.R.string.not_answered), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(
+                                    uiState.practiceAnswers[index] ?: stringResource(com.example.common.R.string.not_answered),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
 
                                 Spacer(modifier = Modifier.height(12.dp))
-                                Text(stringResource(com.example.common.R.string.standard_answer), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                                Text(
+                                    stringResource(com.example.common.R.string.standard_answer),
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 SafeMarkdownText(markdown = problem.answer, modifier = Modifier.fillMaxWidth())
 
                                 Spacer(modifier = Modifier.height(12.dp))
-                                Text(stringResource(com.example.common.R.string.ai_grading_analysis), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                                Text(
+                                    stringResource(com.example.common.R.string.ai_grading_analysis),
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 SafeMarkdownText(markdown = result.explanation, modifier = Modifier.fillMaxWidth())
 
@@ -893,7 +915,10 @@ fun KnowledgeReinforcementView(
                 checked = uiState.useRecentContextForQuiz,
                 onCheckedChange = { viewModel.toggleUseRecentContextForQuiz(it) },
             )
-            Text(stringResource(com.example.common.R.string.summarize_knowledge_points_based_on_history), style = MaterialTheme.typography.bodyMedium)
+            Text(
+                stringResource(com.example.common.R.string.summarize_knowledge_points_based_on_history),
+                style = MaterialTheme.typography.bodyMedium,
+            )
         }
 
         Button(
@@ -957,7 +982,15 @@ fun ErrorBookView(
                         viewModel.selectAllErrors()
                     }
                 }) {
-                    Text(if (selectedIds.size == records.size && records.isNotEmpty()) stringResource(com.example.common.R.string.deselect_all) else stringResource(com.example.common.R.string.select_all))
+                    Text(
+                        if (selectedIds.size == records.size && records.isNotEmpty()) {
+                            stringResource(
+                                com.example.common.R.string.deselect_all,
+                            )
+                        } else {
+                            stringResource(com.example.common.R.string.select_all)
+                        },
+                    )
                 }
                 IconButton(
                     onClick = { viewModel.addMockErrorRecord() },
@@ -1257,7 +1290,12 @@ fun PracticeScreenOverlay(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(com.example.common.R.string.progress_format, currentIndex + 1, total), fontWeight = FontWeight.Bold) },
+                title = {
+                    Text(
+                        stringResource(com.example.common.R.string.progress_format, currentIndex + 1, total),
+                        fontWeight = FontWeight.Bold,
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = { viewModel.closePracticeScreen() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -1302,12 +1340,13 @@ fun PracticeScreenOverlay(
                             shape = RoundedCornerShape(8.dp),
                             modifier = Modifier.padding(end = 8.dp),
                         ) {
-                            val typeLabel = when (currentProblem.questionType) {
-                                "multiple_choice" -> stringResource(R.string.tag_multiple_choice)
-                                "fill_in_blank" -> stringResource(R.string.tag_fill_in_blank)
-                                "essay_question" -> stringResource(R.string.tag_essay_question)
-                                else -> currentProblem.questionType ?: stringResource(com.example.common.R.string.practice_question)
-                            }
+                            val typeLabel =
+                                when (currentProblem.questionType) {
+                                    "multiple_choice" -> stringResource(R.string.tag_multiple_choice)
+                                    "fill_in_blank" -> stringResource(R.string.tag_fill_in_blank)
+                                    "essay_question" -> stringResource(R.string.tag_essay_question)
+                                    else -> currentProblem.questionType ?: stringResource(com.example.common.R.string.practice_question)
+                                }
                             Text(
                                 text = typeLabel,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
@@ -1320,12 +1359,13 @@ fun PracticeScreenOverlay(
                                 color = MaterialTheme.colorScheme.errorContainer,
                                 shape = RoundedCornerShape(8.dp),
                             ) {
-                                val difficultyLabel = when (currentProblem.difficulty?.lowercase()) {
-                                    "easy" -> stringResource(R.string.tag_easy)
-                                    "medium" -> stringResource(R.string.tag_medium)
-                                    "hard" -> stringResource(R.string.tag_hard)
-                                    else -> currentProblem.difficulty
-                                }
+                                val difficultyLabel =
+                                    when (currentProblem.difficulty?.lowercase()) {
+                                        "easy" -> stringResource(R.string.tag_easy)
+                                        "medium" -> stringResource(R.string.tag_medium)
+                                        "hard" -> stringResource(R.string.tag_hard)
+                                        else -> currentProblem.difficulty
+                                    }
                                 Text(
                                     text = difficultyLabel,
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
@@ -1357,7 +1397,11 @@ fun PracticeScreenOverlay(
                     HorizontalDivider()
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    Text(stringResource(com.example.common.R.string.your_answer), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        stringResource(com.example.common.R.string.your_answer),
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleMedium,
+                    )
                     Spacer(modifier = Modifier.height(8.dp))
 
                     OutlinedTextField(

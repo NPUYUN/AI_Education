@@ -310,7 +310,10 @@ fun VideoDownloadScreen(
             text = {
                 if (uiState.historyList.isEmpty()) {
                     Box(modifier = Modifier.fillMaxWidth().height(100.dp), contentAlignment = Alignment.Center) {
-                        Text(stringResource(com.example.common.R.string.no_history_records), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            stringResource(com.example.common.R.string.no_history_records),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
                 } else {
                     LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp)) {
