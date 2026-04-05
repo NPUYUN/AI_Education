@@ -276,7 +276,10 @@ class SolverViewModel
                                     if (finalTab == 1) {
                                         isFunctionProblem(
                                             _uiState.value.questionText,
-                                        ) || isFunctionProblem(parsedQC) || solution.contains("函数") || solution.contains("y=") || solution.contains("f(")
+                                        ) ||
+                                            isFunctionProblem(
+                                                parsedQC,
+                                            ) || solution.contains("函数") || solution.contains("y=") || solution.contains("f(")
                                     } else {
                                         _uiState.value.isFunction
                                     },

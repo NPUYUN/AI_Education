@@ -1,102 +1,126 @@
-# 项目代码重构与架构设计文档
+# Project Architecture & Refactoring Document
 
-本文档定义了 东大智搭 (Dongda Zhida) 项目的整体架构模式、目录结构规范、组件层级设计以及多模块化拆分标准。
+[English](ARCHITECTURE.md) | [简体中文](ARCHITECTURE_ZH.md)
 
-## 1. 架构模式
+This document defines the overall architectural pattern, directory structure standards, component hierarchy design, and multi-module splitting criteria for the Dongda Zhida project.
 
-本项目全面采用 **Clean Architecture** 结合 **MVVM** 设计模式，并基于 **MVI** 的思想通过 StateFlow 实现单向数据流 (Unidirectional Data Flow)。
+## 1. Architectural Pattern
 
-- **UI 层 (Presentation)**: 使用 Jetpack Compose 构建声明式 UI。页面 (Screen) 仅负责状态的观测和事件的分发，不包含任何业务逻辑。
-- **视图模型层 (ViewModel)**: 接收 UI 层的意图 (Intent/Event)，通过调用 Repository 执行业务逻辑，并最终暴露出一个不可变的统一状态流 (`UiState`) 供 UI 消费。
-- **领域与数据层 (Services/Models)**: 
-  - Repository 模式：对外屏蔽数据来源（本地 Room 数据库或远程网络 API）。
-  - 数据模型分离：严格区分网络 DTO、数据库 Entity 与 UI 层所需的 State Models。
+This project fully adopts the **Clean Architecture** combined with the **MVVM** design pattern, and implements Unidirectional Data Flow based on **MVI** principles using StateFlow.
 
-## 2. 目录结构设计要求
+- **UI Layer (Presentation)**: Uses Jetpack Compose to build declarative UIs. Pages (Screens) are only responsible for observing states and dispatching events, containing no business logic.
+- **ViewModel Layer**: Receives intents/events from the UI layer, executes business logic by calling the Repository, and ultimately exposes an immutable, unified state flow (`UiState`) for the UI to consume.
+- **Domain & Data Layer (Services/Models)**:
+  - Repository Pattern: Shields data sources from the outside (local Room database or remote network APIs).
+  - Data Model Separation: Strictly distinguishes between network DTOs, database Entities, and State Models required by the UI layer.
 
-项目采用多模块化 (Multi-module) 进行组织，按业务功能进行高内聚、低耦合的模块划分。
+## 2. Directory Structure Standards
 
-### 顶层目录结构
+The project is organized using a Multi-module approach, dividing modules by business functionality to achieve high cohesion and low coupling.
+
+### Top-Level Directory Structure
 ```text
 AI_Education/
-├── app/                  # 主应用入口，负责 Hilt 依赖注入配置、全局配置和主导航路由
-├── common/               # 公共基础模块（网络层、Room数据库、基础UI组件、全局工具类、底层Manager）
-├── ai_tutor/             # AI辅导核心主模块
-│   ├── multimodal_chat/  # 多模态对话子模块
-│   └── timeline_map/     # 历史时间轴子模块
-├── solver/               # 智能解题主模块
-│   ├── geometry_solver/  # 几何解题子模块 (含动态图元渲染引擎)
-│   ├── algebra_solver/   # 代数解题子模块
-│   └── comprehensive/    # 综合解题子模块 (包含拍照解题、自动分类与错题本联动)
-├── summarizer/           # 智能总结主模块
-│   ├── video_summarizer/ # 视频总结子模块
-│   ├── text_summarizer/  # 文本总结子模块 (多格式解析与 PDF 导出)
-│   ├── audio_summarizer/ # 音频/语音总结子模块 (离线转写)
-│   └── dialogue_summarizer/ # 对话历史总结子模块
-└── review/               # 智能复习主模块
-    ├── planner/          # 复习计划子模块 (艾宾浩斯记忆曲线)
-    ├── reinforcement/    # 知识巩固子模块
-    └── error_book/       # 错题本子模块
+├── app/                  # Main application entry, handles Hilt DI config, global config, and main navigation routing
+├── common/               # Shared core module (network layer, Room DB, base UI components, global utils, base managers)
+├── ai_tutor/             # Core AI Tutor module
+│   ├── multimodal_chat/  # Multimodal chat sub-module
+│   └── timeline_map/     # Timeline map sub-module
+├── solver/               # Smart Solver module
+│   ├── geometry_solver/  # Geometry solving sub-module (includes dynamic graphics rendering engine)
+│   ├── algebra_solver/   # Algebra solving sub-module
+│   └── comprehensive/    # Comprehensive solving sub-module (photo solving, auto-classification, error book integration)
+├── summarizer/           # Intelligent Summarizer module
+│   ├── video_summarizer/ # Video summarization sub-module
+│   ├── text_summarizer/  # Text summarization sub-module (multi-format parsing & PDF export)
+│   ├── audio_summarizer/ # Audio/speech summarization sub-module (offline ASR)
+│   └── dialogue_summarizer/ # Dialogue history summarization sub-module
+└── review/               # Smart Review module
+    ├── planner/          # Review planner sub-module (Ebbinghaus forgetting curve)
+    ├── reinforcement/    # Knowledge reinforcement sub-module
+    └── error_book/       # Error book sub-module
 ```
 
-### 子模块内部标准结构（以 `video_summarizer` 为例）
-为了保持代码组织的高度一致性，每一个子模块内部都必须严格遵循以下包结构：
+### Sub-module Internal Standard Structure (Example: `video_summarizer`)
+To maintain high consistency in code organization, every sub-module must strictly adhere to the following package structure:
 ```text
 video_summarizer/
-├── models/               # 数据模型定义
-│   ├── entities/         # Room 数据库实体类
-│   ├── dtos/             # 网络请求响应数据传输对象
-│   └── states/           # UI 状态类 (UiState)
-├── services/             # 业务服务与数据来源
-│   ├── api/              # Retrofit 接口定义
-│   ├── repository/       # 数据仓库实现类
-│   └── usecases/         # 复杂业务逻辑的用例 (可选)
-├── utils/                # 专属工具类 (Formatters, Helpers)
-└── presentation/         # 表现层
-    ├── components/       # 专属业务组件 (如 SummaryOptionCard)
-    ├── screens/          # 页面级组件 (如 VideoDownloadScreen)
-    └── viewmodels/       # 页面对应的 ViewModel
+├── models/               # Data model definitions
+│   ├── entities/         # Room database entity classes
+│   ├── dtos/             # Network request/response Data Transfer Objects
+│   └── states/           # UI state classes (UiState)
+├── services/             # Business services and data sources
+│   ├── api/              # Retrofit interface definitions
+│   ├── repository/       # Data repository implementations
+│   └── usecases/         # Use cases for complex business logic (optional)
+├── utils/                # Exclusive utility classes (Formatters, Helpers)
+└── presentation/         # Presentation layer
+    ├── components/       # Exclusive business components (e.g., SummaryOptionCard)
+    ├── screens/          # Page-level components (e.g., VideoDownloadScreen)
+    └── viewmodels/       # ViewModels corresponding to pages
 ```
 
-## 3. 模块划分与依赖标准
+## 3. Module Division and Dependency Standards
 
-- **高内聚、低耦合**：每个主模块（如 `summarizer`）独立负责一个大的业务领域。
-- **职责单一**：主模块下的子模块（如 `video_summarizer`）只关注具体维度的功能。
-- **依赖关系规则**：
-  - `app` 模块是唯一可以依赖所有其他业务模块的宿主模块。
-  - **横向隔离**：平级的业务模块 (`ai_tutor`, `solver`, `summarizer`, `review`) 之间**严禁互相依赖**，必须通过 `app` 模块中的全局路由传递参数解耦。
-  - **底层沉淀**：所有的业务模块均单向依赖 `common` 模块以获取基础能力（如统一的 LLM 网络层、DispatcherProvider、Vosk/Sherpa 管理器）。
+- **High Cohesion, Low Coupling**: Each main module (e.g., `summarizer`) independently handles a large business domain.
+- **Single Responsibility**: Sub-modules under the main module (e.g., `video_summarizer`) only focus on specific functional dimensions.
+- **Dependency Rules**:
+  - The `app` module is the ONLY host module that can depend on all other business modules.
+  - **Horizontal Isolation (FeatureApi Routing Mechanism)**: Peer business modules (`ai_tutor`, `solver`, `summarizer`, `review`) are **strictly prohibited from depending on each other**. Each business module must implement the `FeatureApi` interface defined in the `common` module (e.g., `AiTutorFeatureApi`, `SolverFeatureApi`), injected uniformly by Hilt in the `app` module, and finally call `registerGraph` in `MainScreen` to register routes. This achieves complete decoupling of cross-module communication and page navigation.
+  - **Core Foundation**: All business modules have a one-way dependency on the `common` module to obtain basic capabilities (e.g., unified LLM network layer, DispatcherProvider, global components, and utils).
 
-## 4. 组件层级规范
+## 4. Component Hierarchy and Compose Best Practices
 
-Compose UI 组件按复用范围和职责划分为三个层级：
-1. **基础组件 (Base Components)**：位于 `common/presentation/components`。提供与业务无关的基础 UI（如升级版的 `SafeMarkdownText`、标准化的错误卡片、加载动画指示器）。
-2. **业务组件 (Business Components)**：位于各子模块的 `presentation/components`。例如 `summarizer` 模块中的文件选择卡片，具有特定的业务逻辑但可在该模块内部多页面复用。
-3. **页面组件 (Page Components)**：位于各子模块的 `presentation/screens`。负责组合业务组件、拦截系统级事件（如返回键），并唯一负责与 ViewModel 的交互。为保证系统样式统一，顶栏（`CenterAlignedTopAppBar`）已提升至全局宿主层 (`MainScreen`) 统一管理，子页面无需重复渲染。
+Compose UI components are divided into three levels based on their scope of reuse and responsibility:
+1. **Base Components**: Located in `common/presentation/components`. Provides business-agnostic basic UI (e.g., upgraded `SafeMarkdownText`, standardized `ApiKeyDialog`, global loading indicators).
+2. **Business Components**: Located in `presentation/components` of each sub-module. Possesses specific business logic but is reused across multiple pages within the module.
+3. **Page Components**: Located in `presentation/screens` of each sub-module. Responsible for composing business components and solely responsible for interacting with the ViewModel.
 
-## 5. 状态流与异常处理规范
+### Compose Architecture & Best Practices
+1. **Unified Top App Bar Standard**: Must use `CenterAlignedTopAppBar` (along with `TopAppBarDefaults.centerAlignedTopAppBarColors`), set a centered title via `title = { Text(...) }`, and provide a standard back button via `navigationIcon` to align with and decouple from system back button behavior.
+2. **Lifecycle-Aware State Collection**: Directly using `.collectAsState()` is prohibited. All UI layer observations of ViewModel `StateFlow` must use `.collectAsStateWithLifecycle()` from the `lifecycle-runtime-compose` package to avoid resource consumption when the app is in the background.
+3. **One-time UI Event Dispatching (UiEvent)**: For non-continuous events like Snackbar prompts, Toasts, and page navigation, placing them in `StateFlow` (which causes repeated triggering) is prohibited. They must be sent using `Channel<UiEvent>` and collected/consumed by `LaunchedEffect` in the UI layer.
+4. **Animation Standards**: Each module must supplement core interaction paths with animation feedback using `AnimatedVisibility` (e.g., `fadeIn+expandVertically` / `fadeOut+shrinkVertically`) and NavHost page transitions (slide/fade).
+5. **Height Measurement Adaptation**: When applying `verticalScroll` to a `Column`, internal `MarkdownText` might become invisible or truncated due to receiving infinite height constraints. `verticalScroll` should be applied directly to the `modifier` of `MarkdownText`, combined with `Box` or `weight(1f)` on the parent container to ensure correct height measurement.
 
-1. **StateFlow 替代 LiveData/MutableState**：所有的 ViewModel 必须使用 `MutableStateFlow` 暴露单一的 UI 状态。
+## 5. State Flow and Exception Handling Standards
+
+1. **StateFlow Replaces LiveData/MutableState**: All ViewModels must use `MutableStateFlow` to expose a single UI state.
    ```kotlin
    private val _uiState = MutableStateFlow(MyUiState())
    val uiState: StateFlow<MyUiState> = _uiState.asStateFlow()
    ```
-2. **安全协程调度**：必须通过注入的 `DispatcherProvider` 获取协程上下文，严禁硬编码 `Dispatchers.IO` 或 `Dispatchers.Main`，以保障 ViewModel 单元测试的完全可控。
-3. **统一异常捕获**：网络请求、文件解析、模型推理等易错操作，必须在 ViewModel 层进行 `try-catch` 捕获，并将错误信息转化为 `uiState.error`，交由 UI 层的统一 ErrorCard 组件渲染。
+2. **Safe Coroutine Scheduling**: Must obtain the coroutine context through the injected `DispatcherProvider`. Hardcoding `Dispatchers.IO` or `Dispatchers.Main` is strictly prohibited to ensure complete controllability of ViewModel unit tests.
+3. **Unified Exception Catching**: Error-prone operations such as network requests, file parsing, and model inference must be caught using `try-catch` in the ViewModel layer. Error messages must be converted into `uiState.error` and handed over to the UI layer's unified ErrorCard component for rendering.
 
-## 6. 测试规范
+## 6. Testing Standards
 
-- **单元测试**：
-  - 核心逻辑（Repository 业务聚合、ViewModel 状态扭转、工具类解析）必须覆盖单元测试。
-  - `common` 模块基础建设的代码覆盖率要求在 90% 以上。
-- **UI 测试 / Compose 测试**：针对关键用户路径（如输入框防抖、导航跳转）可选择性添加。
+- **Unit Testing**:
+  - Core logic (Repository business aggregation, ViewModel state transitions, utility class parsing) must be covered by unit tests.
+  - The code coverage for the infrastructure in the `common` module is required to be above 90%.
+  - Must uniformly adopt `UnconfinedTestDispatcher` to resolve coroutine suspension inconsistencies, and be careful to use `anyOrNull()` instead of `any()` during Mockito matching to accommodate Kotlin's nullable types.
+- **UI Testing / Compose Testing**: Can be selectively added for critical user paths (e.g., input box debouncing, navigation jumps).
 
-## 7. 安全与离线策略规范
+## 7. Security and Offline Strategy Standards
 
-1. **API Key 安全存储**：
-   - 严禁在代码中硬编码明文 API Key。
-   - 采用 Android NDK (C/C++) 层存储并使用 XOR 等简单加密方式混淆 Key，通过 JNI 接口 (`NativeLib`) 提供给上层。
-   - 必须提供编译期的 Fallback 机制（如 `BuildConfig`），以防止由于本地 NDK 环境缺失导致编译失败。
-2. **全局离线降级策略**：
-   - 必须通过全局单例的 `NetworkMonitor` (基于 `ConnectivityManager.NetworkCallback` + `StateFlow`) 实时监听网络连接状态。
-   - 所有涉及云端大模型推断或网络下载的交互，必须在 ViewModel 意图处理的起始位置判断网络状态，并在无网时阻断请求，优雅降级为本地数据读取或给出清晰的无网提示。 
+1. **API Key Secure Storage**:
+   - Hardcoding plaintext API Keys in the code is strictly prohibited.
+   - Uses Android NDK (C/C++) layer storage and obfuscates the Key using simple encryption like XOR, providing it to upper layers via JNI interface (`NativeLib`). Due to the complexity of cross-platform configuration, it is currently configured in `local.properties` and obtained via `BuildConfig` and `GlobalConfigRepository` as a graceful fallback security solution.
+2. **Global Offline Degradation Strategy**:
+   - Must monitor the network connection status in real-time through the global singleton `NetworkMonitor` (based on `ConnectivityManager.NetworkCallback` + `StateFlow`).
+   - All interactions involving cloud LLM inference or network downloads must check the network status at the beginning of ViewModel intent processing. Requests must be blocked when offline, gracefully degrading to reading local data or providing clear offline prompts.
+
+## 8. Multimodal and Low-level JNI Memory Standards
+
+When dealing with large image processing (e.g., photo-based problem solving) or offline model inference (e.g., Sherpa-ONNX speech transcription), Native and JVM memory must be strictly managed:
+1. **Bitmap Lifecycle and Memory Recycling**: Temporary Bitmaps generated after cropping or rotation processing (e.g., base64 preview images generated in `AiTutorViewModel`, `SolverViewModel`) must have their Native memory actively reclaimed by calling `bitmap.recycle()` after conversion or upload is complete, to avoid OOM during multimodal input.
+2. **Streaming Parsing of Audio/Video to Prevent Crashes**:
+   - When parsing large audio files using C++'s `WaveReader`, **passing the entire file to the bottom layer at once is strictly prohibited**, otherwise it will cause `Channel unrecoverably broken` or `SIGABRT`.
+   - Must use `RandomAccessFile` in the Kotlin layer to parse WAV in chunks (skipping the 44-byte header to process PCM), allocating only small chunks (e.g., 30 seconds/3MB FloatArray) at a time and looping them to `acceptWaveform` for streaming decoding.
+3. **Multi-threading Concurrency Limits**: In some JNI inference operations (like certain offline models of Sherpa-ONNX), multi-threading race conditions leading to underlying crashes must be prevented by configuring `numThreads=1`.
+
+## 9. Global and Configuration Standards
+
+1. **Internationalization (i18n)**: **Hardcoded Chinese strings are strictly prohibited** in the project. All text displayed to users must be extracted to `strings.xml` and referenced via `stringResource(R.string.xxx)` (Compose) or `Context.getString()`. Supported languages (like default `values` and `values-en`) must be configured in `locales_config.xml` to achieve app-level dynamic language switching.
+2. **JSON Parser**: Uniformly use `Gson` as the serialization and deserialization tool. Disabling `JSONObject` to ensure type safety and code readability in object mapping.
+3. **Mirror Sources and Network Downloads**: To improve download stability in mainland China, dependency downloads (like `ModelDownloader.kt`, `sherpa_setup.gradle`) have been fully replaced with domestic mirrors (e.g., `kkgithub.com`, `ghproxy`, `hf-mirror.com`). New model dependencies must follow this standard.
