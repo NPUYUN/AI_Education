@@ -47,6 +47,11 @@ subprojects {
         if (plugins.hasPlugin("com.android.application") || plugins.hasPlugin("com.android.library")) {
             apply(from = "${rootProject.projectDir}/jacoco.gradle.kts")
         }
+        
+        // Set encoding for all compile tasks
+        tasks.withType<JavaCompile> {
+            options.encoding = "UTF-8"
+        }
     }
 }
 

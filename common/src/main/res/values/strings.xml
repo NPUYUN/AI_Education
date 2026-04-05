@@ -267,7 +267,7 @@
     <string name="delete_action">删除</string>
     <string name="cancel_action">取消</string>
     <string name="test_time_format">测试时间：%1$s</string>
-    <string name="test_result_format">共 %1$s 题，得分：%2$s，正确率：%3$s%</string>
+    <string name="test_result_format">共 %1$s 题，得分：%2$s，正确率：%3$s%%</string>
     <string name="cannot_parse_history_summary">无法解析历史记录摘要</string>
     <string name="test_result_title">测试结果</string>
     <string name="score_title">得分</string>

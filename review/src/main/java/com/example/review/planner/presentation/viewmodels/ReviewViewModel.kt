@@ -96,7 +96,7 @@ class ReviewViewModel
                 }
             }
             viewModelScope.launch {
-                preferencesManager.getString("review_subject_input", "数学,物理,英语").collect { savedInput ->
+                preferencesManager.getString("review_subject_input", "???,????,???").collect { savedInput ->
                     if (_uiState.value.subjectInput.isBlank()) {
                         _uiState.update { it.copy(subjectInput = savedInput) }
                     }
@@ -143,24 +143,24 @@ class ReviewViewModel
             val contextBuilder = StringBuilder()
 
             if (recentSessions.isNotEmpty()) {
-                contextBuilder.append("【最近对话记录】\n")
+                contextBuilder.append("?????????????\n")
                 for (session in recentSessions) {
                     val msgs = chatDao.getMessages(session.id).firstOrNull() ?: emptyList()
                     val msgsText =
                         msgs.takeLast(
                             10,
-                        ).joinToString("\n") { "${if (it.role == "user") "学生" else "AI"}: ${it.content.take(50)}" }
+                        ).joinToString("\n") { "${if (it.role == "user") "???" else "AI"}: ${it.content.take(50)}" }
                     if (msgsText.isNotBlank()) {
-                        contextBuilder.append("对话：${session.title}\n$msgsText\n\n")
+                        contextBuilder.append("?????${session.title}\n$msgsText\n\n")
                     }
                 }
             }
 
             val recentErrors = errorBookDao.getAllErrorRecords().firstOrNull()?.take(5) ?: emptyList()
             if (recentErrors.isNotEmpty()) {
-                contextBuilder.append("【最近错题记录】\n")
+                contextBuilder.append("?????????????\n")
                 for (error in recentErrors) {
-                    contextBuilder.append("科目：${error.subject}，题目：${error.questionContent}\n错误原因：${error.errorReason}\n\n")
+                    contextBuilder.append("?????${error.subject}???????${error.questionContent}\n???????${error.errorReason}\n\n")
                 }
             }
 
@@ -172,11 +172,11 @@ class ReviewViewModel
             val useRecent = _uiState.value.useRecentContextForPlan
 
             if (subjectsInput.isBlank() && !useRecent) {
-                viewModelScope.launch { _errorEvents.send("请输入复习科目，或选择基于最近记录生成") }
+                viewModelScope.launch { _errorEvents.send("??????????????????????????????") }
                 return
             }
             if (!networkMonitor.isConnected.value) {
-                viewModelScope.launch { _errorEvents.send("当前处于无网络环境，无法生成复习计划。") }
+                viewModelScope.launch { _errorEvents.send("????????????绷??????????????????") }
                 return
             }
 
@@ -195,7 +195,7 @@ class ReviewViewModel
                         _uiState.update { it.copy(isGeneratingPlan = false, reviewPlan = planContent) }
 
                         // Save history
-                        val inputParams = if (useRecent) "科目需求: $subjectsInput\n[包含最近学习记录]" else "科目需求: $subjectsInput"
+                        val inputParams = if (useRecent) "???????: $subjectsInput\n[????????????]" else "???????: $subjectsInput"
                         reviewHistoryDao.insertHistory(
                             ReviewHistoryEntity(
                                 type = "planner",
@@ -205,7 +205,7 @@ class ReviewViewModel
                         )
                     } else {
                         val exception = result.exceptionOrNull()
-                        val errorMsg = exception?.toUserFriendlyMessage() ?: "未知错误"
+                        val errorMsg = exception?.toUserFriendlyMessage() ?: "δ?????"
                         _uiState.update { it.copy(isGeneratingPlan = false) }
                         _errorEvents.send(errorMsg)
                     }
@@ -222,11 +222,11 @@ class ReviewViewModel
             val useRecent = _uiState.value.useRecentContextForQuiz
 
             if (kp.isBlank() && !useRecent) {
-                viewModelScope.launch { _errorEvents.send("请输入要巩固的知识点，或选择基于最近记录生成") }
+                viewModelScope.launch { _errorEvents.send("??????????????????????????????????") }
                 return
             }
             if (!networkMonitor.isConnected.value) {
-                viewModelScope.launch { _errorEvents.send("当前处于无网络环境，无法生成巩固练习。") }
+                viewModelScope.launch { _errorEvents.send("????????????绷???????????????????") }
                 return
             }
 
@@ -258,7 +258,7 @@ class ReviewViewModel
                         }
 
                         // Save history
-                        val inputParams = if (useRecent) "知识点/需求: $kp\n[包含最近学习记录]" else "知识点/需求: $kp"
+                        val inputParams = if (useRecent) "????/????: $kp\n[????????????]" else "????/????: $kp"
                         val historyData = mapOf("summary" to response.summary, "problems" to response.problems)
                         val historyContent = com.google.gson.Gson().toJson(historyData)
 
@@ -271,7 +271,7 @@ class ReviewViewModel
                         )
                     } else {
                         val exception = result.exceptionOrNull()
-                        val errorMsg = exception?.toUserFriendlyMessage() ?: "未知错误"
+                        val errorMsg = exception?.toUserFriendlyMessage() ?: "δ?????"
                         _uiState.update { it.copy(isGeneratingQuiz = false) }
                         _errorEvents.send(errorMsg)
                     }
@@ -336,10 +336,10 @@ class ReviewViewModel
             viewModelScope.launch {
                 val record =
                     ErrorBookEntity(
-                        subject = "数学",
-                        questionContent = "求函数 f(x) = x^2 - 4x + 3 的最小值。",
-                        errorReason = "计算顶点坐标时符号错误",
-                        correctSolution = "f(x) = (x-2)^2 - 1，所以最小值为 -1。",
+                        subject = "???",
+                        questionContent = "???? f(x) = x^2 - 4x + 3 ????С???",
+                        errorReason = "??????????????????",
+                        correctSolution = "f(x) = (x-2)^2 - 1????????С?? -1??",
                     )
                 errorBookDao.insertErrorRecord(record)
             }
@@ -410,7 +410,7 @@ class ReviewViewModel
                         }
                     } else {
                         val exception = result.exceptionOrNull()
-                        val errorMsg = exception?.toUserFriendlyMessage() ?: "未知错误"
+                        val errorMsg = exception?.toUserFriendlyMessage() ?: "δ?????"
                         _uiState.update { it.copy(isGeneratingPractice = false) }
                         _errorEvents.send(errorMsg)
                     }
@@ -463,7 +463,7 @@ class ReviewViewModel
                     )
                 }
             } catch (e: Exception) {
-                viewModelScope.launch { _errorEvents.send("加载历史记录失败") }
+                viewModelScope.launch { _errorEvents.send("?????????????") }
             }
         }
 
@@ -486,7 +486,7 @@ class ReviewViewModel
 
             val problemsAndAnswers =
                 problems.mapIndexed { index, problem ->
-                    val ans = answers[index] ?: "未作答"
+                    val ans = answers[index] ?: "δ????"
                     Pair(problem, ans)
                 }
 
@@ -527,7 +527,7 @@ class ReviewViewModel
 
                         val selectedIdsStr = _uiState.value.selectedErrorIds.joinToString(",")
                         val historyType = if (state.practiceSource == "reinforcement") "practice_reinforcement" else "practice_$selectedIdsStr"
-                        val historyParams = if (state.practiceSource == "reinforcement") "知识巩固测验" else "错题变式测试"
+                        val historyParams = if (state.practiceSource == "reinforcement") "?????????" else "??????????"
 
                         reviewHistoryDao.insertHistory(
                             ReviewHistoryEntity(
@@ -538,7 +538,7 @@ class ReviewViewModel
                         )
                     } else {
                         val exception = result.exceptionOrNull()
-                        val errorMsg = exception?.toUserFriendlyMessage() ?: "未知错误"
+                        val errorMsg = exception?.toUserFriendlyMessage() ?: "δ?????"
                         _uiState.update { it.copy(isGradingPractice = false) }
                         _errorEvents.send(errorMsg)
                     }
@@ -555,7 +555,7 @@ class ReviewViewModel
                 try {
                     val entity =
                         ErrorBookEntity(
-                            subject = problem.knowledgePointId ?: "变式训练",
+                            subject = problem.knowledgePointId ?: "??????",
                             questionContent =
                                 problem.questionText +
                                     if (!problem.options.isNullOrEmpty()) {
@@ -566,14 +566,14 @@ class ReviewViewModel
                                     } else {
                                         ""
                                     },
-                            errorReason = "变式训练生成题目",
+                            errorReason = "?????????????",
                             correctSolution = problem.answer + "\n\n" + problem.explanation,
                             timestamp = System.currentTimeMillis(),
                         )
                     errorBookDao.insertErrorRecord(entity)
-                    _errorEvents.send("已添加到错题本")
+                    _errorEvents.send("???????????")
                 } catch (e: Exception) {
-                    _errorEvents.send("添加失败: ${e.message}")
+                    _errorEvents.send("???????: ${e.message}")
                 }
             }
         }
