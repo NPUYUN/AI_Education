@@ -507,13 +507,7 @@ fun PracticeHistoryScreenOverlay(
                                 if (data != null) {
                                     val total = (data["problems"] as? List<*>)?.size ?: 0
                                     val accuracy = (data["accuracy"] as? Double)?.toInt() ?: 0
-                                    val rawScore = (data["totalScore"] as? Double)?.toInt() ?: 0
-                                    val score =
-                                        if (total > 0 && rawScore > 100) {
-                                            (rawScore.toFloat() / (total * 100) * 100).toInt()
-                                        } else {
-                                            rawScore.coerceAtMost(100)
-                                        }
+                                    val score = accuracy
                                     Text(
                                         text = stringResource(com.example.common.R.string.test_result_format, total, score, accuracy),
                                         style = MaterialTheme.typography.bodyMedium,
@@ -551,16 +545,9 @@ fun PracticeResultScreenOverlay(
 
     val totalQuestions = problems.size
     val correctCount = results.count { it.isCorrect }
-    // 强制将总得分归一化到 100 分制
     val totalScore =
         if (totalQuestions > 0) {
-            val rawSum = results.sumOf { it.score }
-            val maxRawSum = totalQuestions * 100 // In case AI still outputs 100 per question
-            if (maxRawSum > 100 && rawSum > 100) {
-                (rawSum.toFloat() / maxRawSum * 100).toInt()
-            } else {
-                rawSum.coerceAtMost(100)
-            }
+            (correctCount * 100 / totalQuestions)
         } else {
             0
         }

@@ -96,7 +96,7 @@ class ReviewViewModel
                 }
             }
             viewModelScope.launch {
-                preferencesManager.getString("review_subject_input", "æ•°å­¦,ç‰©ç†,è‹±è¯­").collect { savedInput ->
+                preferencesManager.getString("review_subject_input", "ÊıÑ§,ÎïÀí,Ó¢Óï").collect { savedInput ->
                     if (_uiState.value.subjectInput.isBlank()) {
                         _uiState.update { it.copy(subjectInput = savedInput) }
                     }
@@ -143,24 +143,24 @@ class ReviewViewModel
             val contextBuilder = StringBuilder()
 
             if (recentSessions.isNotEmpty()) {
-                contextBuilder.append("ã€æœ€è¿‘å¯¹è¯è®°å½•ã€‘\n")
+                contextBuilder.append("¡¾×î½ü¶Ô»°¼ÇÂ¼¡¿\n")
                 for (session in recentSessions) {
                     val msgs = chatDao.getMessages(session.id).firstOrNull() ?: emptyList()
                     val msgsText =
                         msgs.takeLast(
                             10,
-                        ).joinToString("\n") { "${if (it.role == "user") "å­¦ç”Ÿ" else "AI"}: ${it.content.take(50)}" }
+                        ).joinToString("\n") { "${if (it.role == "user") "Ñ§Éú" else "AI"}: ${it.content.take(50)}" }
                     if (msgsText.isNotBlank()) {
-                        contextBuilder.append("å¯¹è¯ï¼š${session.title}\n$msgsText\n\n")
+                        contextBuilder.append("¶Ô»°£º${session.title}\n$msgsText\n\n")
                     }
                 }
             }
 
             val recentErrors = errorBookDao.getAllErrorRecords().firstOrNull()?.take(5) ?: emptyList()
             if (recentErrors.isNotEmpty()) {
-                contextBuilder.append("ã€æœ€è¿‘é”™é¢˜è®°å½•ã€‘\n")
+                contextBuilder.append("¡¾×î½ü´íÌâ¼ÇÂ¼¡¿\n")
                 for (error in recentErrors) {
-                    contextBuilder.append("ç§‘ç›®ï¼š${error.subject}ï¼Œé¢˜ç›®ï¼š${error.questionContent}\né”™è¯¯åŸå› ï¼š${error.errorReason}\n\n")
+                    contextBuilder.append("¿ÆÄ¿£º${error.subject}£¬ÌâÄ¿£º${error.questionContent}\n´íÎóÔ­Òò£º${error.errorReason}\n\n")
                 }
             }
 
@@ -172,11 +172,11 @@ class ReviewViewModel
             val useRecent = _uiState.value.useRecentContextForPlan
 
             if (subjectsInput.isBlank() && !useRecent) {
-                viewModelScope.launch { _errorEvents.send("è¯·è¾“å…¥å¤ä¹ ç§‘ç›®ï¼Œæˆ–é€‰æ‹©åŸºäºæœ€è¿‘è®°å½•ç”Ÿæˆ") }
+                viewModelScope.launch { _errorEvents.send("ÇëÊäÈë¸´Ï°¿ÆÄ¿£¬»òÑ¡Ôñ»ùÓÚ×î½ü¼ÇÂ¼Éú³É") }
                 return
             }
             if (!networkMonitor.isConnected.value) {
-                viewModelScope.launch { _errorEvents.send("å½“å‰å¤„äºæ— ç½‘ç»œç¯å¢ƒï¼Œæ— æ³•ç”Ÿæˆå¤ä¹ è®¡åˆ’ã€‚") }
+                viewModelScope.launch { _errorEvents.send("µ±Ç°´¦ÓÚÎŞÍøÂç»·¾³£¬ÎŞ·¨Éú³É¸´Ï°¼Æ»®¡£") }
                 return
             }
 
@@ -195,7 +195,7 @@ class ReviewViewModel
                         _uiState.update { it.copy(isGeneratingPlan = false, reviewPlan = planContent) }
 
                         // Save history
-                        val inputParams = if (useRecent) "ç§‘ç›®éœ€æ±‚: $subjectsInput\n[åŒ…å«æœ€è¿‘å­¦ä¹ è®°å½•]" else "ç§‘ç›®éœ€æ±‚: $subjectsInput"
+                        val inputParams = if (useRecent) "¿ÆÄ¿ĞèÇó: $subjectsInput\n[°üº¬×î½üÑ§Ï°¼ÇÂ¼]" else "¿ÆÄ¿ĞèÇó: $subjectsInput"
                         reviewHistoryDao.insertHistory(
                             ReviewHistoryEntity(
                                 type = "planner",
@@ -205,7 +205,7 @@ class ReviewViewModel
                         )
                     } else {
                         val exception = result.exceptionOrNull()
-                        val errorMsg = exception?.toUserFriendlyMessage() ?: "æœªçŸ¥é”™è¯¯"
+                        val errorMsg = exception?.toUserFriendlyMessage() ?: "Î´Öª´íÎó"
                         _uiState.update { it.copy(isGeneratingPlan = false) }
                         _errorEvents.send(errorMsg)
                     }
@@ -222,11 +222,11 @@ class ReviewViewModel
             val useRecent = _uiState.value.useRecentContextForQuiz
 
             if (kp.isBlank() && !useRecent) {
-                viewModelScope.launch { _errorEvents.send("è¯·è¾“å…¥è¦å·©å›ºçš„çŸ¥è¯†ç‚¹ï¼Œæˆ–é€‰æ‹©åŸºäºæœ€è¿‘è®°å½•ç”Ÿæˆ") }
+                viewModelScope.launch { _errorEvents.send("ÇëÊäÈëÒª¹®¹ÌµÄÖªÊ¶µã£¬»òÑ¡Ôñ»ùÓÚ×î½ü¼ÇÂ¼Éú³É") }
                 return
             }
             if (!networkMonitor.isConnected.value) {
-                viewModelScope.launch { _errorEvents.send("å½“å‰å¤„äºæ— ç½‘ç»œç¯å¢ƒï¼Œæ— æ³•ç”Ÿæˆå·©å›ºç»ƒä¹ ã€‚") }
+                viewModelScope.launch { _errorEvents.send("µ±Ç°´¦ÓÚÎŞÍøÂç»·¾³£¬ÎŞ·¨Éú³É¹®¹ÌÁ·Ï°¡£") }
                 return
             }
 
@@ -258,7 +258,7 @@ class ReviewViewModel
                         }
 
                         // Save history
-                        val inputParams = if (useRecent) "çŸ¥è¯†ç‚¹/éœ€æ±‚: $kp\n[åŒ…å«æœ€è¿‘å­¦ä¹ è®°å½•]" else "çŸ¥è¯†ç‚¹/éœ€æ±‚: $kp"
+                        val inputParams = if (useRecent) "ÖªÊ¶µã/ĞèÇó: $kp\n[°üº¬×î½üÑ§Ï°¼ÇÂ¼]" else "ÖªÊ¶µã/ĞèÇó: $kp"
                         val historyData = mapOf("summary" to response.summary, "problems" to response.problems)
                         val historyContent = com.google.gson.Gson().toJson(historyData)
 
@@ -271,7 +271,7 @@ class ReviewViewModel
                         )
                     } else {
                         val exception = result.exceptionOrNull()
-                        val errorMsg = exception?.toUserFriendlyMessage() ?: "æœªçŸ¥é”™è¯¯"
+                        val errorMsg = exception?.toUserFriendlyMessage() ?: "Î´Öª´íÎó"
                         _uiState.update { it.copy(isGeneratingQuiz = false) }
                         _errorEvents.send(errorMsg)
                     }
@@ -336,10 +336,10 @@ class ReviewViewModel
             viewModelScope.launch {
                 val record =
                     ErrorBookEntity(
-                        subject = "æ•°å­¦",
-                        questionContent = "æ±‚å‡½æ•° f(x) = x^2 - 4x + 3 çš„æœ€å°å€¼ã€‚",
-                        errorReason = "è®¡ç®—é¡¶ç‚¹åæ ‡æ—¶ç¬¦å·é”™è¯¯",
-                        correctSolution = "f(x) = (x-2)^2 - 1ï¼Œæ‰€ä»¥æœ€å°å€¼ä¸º -1ã€‚",
+                        subject = "ÊıÑ§",
+                        questionContent = "Çóº¯Êı f(x) = x^2 - 4x + 3 µÄ×îĞ¡Öµ¡£",
+                        errorReason = "¼ÆËã¶¥µã×ø±êÊ±·ûºÅ´íÎó",
+                        correctSolution = "f(x) = (x-2)^2 - 1£¬ËùÒÔ×îĞ¡ÖµÎª -1¡£",
                     )
                 errorBookDao.insertErrorRecord(record)
             }
@@ -410,7 +410,7 @@ class ReviewViewModel
                         }
                     } else {
                         val exception = result.exceptionOrNull()
-                        val errorMsg = exception?.toUserFriendlyMessage() ?: "æœªçŸ¥é”™è¯¯"
+                        val errorMsg = exception?.toUserFriendlyMessage() ?: "Î´Öª´íÎó"
                         _uiState.update { it.copy(isGeneratingPractice = false) }
                         _errorEvents.send(errorMsg)
                     }
@@ -463,7 +463,7 @@ class ReviewViewModel
                     )
                 }
             } catch (e: Exception) {
-                viewModelScope.launch { _errorEvents.send("åŠ è½½å†å²è®°å½•å¤±è´¥") }
+                viewModelScope.launch { _errorEvents.send("¼ÓÔØÀúÊ·¼ÇÂ¼Ê§°Ü") }
             }
         }
 
@@ -486,7 +486,7 @@ class ReviewViewModel
 
             val problemsAndAnswers =
                 problems.mapIndexed { index, problem ->
-                    val ans = answers[index] ?: "æœªä½œç­”"
+                    val ans = answers[index] ?: "Î´×÷´ğ"
                     Pair(problem, ans)
                 }
 
@@ -521,13 +521,13 @@ class ReviewViewModel
                                 "results" to results,
                                 "answers" to answers,
                                 "accuracy" to accuracy,
-                                "totalScore" to results.sumOf { it.score },
+                                "totalScore" to accuracy,
                             )
                         val historyContent = com.google.gson.Gson().toJson(historyData)
 
                         val selectedIdsStr = _uiState.value.selectedErrorIds.joinToString(",")
                         val historyType = if (state.practiceSource == "reinforcement") "practice_reinforcement" else "practice_$selectedIdsStr"
-                        val historyParams = if (state.practiceSource == "reinforcement") "çŸ¥è¯†å·©å›ºæµ‹éªŒ" else "é”™é¢˜å˜å¼æµ‹è¯•"
+                        val historyParams = if (state.practiceSource == "reinforcement") "ÖªÊ¶¹®¹Ì²âÑé" else "´íÌâ±äÊ½²âÊÔ"
 
                         reviewHistoryDao.insertHistory(
                             ReviewHistoryEntity(
@@ -538,7 +538,7 @@ class ReviewViewModel
                         )
                     } else {
                         val exception = result.exceptionOrNull()
-                        val errorMsg = exception?.toUserFriendlyMessage() ?: "æœªçŸ¥é”™è¯¯"
+                        val errorMsg = exception?.toUserFriendlyMessage() ?: "Î´Öª´íÎó"
                         _uiState.update { it.copy(isGradingPractice = false) }
                         _errorEvents.send(errorMsg)
                     }
@@ -555,7 +555,7 @@ class ReviewViewModel
                 try {
                     val entity =
                         ErrorBookEntity(
-                            subject = problem.knowledgePointId ?: "å˜å¼è®­ç»ƒ",
+                            subject = problem.knowledgePointId ?: "±äÊ½ÑµÁ·",
                             questionContent =
                                 problem.questionText +
                                     if (!problem.options.isNullOrEmpty()) {
@@ -566,14 +566,14 @@ class ReviewViewModel
                                     } else {
                                         ""
                                     },
-                            errorReason = "å˜å¼è®­ç»ƒç”Ÿæˆé¢˜ç›®",
+                            errorReason = "±äÊ½ÑµÁ·Éú³ÉÌâÄ¿",
                             correctSolution = problem.answer + "\n\n" + problem.explanation,
                             timestamp = System.currentTimeMillis(),
                         )
                     errorBookDao.insertErrorRecord(entity)
-                    _errorEvents.send("å·²æ·»åŠ åˆ°é”™é¢˜æœ¬")
+                    _errorEvents.send("ÒÑÌí¼Óµ½´íÌâ±¾")
                 } catch (e: Exception) {
-                    _errorEvents.send("æ·»åŠ å¤±è´¥: ${e.message}")
+                    _errorEvents.send("Ìí¼ÓÊ§°Ü: ${e.message}")
                 }
             }
         }
