@@ -5,12 +5,12 @@ import android.widget.TextView
 import androidx.annotation.VisibleForTesting
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.res.stringResource
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.viewinterop.AndroidView
 import io.noties.markwon.Markwon
@@ -71,7 +71,10 @@ fun SafeMarkdownText(
 }
 
 @VisibleForTesting
-internal fun normalizeMarkdownForDisplay(rawMarkdown: String, noContentText: String = "暂无内容"): String {
+internal fun normalizeMarkdownForDisplay(
+    rawMarkdown: String,
+    noContentText: String = "暂无内容",
+): String {
     if (rawMarkdown.isBlank()) return noContentText
 
     var text =

@@ -170,15 +170,6 @@ class SolverViewModel
             _uiState.value = state.copy(isSolving = true, solutionResult = "", parsedQuestionContent = "", parsedFinalAnswer = "")
 
             viewModelScope.launch {
-                if (!networkMonitor.isConnected.value) {
-                    _uiState.value =
-                        _uiState.value.copy(
-                            isSolving = false,
-                        )
-                    _errorEvents.send("当前处于无网络环境，大模型解题服务暂不可用。\n您可以查看历史解题记录和错题本，或连接网络后重试。")
-                    return@launch
-                }
-
                 try {
                     val apiKey =
                         globalConfigRepository.getAiTutorApiKey().firstOrNull()
@@ -264,24 +255,34 @@ class SolverViewModel
                             ).find(solution)
                         val parsedKP = kpMatch?.groupValues?.get(2)?.trim() ?: ""
 
+                        // If the user didn't input text (uploaded image only), classify based on the parsed question content
+                        var finalTab = _uiState.value.selectedTab
+                        var finalCompType = _uiState.value.comprehensiveType
+                        if (_uiState.value.questionText.isBlank() && parsedQC.isNotBlank()) {
+                            finalTab = classify(parsedQC)
+                            finalCompType = if (finalTab == 2) getComprehensiveType(parsedQC) else ""
+                        }
+
                         _uiState.value =
                             _uiState.value.copy(
+                                selectedTab = finalTab,
+                                comprehensiveType = finalCompType,
                                 isSolving = false,
                                 solutionResult = solution,
                                 parsedQuestionContent = parsedQC,
                                 parsedFinalAnswer = parsedFA,
                                 drawingSteps = drawings,
                                 isFunction =
-                                    if (_uiState.value.selectedTab == 1) {
+                                    if (finalTab == 1) {
                                         isFunctionProblem(
                                             _uiState.value.questionText,
-                                        ) || solution.contains("函数") || solution.contains("y=") || solution.contains("f(")
+                                        ) || isFunctionProblem(parsedQC) || solution.contains("函数") || solution.contains("y=") || solution.contains("f(")
                                     } else {
                                         _uiState.value.isFunction
                                     },
                             )
                         val subject =
-                            when (_uiState.value.selectedTab) {
+                            when (finalTab) {
                                 0 -> "几何"
                                 1 -> "代数"
                                 else -> "综合"

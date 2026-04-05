@@ -136,7 +136,11 @@ class AiTutorViewModel
                             // Ready
                         }
                         is VoskVoiceManager.VoiceState.Listening -> {
-                            _uiState.update { it.copy(inputText = application.getString(com.example.common.R.string.listening_in_progress)) }
+                            _uiState.update {
+                                it.copy(
+                                    inputText = application.getString(com.example.common.R.string.listening_in_progress),
+                                )
+                            }
                         }
                         is VoskVoiceManager.VoiceState.Result -> {
                             if (state.text.isNotEmpty()) {
@@ -504,7 +508,12 @@ class AiTutorViewModel
             if (image != null && !isModelImageSupported(modelName)) {
                 _uiState.update { state ->
                     state.copy(
-                        messages = state.messages + Message("system", application.getString(com.example.common.R.string.model_not_support_image, modelName)),
+                        messages =
+                            state.messages +
+                                Message(
+                                    "system",
+                                    application.getString(com.example.common.R.string.model_not_support_image, modelName),
+                                ),
                         inputText = "",
                     )
                 }
@@ -597,7 +606,12 @@ class AiTutorViewModel
                 if (repository == null) {
                     _uiState.update { state ->
                         state.copy(
-                            messages = state.messages + Message("system", application.getString(com.example.common.R.string.api_key_not_configured)),
+                            messages =
+                                state.messages +
+                                    Message(
+                                        "system",
+                                        application.getString(com.example.common.R.string.api_key_not_configured),
+                                    ),
                             isLoading = false,
                             showApiSettings = true,
                         )
@@ -626,7 +640,15 @@ class AiTutorViewModel
                         _uiState.update { state ->
                             state.copy(
                                 messages = state.messages + Message("system", chunk),
-                                showApiSettings = if (chunk.contains(application.getString(com.example.common.R.string.api_key_invalid))) true else state.showApiSettings,
+                                showApiSettings =
+                                    if (chunk.contains(
+                                            application.getString(com.example.common.R.string.api_key_invalid),
+                                        )
+                                    ) {
+                                        true
+                                    } else {
+                                        state.showApiSettings
+                                    },
                                 isLoading = false,
                             )
                         }
@@ -672,7 +694,12 @@ class AiTutorViewModel
                     val titleText =
                         when (val c = msg.content) {
                             is String -> c.take(15)
-                            is List<*> -> (c.find { (it as? ContentItem)?.type == "text" } as? ContentItem)?.text?.take(15) ?: application.getString(com.example.common.R.string.image_chat)
+                            is List<*> ->
+                                (
+                                    c.find {
+                                        (it as? ContentItem)?.type == "text"
+                                    } as? ContentItem
+                                )?.text?.take(15) ?: application.getString(com.example.common.R.string.image_chat)
                             else -> application.getString(com.example.common.R.string.chat_action)
                         }
                     if (titleText.isNotBlank()) {
@@ -712,7 +739,12 @@ class AiTutorViewModel
             if (!isModelImageSupported(modelName)) {
                 _uiState.update { state ->
                     state.copy(
-                        messages = state.messages + Message("system", application.getString(com.example.common.R.string.model_not_support_image, modelName)),
+                        messages =
+                            state.messages +
+                                Message(
+                                    "system",
+                                    application.getString(com.example.common.R.string.model_not_support_image, modelName),
+                                ),
                     )
                 }
                 return
@@ -759,7 +791,12 @@ class AiTutorViewModel
                             withContext(dispatcherProvider.main) {
                                 _uiState.update { state ->
                                     state.copy(
-                                        messages = state.messages + Message("system", application.getString(com.example.common.R.string.api_key_not_configured)),
+                                        messages =
+                                            state.messages +
+                                                Message(
+                                                    "system",
+                                                    application.getString(com.example.common.R.string.api_key_not_configured),
+                                                ),
                                         isLoading = false,
                                         showApiSettings = true,
                                     )
@@ -821,7 +858,15 @@ class AiTutorViewModel
                                     _uiState.update { state ->
                                         state.copy(
                                             messages = state.messages + Message("system", chunk),
-                                            showApiSettings = if (chunk.contains(application.getString(com.example.common.R.string.api_key_invalid))) true else state.showApiSettings,
+                                            showApiSettings =
+                                                if (chunk.contains(
+                                                        application.getString(com.example.common.R.string.api_key_invalid),
+                                                    )
+                                                ) {
+                                                    true
+                                                } else {
+                                                    state.showApiSettings
+                                                },
                                             isLoading = false,
                                         )
                                     }
@@ -858,7 +903,12 @@ class AiTutorViewModel
                         withContext(dispatcherProvider.main) {
                             _uiState.update { state ->
                                 state.copy(
-                                    messages = state.messages + Message("system", application.getString(com.example.common.R.string.cannot_process_image)),
+                                    messages =
+                                        state.messages +
+                                            Message(
+                                                "system",
+                                                application.getString(com.example.common.R.string.cannot_process_image),
+                                            ),
                                     isLoading = false,
                                 )
                             }

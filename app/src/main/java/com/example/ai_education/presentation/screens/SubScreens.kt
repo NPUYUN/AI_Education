@@ -122,32 +122,35 @@ fun SettingsScreen(onBack: () -> Unit) {
 
             Text(stringResource(R.string.language_settings), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
 
-            val currentLocale = androidx.appcompat.app.AppCompatDelegate.getApplicationLocales().toLanguageTags().let {
-                if (it.isEmpty() || it == "und") "zh" else it.split("-")[0]
-            }
+            val currentLocale =
+                androidx.appcompat.app.AppCompatDelegate.getApplicationLocales().toLanguageTags().let {
+                    if (it.isEmpty() || it == "und") "zh" else it.split("-")[0]
+                }
 
-            val languages = listOf(
-                "zh" to stringResource(R.string.language_chinese),
-                "en" to stringResource(R.string.language_english)
-            )
+            val languages =
+                listOf(
+                    "zh" to stringResource(R.string.language_chinese),
+                    "en" to stringResource(R.string.language_english),
+                )
 
             languages.forEach { (langCode, label) ->
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            androidx.appcompat.app.AppCompatDelegate.setApplicationLocales(
-                                androidx.core.os.LocaleListCompat.forLanguageTags(langCode)
-                            )
-                        }
-                        .padding(vertical = 12.dp),
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                androidx.appcompat.app.AppCompatDelegate.setApplicationLocales(
+                                    androidx.core.os.LocaleListCompat.forLanguageTags(langCode),
+                                )
+                            }
+                            .padding(vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     RadioButton(
                         selected = currentLocale == langCode,
                         onClick = {
                             androidx.appcompat.app.AppCompatDelegate.setApplicationLocales(
-                                androidx.core.os.LocaleListCompat.forLanguageTags(langCode)
+                                androidx.core.os.LocaleListCompat.forLanguageTags(langCode),
                             )
                         },
                     )
