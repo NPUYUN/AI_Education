@@ -14,15 +14,6 @@ A comprehensive, multimodal, LLM-powered smart education Android application. Th
 
 ---
 
-## 🚀 Quick Start & Testing Guide
-
-For detailed environment setup, API Key configuration, core module test cases, and safety optimization guidelines for AI Prompts, please refer to:
-👉 **[Usage and Testing Guide (Chinese)](使用与测试指南.md)**
-
-This is crucial for newly onboarding developers and testers, ensuring all future modifications follow architectural standards and do not disrupt core business logic.
-
----
-
 ## 🌟 Core Modules
 
 This project is divided into four core business modules to deeply cover all learning scenarios:
@@ -97,26 +88,32 @@ AI_Education/
 
 ## 🚀 Build & Run Instructions
 
-### 1. Prerequisites
-* **Android Studio**: Ladybug or higher recommended.
-* **JDK**: 17 or higher.
-* **Android SDK**: Ensure your local Android SDK is properly configured.
+### 1. Environment & Device Prerequisites
+* **IDE**: Android Studio Ladybug or higher is recommended.
+* **JDK**: JDK 17 or higher.
+* **Android SDK**: Ensure your local Android SDK is properly configured (Min SDK 24, Target SDK 35).
+* **Test Device**: A **physical Android device** is highly recommended. This project relies heavily on the camera (photo-based problem solving) and microphone (speech recognition), which may not function optimally on an emulator.
 
-### 2. Configure API Key
-The project relies on LLM APIs (OpenAI-compatible, defaults to Qwen). For security, API Keys **should not** be hardcoded.
-Add your configuration to the `local.properties` file in the root directory (create it if it doesn't exist):
+### 2. Configure LLM API Key
+The core functionality relies on Large Language Model APIs (defaults to Qwen, using an OpenAI-compatible interface). For security, API Keys **must not** be hardcoded.
+Please create a `local.properties` file in the project root directory and add your configurations:
 
 ```properties
+# Replace with your actual API Key
 API_KEY=your_actual_api_key_here
+# Modify Base URL and Model Name if using a different provider
 BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1/
 MODEL_NAME=qwen-vl-plus
 ```
-*(Note: A global settings dialog is also available in the app to modify these configurations at runtime)*
+*(Note: You can also dynamically modify and save these configurations at runtime via "Profile -> Global Settings" in the app)*
 
-### 3. Build & Clean
-* Simply click `Run` in Android Studio to build and launch the project.
-* If you encounter Gradle cache issues or build deadlocks, you can run the clean script in the root directory:
-  * **Windows**: Double-click `clean_project.bat` to deep clean `.gradle`, `.idea`, `build` directories and kill related background processes.
+### 3. Build & Download Dependencies
+* **Automatic Dependency Sync**: The project is configured with domestic mirror sources (for HuggingFace and Github resources) to accelerate downloads in mainland China. Upon first opening the project in Android Studio, it may automatically download offline speech recognition (Sherpa ONNX) models. Please ensure a stable internet connection.
+* **Run**: Wait for Gradle Sync to complete, then click the `Run` button in Android Studio to deploy to your device.
+
+### 4. Troubleshooting
+* **Build Deadlocks or Cache Issues**: If you encounter Gradle cache-related build failures, double-click the `clean_project.bat` script (Windows) in the root directory. This script performs a deep clean of `.gradle`, `.idea`, and `build` directories, and terminates lingering Gradle processes. Afterwards, reopen the project.
+* **Permissions**: The app will request permissions for the camera, microphone, storage, and photo gallery upon first use. Please grant these to ensure proper functionality.
 
 ---
 

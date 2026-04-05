@@ -14,15 +14,6 @@
 
 ---
 
-## 🚀 快速上手与测试指南
-
-详细的环境搭建、API Key 配置、核心模块测试用例以及 AI 提示词 (Prompt) 的安全优化规范，请参阅：
-👉 **[使用与测试指南](使用与测试指南.md)**
-
-这对于新接手的开发者和测试人员至关重要，可确保所有后续修改均遵循架构规范，不破坏核心业务。
-
----
-
 ## 🌟 核心功能模块
 
 本项目划分为四大核心业务模块，深度覆盖全流程学习场景：
@@ -97,26 +88,32 @@ AI_Education/
 
 ## 🚀 编译与运行指南
 
-### 1. 环境准备
-* **Android Studio**: 推荐使用 Ladybug 或更高版本。
-* **JDK**: 17 及以上。
-* **Android SDK**: 需配置好本地 Android SDK 环境。
+### 1. 环境与设备准备
+* **开发工具**: 推荐使用 Android Studio Ladybug 或更高版本。
+* **JDK环境**: JDK 17 及以上。
+* **Android SDK**: 需配置好本地 Android SDK 环境 (Min SDK 24, Target SDK 35)。
+* **测试设备**: 强烈建议使用 **Android 真机**进行调试。本项目强依赖摄像头（拍照解题）和麦克风（语音识别），模拟器可能无法正常体验多模态功能。
 
-### 2. 配置 API Key
-项目依赖大模型 API（兼容 OpenAI 格式，默认适配 Qwen 等模型）。为保障安全，API Key **不应**硬编码在代码中。
-请在项目根目录下的 `local.properties` 文件中添加您的配置（若无此文件请新建）：
+### 2. 配置大模型 API Key
+项目核心功能依赖大语言模型 API（默认适配通义千问 Qwen 兼容 OpenAI 的接口格式）。为保障安全，API Key **不可**硬编码。
+请在项目根目录新建 `local.properties` 文件，并添加您的配置项：
 
 ```properties
+# 替换为真实的 API Key
 API_KEY=your_actual_api_key_here
+# 若使用其他模型，可修改对应的 Base URL 和 Model Name
 BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1/
 MODEL_NAME=qwen-vl-plus
 ```
-*(注：应用内也提供了全局设置弹窗，支持在运行时动态修改这些配置)*
+*(注：应用启动后，在“个人中心 - 全局设置”中也支持动态修改和保存这些配置，设置后即时生效)*
 
-### 3. 构建与清理
-* 直接使用 Android Studio 点击 `Run` 运行项目。
-* 如果遇到 Gradle 缓存或编译死锁问题，可以运行根目录下的清理脚本：
-  * **Windows**: 双击运行 `clean_project.bat`，脚本会深度清理 `.gradle`, `.idea`, `build` 目录及各类缓存并结束相关后台进程。
+### 3. 构建与依赖下载
+* **依赖自动同步**: 项目已配置国内镜像源（HuggingFace 和 Github 的资源下载自动走国内代理加速），首次打开 Android Studio 可能会自动下载离线语音识别（Sherpa ONNX）相关的模型文件，请保持网络通畅。
+* **编译运行**: 等待 Gradle Sync 完成后，直接点击 Android Studio 的 `Run` 按钮运行至手机即可。
+
+### 4. 常见问题处理
+* **编译死锁或缓存异常**: 如果遇到 Gradle 缓存导致的编译失败，可双击运行项目根目录下的 `clean_project.bat` (Windows)。脚本会深度清理 `.gradle`, `.idea`, `build` 目录及缓存并强制结束残留进程，之后重新打开项目即可。
+* **权限说明**: 首次使用涉及相册、相机、录音、存储等功能时系统会请求权限，请允许以确保业务正常运转。
 
 ---
 
